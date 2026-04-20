@@ -22,17 +22,32 @@ type Profile = { user_id: string; display_name: string | null };
 export default function DoctorsAdminPanel() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
-    const [d, p] = await Promise.all([
-      supabase.from("clinic_doctors").select("*").order("name"),
+    const [d, p, a] = await Promise.all([
+      supabase.from("clinic_doctors").select("*"),
       supabase.from("profiles").select("user_id, display_name").eq("is_active", true).order("display_name"),
+      supabase
+        .from("clinic_appointments")
+        .select("doctor_external_id")
+        .gte("appointment_at", new Date().toISOString()),
     ]);
-    setDoctors((d.data || []) as Doctor[]);
+    const c = new Map<string, number>();
+    for (const row of (a.data || []) as { doctor_external_id: string | null }[]) {
+      if (row.doctor_external_id) c.set(row.doctor_external_id, (c.get(row.doctor_external_id) || 0) + 1);
+    }
+    const sorted = ((d.data || []) as Doctor[]).sort((x, y) => {
+      const cx = x.external_id ? c.get(x.external_id) || 0 : 0;
+      const cy = y.external_id ? c.get(y.external_id) || 0 : 0;
+      return cy - cx;
+    });
+    setDoctors(sorted);
     setProfiles((p.data || []) as Profile[]);
+    setCounts(c);
     setLoading(false);
   }
 
@@ -67,9 +82,15 @@ export default function DoctorsAdminPanel() {
           <Stethoscope className="h-5 w-5 text-primary" />
           <h3 className="font-semibold">Doutores e responsáveis</h3>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Atribua um colaborador como responsável pelas tarefas da agenda de cada doutor. As
-          tarefas D-7 a D-1 serão automaticamente direcionadas para o responsável.
+        <p className="text-sm text-muted-foreground mb-2">
+          Renomeie cada profissional <strong>exatamente como está na agenda do Clinicorp</strong>,
+          atribua o responsável (ex: Rafaely para Davi/Mariane/Natasha; Layene para Wanessa/Allan)
+          e <strong>marque como ativo apenas os que aparecerão na agenda clínica</strong>.
+        </p>
+        <p className="text-xs text-muted-foreground mb-4">
+          A coluna <strong>consultas</strong> mostra quantos agendamentos cada ID tem nos próximos
+          30 dias — use isso pra identificar quem é quem (o de maior volume costuma ser a Agenda
+          Geral ou a profissional mais cheia).
         </p>
 
         <div className="flex gap-2 mb-4">
@@ -128,8 +149,13 @@ export default function DoctorsAdminPanel() {
                   <span className="text-xs text-muted-foreground">Ativo</span>
                 </div>
                 {d.external_id && (
-                  <div className="text-[10px] text-muted-foreground font-mono">
-                    ext: {d.external_id}
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="text-xs font-semibold text-primary">
+                      {counts.get(d.external_id) || 0} consultas (30d)
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      ID: {d.external_id}
+                    </span>
                   </div>
                 )}
               </Card>
