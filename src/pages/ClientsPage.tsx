@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare } from "lucide-react";
+import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import NewSaleDialog from "@/components/NewSaleDialog";
 import ClientDetailDialog from "@/components/ClientDetailDialog";
@@ -31,6 +31,7 @@ import { useKanbanStages } from "@/lib/useKanbanStages";
 import { useSectors, useProfile } from "@/lib/useProfile";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
 
 type Client = {
   id: string;
@@ -54,6 +55,9 @@ export default function ClientsPage() {
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [boardSectorId, setBoardSectorId] = useState<string>("");
   const { stages } = useKanbanStages(boardSectorId || profile?.sector_id);
+  const { alerts } = useClientAlerts(
+    useMemo(() => clients.map((c) => ({ id: c.id, phone: c.phone })), [clients]),
+  );
 
   // New client form
   const [open, setOpen] = useState(false);
@@ -259,12 +263,25 @@ export default function ClientsPage() {
                     </Badge>
                   </div>
                   <div className="space-y-2 min-h-[60px]">
-                    {items.map((c) => (
+                    {items.map((c) => {
+                      const reasons = alerts[c.id] ?? [];
+                      const isAlert = reasons.length > 0;
+                      return (
                       <Card
                         key={c.id}
-                        className="p-3 bg-card hover:border-primary/30 transition-smooth cursor-pointer"
+                        className={cn(
+                          "p-3 bg-card hover:border-primary/30 transition-smooth cursor-pointer",
+                          isAlert && "border-destructive bg-destructive/5 ring-1 ring-destructive/40",
+                        )}
                         onClick={() => setDetailClient(c)}
+                        title={isAlert ? alertLabel(reasons) : undefined}
                       >
+                        {isAlert && (
+                          <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {alertLabel(reasons)}
+                          </div>
+                        )}
                         <div className="font-medium text-sm truncate">{c.name}</div>
                         {c.phone && (
                           <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
@@ -296,7 +313,8 @@ export default function ClientsPage() {
                           </Select>
                         </div>
                       </Card>
-                    ))}
+                      );
+                    })}
                     {items.length === 0 && (
                       <div className="text-xs text-muted-foreground/50 text-center py-6">
                         Vazio
@@ -326,12 +344,24 @@ export default function ClientsPage() {
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
               {clients.map((c) => {
                 const stage = stages.find((s) => s.id === c.stage_id);
+                const reasons = alerts[c.id] ?? [];
+                const isAlert = reasons.length > 0;
                 return (
                   <Card
                     key={c.id}
-                    className="p-5 bg-gradient-card border-border/50 hover:border-primary/30 transition-smooth group cursor-pointer"
+                    className={cn(
+                      "p-5 bg-gradient-card border-border/50 hover:border-primary/30 transition-smooth group cursor-pointer",
+                      isAlert && "border-destructive bg-destructive/5 ring-1 ring-destructive/40",
+                    )}
                     onClick={() => setDetailClient(c)}
+                    title={isAlert ? alertLabel(reasons) : undefined}
                   >
+                    {isAlert && (
+                      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-2">
+                        <AlertTriangle className="h-3 w-3" />
+                        {alertLabel(reasons)}
+                      </div>
+                    )}
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold truncate">{c.name}</h3>
