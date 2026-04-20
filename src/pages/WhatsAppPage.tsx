@@ -16,6 +16,15 @@ import {
 import { MessageSquareText, Plus, Phone, Clock, Info } from "lucide-react";
 import { toast } from "sonner";
 import WhatsAppTimer from "@/components/WhatsAppTimer";
+import PendingAttendancesCard from "@/components/PendingAttendancesCard";
+import WorkingHoursPanel from "@/components/WorkingHoursPanel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Message = {
   id: string;
