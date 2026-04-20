@@ -37,11 +37,13 @@ import {
   ExternalLink,
   Send,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import { useContacts } from "@/lib/useContacts";
 import { useSectors, useProfile } from "@/lib/useProfile";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import ContactImportDialog from "@/components/ContactImportDialog";
+import ClinicorpSyncDialog from "@/components/ClinicorpSyncDialog";
 import { toast } from "@/hooks/use-toast";
 
 export default function ContactsPage() {
@@ -52,6 +54,7 @@ export default function ContactsPage() {
   const [sectorFilter, setSectorFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [importOpen, setImportOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   const sectorId = useMemo(() => {
     if (sectorFilter === "all") return null;
@@ -96,10 +99,16 @@ export default function ContactsPage() {
             </p>
           </div>
           {isAdmin && (
-            <Button onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Importar Clinicorp
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Importar CSV
+              </Button>
+              <Button onClick={() => setSyncOpen(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Sincronizar Clinicorp
+              </Button>
+            </div>
           )}
         </div>
 
@@ -259,6 +268,11 @@ export default function ContactsPage() {
       <ContactImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
+        onDone={reload}
+      />
+      <ClinicorpSyncDialog
+        open={syncOpen}
+        onOpenChange={setSyncOpen}
         onDone={reload}
       />
     </AppShell>

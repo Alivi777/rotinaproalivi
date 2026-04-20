@@ -221,6 +221,7 @@ export type Database = {
           imported_at: string | null
           is_active: boolean
           last_appointment_at: string | null
+          last_synced_at: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -246,6 +247,7 @@ export type Database = {
           imported_at?: string | null
           is_active?: boolean
           last_appointment_at?: string | null
+          last_synced_at?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -271,6 +273,7 @@ export type Database = {
           imported_at?: string | null
           is_active?: boolean
           last_appointment_at?: string | null
+          last_synced_at?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
