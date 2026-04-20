@@ -149,7 +149,7 @@ export default function AgendaClinicaPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between px-2">
                 <div className="flex items-center gap-2 font-semibold text-sm">
-                  <Cake className="h-4 w-4 text-pink-500" />
+                  <Cake className="h-4 w-4 text-primary" />
                   Aniversários
                 </div>
                 <Badge variant="secondary" className="text-[10px]">

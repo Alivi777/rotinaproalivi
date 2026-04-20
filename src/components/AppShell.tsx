@@ -13,6 +13,7 @@ import {
   MessageCircle,
   ClipboardList,
   Contact as ContactIcon,
+  CalendarRange,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ const baseNav = [
   { to: "/rotina", label: "Rotina", icon: ListChecks },
   { to: "/prioridades", label: "Prioridades", icon: Crosshair },
   { to: "/feedbacks", label: "Feedbacks", icon: MessageCircle },
+  { to: "/agenda-clinica", label: "Agenda Clínica", icon: CalendarRange },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/contatos", label: "Contatos", icon: ContactIcon },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },

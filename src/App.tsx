@@ -13,6 +13,7 @@ import PrioritiesPage from "./pages/PrioritiesPage";
 import FeedbacksPage from "./pages/FeedbacksPage";
 import PlanningPage from "./pages/PlanningPage";
 import ContactsPage from "./pages/ContactsPage";
+import AgendaClinicaPage from "./pages/AgendaClinicaPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -104,6 +105,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <AdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/agenda-clinica"
+            element={
+              <ProtectedRoute>
+                <AgendaClinicaPage />
               </ProtectedRoute>
             }
           />
