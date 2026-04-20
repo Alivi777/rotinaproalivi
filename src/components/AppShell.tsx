@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import { usePendingPriorities } from "@/lib/usePendingPriorities";
 import { cn } from "@/lib/utils";
 import SectorPickerDialog from "./SectorPickerDialog";
 
