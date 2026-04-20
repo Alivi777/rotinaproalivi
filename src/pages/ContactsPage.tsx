@@ -45,6 +45,7 @@ import { useIsAdmin } from "@/lib/useIsAdmin";
 import ContactImportDialog from "@/components/ContactImportDialog";
 import ClinicorpSyncDialog from "@/components/ClinicorpSyncDialog";
 import { toast } from "@/hooks/use-toast";
+import { openWhatsappWeb } from "@/lib/whatsapp";
 
 export default function ContactsPage() {
   const { isAdmin } = useIsAdmin();
