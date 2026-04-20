@@ -37,11 +37,13 @@ import {
   ExternalLink,
   Send,
   ChevronDown,
+  RefreshCw,
 } from "lucide-react";
 import { useContacts } from "@/lib/useContacts";
 import { useSectors, useProfile } from "@/lib/useProfile";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import ContactImportDialog from "@/components/ContactImportDialog";
+import ClinicorpSyncDialog from "@/components/ClinicorpSyncDialog";
 import { toast } from "@/hooks/use-toast";
 
 export default function ContactsPage() {
