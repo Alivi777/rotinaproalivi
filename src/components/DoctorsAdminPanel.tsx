@@ -82,9 +82,15 @@ export default function DoctorsAdminPanel() {
           <Stethoscope className="h-5 w-5 text-primary" />
           <h3 className="font-semibold">Doutores e responsáveis</h3>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Atribua um colaborador como responsável pelas tarefas da agenda de cada doutor. As
-          tarefas D-7 a D-1 serão automaticamente direcionadas para o responsável.
+        <p className="text-sm text-muted-foreground mb-2">
+          Renomeie cada profissional <strong>exatamente como está na agenda do Clinicorp</strong>,
+          atribua o responsável (ex: Rafaely para Davi/Mariane/Natasha; Layene para Wanessa/Allan)
+          e <strong>marque como ativo apenas os que aparecerão na agenda clínica</strong>.
+        </p>
+        <p className="text-xs text-muted-foreground mb-4">
+          A coluna <strong>consultas</strong> mostra quantos agendamentos cada ID tem nos próximos
+          30 dias — use isso pra identificar quem é quem (o de maior volume costuma ser a Agenda
+          Geral ou a profissional mais cheia).
         </p>
 
         <div className="flex gap-2 mb-4">
