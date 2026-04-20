@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Stethoscope, Clock } from "lucide-react";
 import { ClinicTask, ClinicDoctor } from "@/lib/useAgendaClinica";
 import { cn } from "@/lib/utils";
+import { whatsappWebLink } from "@/lib/whatsapp";
 
 interface Props {
   task: ClinicTask;
@@ -17,14 +18,6 @@ function fmtTime(iso: string | null) {
     minute: "2-digit",
     timeZone: "America/Sao_Paulo",
   });
-}
-
-function waLink(phone: string | null): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return null;
-  const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
-  return `https://wa.me/${withCountry}`;
 }
 
 /**
