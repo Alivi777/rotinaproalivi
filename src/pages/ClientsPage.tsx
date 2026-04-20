@@ -205,34 +205,19 @@ export default function ClientsPage() {
             </SelectContent>
           </Select>
           {isAdmin && (
-            <>
-              <Button
-                variant="outline"
-                onClick={syncWeekFromAgenda}
-                disabled={syncingWeek}
-                title="Cria 1 card por agendamento da semana em Recepção, Auditoria e Sucesso do Cliente"
-              >
-                {syncingWeek ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <CalendarSync className="h-4 w-4 mr-1" />
-                )}
-                Sincronizar agenda da semana
-              </Button>
-              <Button
-                variant="outline"
-                onClick={syncTasksToReception}
-                disabled={syncingWeek}
-                title="Traz tarefas (D-7..D-1, aniversários) da Agenda Clínica como cards na Recepção"
-              >
-                {syncingWeek ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <CalendarSync className="h-4 w-4 mr-1" />
-                )}
-                Tarefas → Recepção
-              </Button>
-            </>
+            <Button
+              variant="outline"
+              onClick={syncTasksToReception}
+              disabled={syncingWeek}
+              title="Regera os cards da Recepção (1 por paciente+dia) com as tarefas da Agenda Clínica"
+            >
+              {syncingWeek ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <CalendarSync className="h-4 w-4 mr-1" />
+              )}
+              Sincronizar tarefas da semana
+            </Button>
           )}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
