@@ -50,11 +50,13 @@ type Profile = { user_id: string; display_name: string | null; sector_id: string
 export default function ClientsPage() {
   const { user } = useAuth();
   const { profile } = useProfile();
+  const { isAdmin } = useIsAdmin();
   const { sectors } = useSectors();
   const [clients, setClients] = useState<Client[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [boardSectorId, setBoardSectorId] = useState<string>("");
+  const [syncingWeek, setSyncingWeek] = useState(false);
   const { stages } = useKanbanStages(boardSectorId || profile?.sector_id);
   const { alerts } = useClientAlerts(
     useMemo(() => clients.map((c) => ({ id: c.id, phone: c.phone })), [clients]),
