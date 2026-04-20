@@ -144,6 +144,14 @@ async function fetchPatientsByRecentAppointments(daysBack: number) {
   const res = await clinicorpGet("/appointment/list", {
     start_date: fmt(start),
     end_date: fmt(end),
+    start_date_json: fmt(start),
+    end_date_json: fmt(end),
+    data_inicial: fmt(start),
+    data_final: fmt(end),
+    data_inicio: fmt(start),
+    data_fim: fmt(end),
+    from: fmt(start),
+    to: fmt(end),
   });
   const list: Array<Record<string, unknown>> = Array.isArray(res)
     ? (res as Array<Record<string, unknown>>)
