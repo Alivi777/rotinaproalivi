@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { MessageSquareText, Plus, Phone, Clock, Info } from "lucide-react";
 import { toast } from "sonner";
+import WhatsAppTimer from "@/components/WhatsAppTimer";
 
 type Message = {
   id: string;
@@ -121,6 +122,8 @@ export default function WhatsAppPage() {
           </DialogContent>
         </Dialog>
       </header>
+
+      <WhatsAppTimer />
 
       <Card className="p-4 mb-6 bg-primary/5 border-primary/20 flex items-start gap-3">
         <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />

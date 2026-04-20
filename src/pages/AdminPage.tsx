@@ -20,9 +20,12 @@ import {
   HeartPulse,
   Users,
   Lock,
+  Crosshair,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import TeamAdminPanel from "@/components/TeamAdminPanel";
+import PrioritiesAdminPanel from "@/components/PrioritiesAdminPanel";
 
 type Goal = {
   id: string;
@@ -250,8 +253,14 @@ export default function AdminPage() {
         />
       </div>
 
-      <Tabs defaultValue="goals">
-        <TabsList>
+      <Tabs defaultValue="team">
+        <TabsList className="flex flex-wrap h-auto">
+          <TabsTrigger value="team">
+            <Users className="h-4 w-4 mr-1.5" /> Equipe
+          </TabsTrigger>
+          <TabsTrigger value="priorities">
+            <Crosshair className="h-4 w-4 mr-1.5" /> Prioridades
+          </TabsTrigger>
           <TabsTrigger value="goals">
             <Target className="h-4 w-4 mr-1.5" /> Metas
           </TabsTrigger>
@@ -262,6 +271,14 @@ export default function AdminPage() {
             <DollarSign className="h-4 w-4 mr-1.5" /> Mix de pagamento
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="team" className="mt-4">
+          <TeamAdminPanel />
+        </TabsContent>
+
+        <TabsContent value="priorities" className="mt-4">
+          <PrioritiesAdminPanel />
+        </TabsContent>
 
         <TabsContent value="goals" className="mt-4">
           <Card className="p-6 bg-card border-border/50 space-y-5 max-w-3xl">
