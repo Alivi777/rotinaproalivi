@@ -22,17 +22,32 @@ type Profile = { user_id: string; display_name: string | null };
 export default function DoctorsAdminPanel() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [counts, setCounts] = useState<Map<string, number>>(new Map());
   const [newName, setNewName] = useState("");
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
-    const [d, p] = await Promise.all([
-      supabase.from("clinic_doctors").select("*").order("name"),
+    const [d, p, a] = await Promise.all([
+      supabase.from("clinic_doctors").select("*"),
       supabase.from("profiles").select("user_id, display_name").eq("is_active", true).order("display_name"),
+      supabase
+        .from("clinic_appointments")
+        .select("doctor_external_id")
+        .gte("appointment_at", new Date().toISOString()),
     ]);
-    setDoctors((d.data || []) as Doctor[]);
+    const c = new Map<string, number>();
+    for (const row of (a.data || []) as { doctor_external_id: string | null }[]) {
+      if (row.doctor_external_id) c.set(row.doctor_external_id, (c.get(row.doctor_external_id) || 0) + 1);
+    }
+    const sorted = ((d.data || []) as Doctor[]).sort((x, y) => {
+      const cx = x.external_id ? c.get(x.external_id) || 0 : 0;
+      const cy = y.external_id ? c.get(y.external_id) || 0 : 0;
+      return cy - cx;
+    });
+    setDoctors(sorted);
     setProfiles((p.data || []) as Profile[]);
+    setCounts(c);
     setLoading(false);
   }
 
