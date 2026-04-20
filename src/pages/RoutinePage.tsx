@@ -224,6 +224,73 @@ export default function RoutinePage() {
 
       <PriorityAlert />
 
+      {clientTasks.length > 0 && (
+        <Card className="p-5 mb-6 bg-gradient-card border-primary/30">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-primary" />
+              <h2 className="font-semibold text-sm">
+                Tarefas de clientes para hoje
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                ({clientTasks.filter((t) => !t.completed_at).length} pendentes)
+              </span>
+            </div>
+          </div>
+          <ul className="divide-y divide-border/50">
+            {clientTasks.map((t) => {
+              const overdue = t.due_date < today && !t.completed_at;
+              return (
+                <li
+                  key={t.id}
+                  className={cn(
+                    "py-3 flex items-start gap-3",
+                    t.completed_at && "opacity-50"
+                  )}
+                >
+                  <Checkbox
+                    checked={!!t.completed_at}
+                    onCheckedChange={() => toggleClientTask(t)}
+                    className="mt-1 h-5 w-5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className={cn(
+                        "font-medium text-sm",
+                        t.completed_at && "line-through text-muted-foreground"
+                      )}
+                    >
+                      {t.title}
+                      <Link
+                        to="/clientes"
+                        className="ml-2 inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
+                      >
+                        {t.clients?.name ?? "cliente"}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
+                    {t.description && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {t.description}
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "text-xs mt-1",
+                        overdue ? "text-destructive font-medium" : "text-muted-foreground"
+                      )}
+                    >
+                      {overdue ? "⚠ Atrasada · " : ""}
+                      {new Date(t.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-4 mb-8">
         <Card className="p-5 bg-gradient-card border-border/50">
           <div className="flex items-center justify-between mb-3">
