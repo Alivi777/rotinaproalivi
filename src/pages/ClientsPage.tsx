@@ -69,6 +69,7 @@ export default function ClientsPage() {
     client: Client;
     stageId: string;
     stageName: string;
+    mode: "transition" | "won" | "lost";
   } | null>(null);
 
   useEffect(() => {
@@ -118,14 +119,13 @@ export default function ClientsPage() {
 
   async function moveTo(client: Client, stageId: string) {
     const stage = stages.find((s) => s.id === stageId);
-    if (!stage) return;
-    if (stage.is_won || stage.is_lost) {
-      setCloseTarget({ client, stageId, stageName: stage.name });
-      return;
-    }
-    const { error } = await supabase.from("clients").update({ stage_id: stageId }).eq("id", client.id);
-    if (error) return toast.error(error.message);
-    load();
+    if (!stage || stage.id === client.stage_id) return;
+    const mode: "transition" | "won" | "lost" = stage.is_won
+      ? "won"
+      : stage.is_lost
+        ? "lost"
+        : "transition";
+    setCloseTarget({ client, stageId, stageName: stage.name, mode });
   }
 
   // Filter clients to current board sector
@@ -398,6 +398,7 @@ export default function ClientsPage() {
           clientName={closeTarget.client.name}
           targetStageId={closeTarget.stageId}
           targetStageName={closeTarget.stageName}
+          mode={closeTarget.mode}
           assigneeId={closeTarget.client.assigned_to}
           onConfirmed={() => {
             setCloseTarget(null);
