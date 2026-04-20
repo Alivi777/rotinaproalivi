@@ -267,6 +267,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          is_active: boolean
           sector_id: string | null
           updated_at: string
           user_id: string
@@ -276,6 +277,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          is_active?: boolean
           sector_id?: string | null
           updated_at?: string
           user_id: string
@@ -285,6 +287,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          is_active?: boolean
           sector_id?: string | null
           updated_at?: string
           user_id?: string
@@ -530,6 +533,50 @@ export type Database = {
           },
         ]
       }
+      whatsapp_sessions: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          ended_at: string | null
+          id: string
+          notes: string | null
+          source: string
+          started_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          source?: string
+          started_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          notes?: string | null
+          source?: string
+          started_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_sessions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -541,6 +588,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      whatsapp_user_minutes: {
+        Args: { _end_date: string; _start_date: string }
+        Returns: {
+          session_count: number
+          total_minutes: number
+          user_id: string
+        }[]
       }
     }
     Enums: {
