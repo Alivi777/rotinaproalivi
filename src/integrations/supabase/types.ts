@@ -153,6 +153,145 @@ export type Database = {
           },
         ]
       }
+      contact_imports: {
+        Row: {
+          created_at: string
+          created_count: number
+          default_sector_id: string | null
+          error_count: number
+          error_message: string | null
+          file_name: string | null
+          id: string
+          imported_by: string
+          status: string
+          total_rows: number
+          updated_at: string
+          updated_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_count?: number
+          default_sector_id?: string | null
+          error_count?: number
+          error_message?: string | null
+          file_name?: string | null
+          id?: string
+          imported_by: string
+          status?: string
+          total_rows?: number
+          updated_at?: string
+          updated_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_count?: number
+          default_sector_id?: string | null
+          error_count?: number
+          error_message?: string | null
+          file_name?: string | null
+          id?: string
+          imported_by?: string
+          status?: string
+          total_rows?: number
+          updated_at?: string
+          updated_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_imports_default_sector_id_fkey"
+            columns: ["default_sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          address: string | null
+          birth_date: string | null
+          city: string | null
+          cpf: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          external_id: string | null
+          id: string
+          import_id: string | null
+          imported_at: string | null
+          is_active: boolean
+          last_appointment_at: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          phone_normalized: string | null
+          sector_id: string | null
+          source: string | null
+          state: string | null
+          tags: string[] | null
+          updated_at: string
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          birth_date?: string | null
+          city?: string | null
+          cpf?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          external_id?: string | null
+          id?: string
+          import_id?: string | null
+          imported_at?: string | null
+          is_active?: boolean
+          last_appointment_at?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          phone_normalized?: string | null
+          sector_id?: string | null
+          source?: string | null
+          state?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          birth_date?: string | null
+          city?: string | null
+          cpf?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          external_id?: string | null
+          id?: string
+          import_id?: string | null
+          imported_at?: string | null
+          is_active?: boolean
+          last_appointment_at?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          phone_normalized?: string | null
+          sector_id?: string | null
+          source?: string | null
+          state?: string | null
+          tags?: string[] | null
+          updated_at?: string
+          zip_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_plan_deliverables: {
         Row: {
           created_at: string
@@ -1269,6 +1408,7 @@ export type Database = {
         Returns: boolean
       }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      normalize_phone: { Args: { _phone: string }; Returns: string }
       transfer_attendance: {
         Args: { _attendance_id: string; _note?: string; _to_user: string }
         Returns: undefined
