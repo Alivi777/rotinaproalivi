@@ -27,6 +27,13 @@ type Appointment = {
   appointment_at?: string;
   status?: string;
   duration?: number;
+  Patient_PersonId?: string | number;
+  PatientName?: string;
+  MobilePhone?: string;
+  Dentist_PersonId?: string | number;
+  DentistName?: string;
+  fromTime?: string;
+  toTime?: string;
   [k: string]: unknown;
 };
 
@@ -75,18 +82,7 @@ function extractList(res: unknown): Record<string, unknown>[] {
   if (Array.isArray(res)) return res as Record<string, unknown>[];
   if (!res || typeof res !== "object") return [];
 
-  const tryKeys = [
-    "data",
-    "result",
-    "appointments",
-    "items",
-    "list",
-    "rows",
-    "agendamentos",
-    "agenda",
-    "schedules",
-  ];
-
+  const tryKeys = ["data", "result", "appointments", "items", "list", "rows", "agendamentos", "agenda", "schedules"];
   const queue: unknown[] = [res];
   const seen = new Set<unknown>();
 
@@ -96,8 +92,7 @@ function extractList(res: unknown): Record<string, unknown>[] {
     seen.add(current);
 
     if (Array.isArray(current)) {
-      if (current.length === 0) continue;
-      if (typeof current[0] === "object") return current as Record<string, unknown>[];
+      if (current.length > 0 && typeof current[0] === "object") return current as Record<string, unknown>[];
       continue;
     }
 
@@ -117,73 +112,41 @@ function extractList(res: unknown): Record<string, unknown>[] {
 }
 
 function toIsoDate(a: Appointment): string | null {
-  const directDateTime = [
-    a.appointment_at,
-    a.start_at,
-    a.datetime,
-    a.date_time,
-    a.schedule_at,
-    a.horario,
-  ].find((value) => typeof value === "string" && value.trim());
+  const baseDate = (a.date || a.start_date || a.appointment_at || a.appointment_date || a.schedule_date || a.data || a.data_agendamento) as string | undefined;
+  const time = (a.fromTime || a.start_time || a.time || a.appointment_time || a.schedule_time || a.hour || a.hora) as string | undefined;
 
-  if (typeof directDateTime === "string") {
-    const parsed = new Date(directDateTime);
-    if (!isNaN(parsed.getTime())) return parsed.toISOString();
+  if (!baseDate) return null;
+
+  const parsedBase = new Date(baseDate);
+  if (isNaN(parsedBase.getTime())) return null;
+
+  if (!time) {
+    return parsedBase.toISOString();
   }
 
-  const date = (
-    a.start_date ||
-    a.date ||
-    a.appointment_date ||
-    a.schedule_date ||
-    a.data ||
-    a.data_agendamento
-  ) as string | undefined;
-  const time = (
-    a.start_time ||
-    a.time ||
-    a.appointment_time ||
-    a.schedule_time ||
-    a.hour ||
-    a.hora
-  ) as string | undefined;
-  if (!date) return null;
-  const dt = time ? `${date}T${time}` : `${date}T00:00:00`;
-  const d = new Date(dt);
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString();
+  const [hours, minutes] = time.split(":").map((part) => Number(part));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return parsedBase.toISOString();
+
+  parsedBase.setUTCHours(hours, minutes, 0, 0);
+  return parsedBase.toISOString();
 }
 
 function pickPatientName(a: Appointment): string {
-  return (
-    a.patient?.full_name ||
-    a.patient?.name ||
-    (a.patient_name as string) ||
-    "Paciente"
-  );
+  return a.PatientName || a.patient?.full_name || a.patient?.name || (a.patient_name as string) || "Paciente";
 }
 
 function pickPatientPhone(a: Appointment): string | null {
-  return (
-    a.patient?.cell_phone ||
-    a.patient?.phone ||
-    (a.patient_phone as string) ||
-    null
-  );
+  return a.MobilePhone || a.patient?.cell_phone || a.patient?.phone || (a.patient_phone as string) || null;
 }
 
 function pickPatientExtId(a: Appointment): string | null {
-  const v = a.patient?.id ?? a.patient_id;
+  const v = a.Patient_PersonId ?? a.patient?.id ?? a.patient_id;
   return v != null ? String(v) : null;
 }
 
 function pickDoctor(a: Appointment): { extId: string | null; name: string | null } {
-  const id = a.professional?.id ?? a.professional_id ?? a.doctor_id;
-  const name =
-    a.professional?.name ||
-    (a.professional_name as string) ||
-    (a.doctor_name as string) ||
-    null;
+  const id = a.Dentist_PersonId ?? a.professional?.id ?? a.professional_id ?? a.doctor_id;
+  const name = a.DentistName || a.professional?.name || (a.professional_name as string) || (a.doctor_name as string) || null;
   return { extId: id != null ? String(id) : null, name };
 }
 
