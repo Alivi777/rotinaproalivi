@@ -143,6 +143,25 @@ export default function ClientsPage() {
     }
   }
 
+  async function syncTasksToReception() {
+    setSyncingWeek(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("clinic-tasks-to-reception", {
+        body: {},
+      });
+      if (error) throw error;
+      const d = data as { cards_created?: number; tasks?: number; skipped_existing?: number };
+      toast.success(
+        `Tarefas → Recepção: ${d.cards_created ?? 0} novos · ${d.skipped_existing ?? 0} já existiam (de ${d.tasks ?? 0} tarefas)`,
+      );
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncingWeek(false);
+    }
+  }
+
   async function moveTo(client: Client, stageId: string) {
     const stage = stages.find((s) => s.id === stageId);
     if (!stage || stage.id === client.stage_id) return;
@@ -186,19 +205,34 @@ export default function ClientsPage() {
             </SelectContent>
           </Select>
           {isAdmin && (
-            <Button
-              variant="outline"
-              onClick={syncWeekFromAgenda}
-              disabled={syncingWeek}
-              title="Cria 1 card por agendamento da semana em Recepção, Auditoria e Sucesso do Cliente"
-            >
-              {syncingWeek ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <CalendarSync className="h-4 w-4 mr-1" />
-              )}
-              Sincronizar agenda da semana
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={syncWeekFromAgenda}
+                disabled={syncingWeek}
+                title="Cria 1 card por agendamento da semana em Recepção, Auditoria e Sucesso do Cliente"
+              >
+                {syncingWeek ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <CalendarSync className="h-4 w-4 mr-1" />
+                )}
+                Sincronizar agenda da semana
+              </Button>
+              <Button
+                variant="outline"
+                onClick={syncTasksToReception}
+                disabled={syncingWeek}
+                title="Traz tarefas (D-7..D-1, aniversários) da Agenda Clínica como cards na Recepção"
+              >
+                {syncingWeek ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <CalendarSync className="h-4 w-4 mr-1" />
+                )}
+                Tarefas → Recepção
+              </Button>
+            </>
           )}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
