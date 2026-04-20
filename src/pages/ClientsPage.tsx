@@ -124,6 +124,25 @@ export default function ClientsPage() {
     load();
   }
 
+  async function syncWeekFromAgenda() {
+    setSyncingWeek(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("clinic-week-to-clients", {
+        body: {},
+      });
+      if (error) throw error;
+      const d = data as { cards_created?: number; appointments?: number };
+      toast.success(
+        `Agenda da semana sincronizada: ${d.cards_created ?? 0} cards de ${d.appointments ?? 0} agendamentos`,
+      );
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncingWeek(false);
+    }
+  }
+
   async function moveTo(client: Client, stageId: string) {
     const stage = stages.find((s) => s.id === stageId);
     if (!stage || stage.id === client.stage_id) return;
