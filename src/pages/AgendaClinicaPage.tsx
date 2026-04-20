@@ -117,7 +117,7 @@ export default function AgendaClinicaPage() {
               Agenda Clínica
             </h1>
             <p className="text-sm text-muted-foreground">
-              Tarefas da semana geradas pela agenda do Clinicorp
+              Agenda da semana — as tarefas (D-7..D-1, aniversários) ficam no kanban da Recepção
             </p>
           </div>
           {isAdmin && (
