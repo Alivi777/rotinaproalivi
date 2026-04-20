@@ -123,6 +123,8 @@ export default function WhatsAppPage() {
         </Dialog>
       </header>
 
+      <WhatsAppTimer />
+
       <Card className="p-4 mb-6 bg-primary/5 border-primary/20 flex items-start gap-3">
         <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
         <div className="text-sm">
