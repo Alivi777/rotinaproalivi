@@ -27,6 +27,7 @@ import { useProfile, useSectors } from "@/lib/useProfile";
 import { Plus, Trash2, TrendingUp, Calendar, Users2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import PriorityAlert from "@/components/PriorityAlert";
 
 type Task = {
   id: string;
@@ -187,6 +188,8 @@ export default function RoutinePage() {
           Marque cada tarefa conforme conclui. Reseta automaticamente todo dia.
         </p>
       </header>
+
+      <PriorityAlert />
 
       <div className="grid lg:grid-cols-3 gap-4 mb-8">
         <Card className="p-5 bg-gradient-card border-border/50">

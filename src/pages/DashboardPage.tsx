@@ -4,6 +4,7 @@ import AppShell from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { useSectors } from "@/lib/useProfile";
 import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
+import PriorityAlert from "@/components/PriorityAlert";
 import {
   CheckCircle2,
   MessageSquareText,
@@ -121,6 +122,8 @@ export default function DashboardPage() {
           Visão consolidada do dia em todos os setores.
         </p>
       </header>
+
+      <PriorityAlert />
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
