@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare } from "lucide-react";
+import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import NewSaleDialog from "@/components/NewSaleDialog";
 import ClientDetailDialog from "@/components/ClientDetailDialog";
@@ -31,6 +31,7 @@ import { useKanbanStages } from "@/lib/useKanbanStages";
 import { useSectors, useProfile } from "@/lib/useProfile";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
 
 type Client = {
   id: string;
