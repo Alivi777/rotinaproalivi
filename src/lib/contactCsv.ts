@@ -101,8 +101,7 @@ function mapRow(raw: Record<string, unknown>, idx: number): ParsedContact {
     } else if (mapped === "birth_date" || mapped === "last_appointment_at") {
       out[mapped] = parseDateBR(str);
     } else {
-      // @ts-expect-error - dynamic assignment
-      out[mapped] = str || null;
+      (out as Record<string, unknown>)[mapped] = str || null;
     }
   }
   if (!out.name) out._errors.push("Nome obrigatório");
