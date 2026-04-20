@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   FileText,
   ShieldCheck,
+  Crosshair,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import SectorPickerDialog from "./SectorPickerDialog";
 const baseNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/rotina", label: "Rotina", icon: ListChecks },
+  { to: "/prioridades", label: "Prioridades", icon: Crosshair },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
   { to: "/relatorio", label: "Relatório", icon: FileText },

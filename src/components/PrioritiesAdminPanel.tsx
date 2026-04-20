@@ -260,8 +260,8 @@ export default function PrioritiesAdminPanel() {
                 pri
                   ? pri.status === "acknowledged"
                     ? "border-primary/30 bg-primary/5"
-                    : pri.status === "questioned"
-                    ? "border-amber-500/40 bg-amber-500/5"
+                  : pri.status === "questioned"
+                    ? "border-secondary bg-secondary/40"
                     : "border-destructive/40 bg-destructive/5"
                   : "border-border/40 bg-background/30"
               )}
