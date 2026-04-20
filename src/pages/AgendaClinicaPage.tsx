@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CalendarRange,
   RefreshCw,
@@ -12,12 +13,15 @@ import {
   ChevronRight,
   Cake,
   Loader2,
+  LayoutGrid,
+  Columns3,
 } from "lucide-react";
 import { useAgendaClinica, getWeekDates, dateOnly } from "@/lib/useAgendaClinica";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AgendaTaskCard from "@/components/AgendaTaskCard";
+import DoctorKanbanView from "@/components/DoctorKanbanView";
 
 const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -27,6 +31,8 @@ export default function AgendaClinicaPage() {
   const [doctorFilter, setDoctorFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [viewMode, setViewMode] = useState<"day" | "doctor">("doctor");
+  const [selectedDay, setSelectedDay] = useState<string>(dateOnly(new Date()));
 
   const weekDates = useMemo(() => getWeekDates(refDate), [refDate]);
   const { tasks, doctors, loading } = useAgendaClinica(weekDates);
@@ -114,6 +120,17 @@ export default function AgendaClinicaPage() {
             {weekDates[weekDates.length - 1].toLocaleDateString("pt-BR")}
           </div>
 
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "day" | "doctor")} className="ml-2">
+            <TabsList className="h-9">
+              <TabsTrigger value="doctor" className="text-xs gap-1.5">
+                <Columns3 className="h-3.5 w-3.5" /> Por Doutor
+              </TabsTrigger>
+              <TabsTrigger value="day" className="text-xs gap-1.5">
+                <LayoutGrid className="h-3.5 w-3.5" /> Por Dia
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <div className="ml-auto flex items-center gap-2">
             <Input
               placeholder="Buscar paciente..."
@@ -138,11 +155,48 @@ export default function AgendaClinicaPage() {
           </div>
         </Card>
 
+        {/* Day picker (apenas no modo Por Doutor) */}
+        {viewMode === "doctor" && (
+          <Card className="p-2 flex flex-wrap items-center gap-1">
+            <Button
+              variant={selectedDay === "" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setSelectedDay("")}
+              className="h-8 text-xs"
+            >
+              Semana toda
+            </Button>
+            {weekDates.map((d, i) => {
+              const ds = dateOnly(d);
+              const isToday = ds === dateOnly(new Date());
+              return (
+                <Button
+                  key={ds}
+                  variant={selectedDay === ds ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setSelectedDay(ds)}
+                  className="h-8 text-xs"
+                >
+                  {DAYS[i].slice(0, 3)} {d.getDate()}/{d.getMonth() + 1}
+                  {isToday && <span className="ml-1 text-[9px] opacity-70">(hoje)</span>}
+                </Button>
+              );
+            })}
+          </Card>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin mr-2" />
             Carregando...
           </div>
+        ) : viewMode === "doctor" ? (
+          <DoctorKanbanView
+            tasks={filtered}
+            doctors={doctors}
+            weekDates={weekDates}
+            selectedDate={selectedDay ? new Date(selectedDay + "T12:00:00") : null}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
             {/* Birthdays column */}

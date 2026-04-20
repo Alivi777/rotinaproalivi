@@ -207,14 +207,70 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2) Load doctors map — APENAS doutores ATIVOS são considerados
+    // 2a) Tentar buscar nomes reais de profissionais via endpoint do Clinicorp
+    const dentistNames = new Map<string, string>();
+    const dentistEndpoints = [
+      "/professional/list",
+      "/dentist/list",
+      "/person/list",
+      "/user/list",
+    ];
+    for (const ep of dentistEndpoints) {
+      try {
+        const r = await clinicorpGet(ep, {});
+        const items = extractList(r);
+        for (const it of items) {
+          const o = it as Record<string, unknown>;
+          const id = String(o.PersonId ?? o.Person_Id ?? o.id ?? o.Id ?? "");
+          const name = String(o.Name ?? o.name ?? o.FullName ?? o.full_name ?? o.DentistName ?? "").trim();
+          if (id && name) dentistNames.set(id, name);
+        }
+        if (dentistNames.size > 0) {
+          console.log(`[clinicorp] resolved ${dentistNames.size} doctor names via ${ep}`);
+          break;
+        }
+      } catch (err) {
+        console.log(`[clinicorp] ${ep} failed: ${(err as Error).message.slice(0, 120)}`);
+      }
+    }
+
+    // 2b) Coletar TODOS os IDs de doutor que aparecem na agenda
+    const seenDoctorIds = new Set<string>();
+    for (const a of list) {
+      const dr = pickDoctor(a);
+      if (dr.extId) seenDoctorIds.add(dr.extId);
+    }
+
+    // 2c) Auto-cadastrar/atualizar TODOS os doutores que apareceram (ativos por padrão)
+    if (seenDoctorIds.size) {
+      const upsertDoctors = [...seenDoctorIds].map((extId) => ({
+        external_id: extId,
+        name: dentistNames.get(extId) || `Profissional #${extId}`,
+        active: true,
+      }));
+      const { error: drErr } = await supabase
+        .from("clinic_doctors")
+        .upsert(upsertDoctors, { onConflict: "external_id", ignoreDuplicates: false });
+      if (drErr) console.error("[clinicorp] doctor upsert err:", drErr.message);
+
+      // Atualizar nomes só pra quem ainda está como placeholder
+      for (const [extId, realName] of dentistNames) {
+        await supabase
+          .from("clinic_doctors")
+          .update({ name: realName })
+          .eq("external_id", extId)
+          .like("name", "Profissional #%");
+      }
+    }
+
+    // 2d) Recarregar mapa completo de doutores
     const { data: existingDoctors } = await supabase
       .from("clinic_doctors")
       .select("id, external_id, name, assigned_user_id, active");
 
     const doctorMap = new Map<string, { id: string; assigned_user_id: string | null; name: string }>();
     for (const d of existingDoctors || []) {
-      if (d.external_id && d.active) {
+      if (d.external_id) {
         doctorMap.set(d.external_id, {
           id: d.id,
           assigned_user_id: d.assigned_user_id,
@@ -222,56 +278,32 @@ Deno.serve(async (req) => {
         });
       }
     }
-    console.error("[clinicorp] active doctors loaded", { count: doctorMap.size, ids: [...doctorMap.keys()] });
+    console.log("[clinicorp] doctors loaded", { count: doctorMap.size });
 
-    // 3) Upsert appointments — somente de doutores ATIVOS
+    // 3) Upsert TODAS as agendas (sem filtrar por ativo)
     let appointmentsCount = 0;
-    let skippedInactive = 0;
     const appointmentRows: Record<string, unknown>[] = [];
     for (const a of list) {
       const at = toIsoDate(a);
       if (!at) continue;
       const dr = pickDoctor(a);
-      if (!dr.extId || !doctorMap.has(dr.extId)) {
-        skippedInactive++;
-        continue;
-      }
-      const doctor = doctorMap.get(dr.extId)!;
+      const doctor = dr.extId ? doctorMap.get(dr.extId) : null;
       const extId = String(a.id ?? a.appointment_id ?? `${pickPatientExtId(a)}_${at}`);
       appointmentRows.push({
         external_id: extId,
         patient_external_id: pickPatientExtId(a),
         patient_name: pickPatientName(a),
         patient_phone: pickPatientPhone(a),
-        doctor_id: doctor.id,
+        doctor_id: doctor?.id ?? null,
         doctor_external_id: dr.extId,
-        doctor_name: doctor.name, // usa nome do banco, não da API
+        doctor_name: doctor?.name || dr.name || null,
         appointment_at: at,
         duration_min: typeof a.duration === "number" ? a.duration : null,
         status: (a.status as string) || "scheduled",
         synced_at: new Date().toISOString(),
       });
     }
-    console.error("[clinicorp] filtered appointments", {
-      total: list.length,
-      kept: appointmentRows.length,
-      skippedInactive,
-    });
-
-    // Limpar agendas/tarefas antigas de doutores que NÃO estão mais ativos
-    const activeIds = [...doctorMap.values()].map((d) => d.id);
-    if (activeIds.length) {
-      await supabase
-        .from("clinic_daily_tasks")
-        .delete()
-        .not("doctor_id", "is", null)
-        .not("doctor_id", "in", `(${activeIds.map((id) => `"${id}"`).join(",")})`);
-      await supabase
-        .from("clinic_appointments")
-        .delete()
-        .not("doctor_id", "is", null)
-        .not("doctor_id", "in", `(${activeIds.map((id) => `"${id}"`).join(",")})`);
-    }
+    console.log("[clinicorp] appointments to upsert", { total: appointmentRows.length });
 
     if (appointmentRows.length) {
       const { error: apptErr } = await supabase
