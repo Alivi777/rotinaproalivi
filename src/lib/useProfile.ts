@@ -16,6 +16,7 @@ export type Profile = {
   display_name: string | null;
   email: string | null;
   sector_id: string | null;
+  is_active: boolean;
 };
 
 export function useSectors() {
@@ -49,7 +50,7 @@ export function useProfile() {
     }
     const { data } = await supabase
       .from("profiles")
-      .select("user_id, display_name, email, sector_id")
+      .select("user_id, display_name, email, sector_id, is_active")
       .eq("user_id", user.id)
       .maybeSingle();
     setProfile(data as Profile | null);
