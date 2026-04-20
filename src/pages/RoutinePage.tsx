@@ -24,10 +24,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useSectors } from "@/lib/useProfile";
-import { Plus, Trash2, TrendingUp, Calendar, Users2 } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Calendar, Users2, UserCheck, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PriorityAlert from "@/components/PriorityAlert";
+import { Link } from "react-router-dom";
 
 type Task = {
   id: string;
@@ -38,6 +39,15 @@ type Task = {
 };
 type Completion = { id: string; task_id: string; user_id: string };
 type Profile = { user_id: string; display_name: string | null; sector_id: string | null };
+type ClientTask = {
+  id: string;
+  client_id: string;
+  title: string;
+  description: string | null;
+  due_date: string;
+  completed_at: string | null;
+  clients?: { name: string } | null;
+};
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
