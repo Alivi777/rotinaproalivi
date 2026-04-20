@@ -64,6 +64,7 @@ export default function RoutinePage() {
   const [newDesc, setNewDesc] = useState("");
   const [newSectorId, setNewSectorId] = useState<string>("");
   const [activeSectorId, setActiveSectorId] = useState<string>("");
+  const [clientTasks, setClientTasks] = useState<ClientTask[]>([]);
 
   const today = todayStr();
 
