@@ -149,8 +149,13 @@ export default function DoctorsAdminPanel() {
                   <span className="text-xs text-muted-foreground">Ativo</span>
                 </div>
                 {d.external_id && (
-                  <div className="text-[10px] text-muted-foreground font-mono">
-                    ext: {d.external_id}
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="text-xs font-semibold text-primary">
+                      {counts.get(d.external_id) || 0} consultas (30d)
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      ID: {d.external_id}
+                    </span>
                   </div>
                 )}
               </Card>
