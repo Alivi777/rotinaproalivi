@@ -77,14 +77,23 @@ export default function RoutinePage() {
   }, [profile, activeSectorId]);
 
   async function load() {
-    const [t, c, p] = await Promise.all([
+    const [t, c, p, ct] = await Promise.all([
       supabase.from("routine_tasks").select("*").eq("active", true).order("sort_order"),
       supabase.from("task_completions").select("id, task_id, user_id").eq("completion_date", today),
       supabase.from("profiles").select("user_id, display_name, sector_id"),
+      user
+        ? supabase
+            .from("client_tasks")
+            .select("id, client_id, title, description, due_date, completed_at, clients(name)")
+            .eq("assigned_to", user.id)
+            .lte("due_date", today)
+            .order("due_date", { ascending: true })
+        : Promise.resolve({ data: [] as ClientTask[] }),
     ]);
     if (t.data) setTasks(t.data as Task[]);
     if (c.data) setCompletions(c.data as Completion[]);
     if (p.data) setProfiles(p.data as Profile[]);
+    if (ct.data) setClientTasks(ct.data as unknown as ClientTask[]);
     setLoading(false);
   }
 
