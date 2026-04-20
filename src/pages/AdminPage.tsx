@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import TeamAdminPanel from "@/components/TeamAdminPanel";
 import PrioritiesAdminPanel from "@/components/PrioritiesAdminPanel";
+import WeeklyRankingPanel from "@/components/WeeklyRankingPanel";
 
 type Goal = {
   id: string;
@@ -251,6 +252,10 @@ export default function AdminPage() {
           formatter={fmtMoney}
           subtitle={`Margem: ${margin.toFixed(1)}% · Custo: ${fmtMoney(totalCost)}`}
         />
+      </div>
+
+      <div className="mb-8">
+        <WeeklyRankingPanel />
       </div>
 
       <Tabs defaultValue="team">
