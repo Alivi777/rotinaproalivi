@@ -207,72 +207,72 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2) Load doctors map (and auto-create new ones)
+    // 2) Load doctors map — APENAS doutores ATIVOS são considerados
     const { data: existingDoctors } = await supabase
       .from("clinic_doctors")
-      .select("id, external_id, name, assigned_user_id");
+      .select("id, external_id, name, assigned_user_id, active");
 
-    const doctorMap = new Map<string, { id: string; assigned_user_id: string | null }>();
-    const doctorByName = new Map<string, { id: string; assigned_user_id: string | null }>();
+    const doctorMap = new Map<string, { id: string; assigned_user_id: string | null; name: string }>();
     for (const d of existingDoctors || []) {
-      if (d.external_id) doctorMap.set(d.external_id, { id: d.id, assigned_user_id: d.assigned_user_id });
-      doctorByName.set((d.name || "").toLowerCase().trim(), { id: d.id, assigned_user_id: d.assigned_user_id });
-    }
-
-    // Ensure each doctor seen exists
-    const newDoctors: { external_id: string; name: string }[] = [];
-    for (const a of list) {
-      const dr = pickDoctor(a);
-      if (dr.extId && !doctorMap.has(dr.extId)) {
-        // Try to match by name to existing seeded doctor
-        const byName = dr.name ? doctorByName.get(dr.name.toLowerCase().trim()) : undefined;
-        if (byName) {
-          // Update external_id on the matched seed doctor
-          await supabase.from("clinic_doctors").update({ external_id: dr.extId }).eq("id", byName.id);
-          doctorMap.set(dr.extId, byName);
-        } else if (dr.name) {
-          newDoctors.push({ external_id: dr.extId, name: dr.name });
-        }
+      if (d.external_id && d.active) {
+        doctorMap.set(d.external_id, {
+          id: d.id,
+          assigned_user_id: d.assigned_user_id,
+          name: d.name || "",
+        });
       }
     }
-    if (newDoctors.length) {
-      const { data: inserted } = await supabase
-        .from("clinic_doctors")
-        .upsert(newDoctors, { onConflict: "external_id" })
-        .select("id, external_id, assigned_user_id");
-      for (const d of inserted || []) {
-        if (d.external_id) doctorMap.set(d.external_id, { id: d.id, assigned_user_id: d.assigned_user_id });
-      }
-    }
+    console.error("[clinicorp] active doctors loaded", { count: doctorMap.size, ids: [...doctorMap.keys()] });
 
-    // 3) Upsert appointments
+    // 3) Upsert appointments — somente de doutores ATIVOS
     let appointmentsCount = 0;
+    let skippedInactive = 0;
     const appointmentRows: Record<string, unknown>[] = [];
     for (const a of list) {
       const at = toIsoDate(a);
       if (!at) continue;
       const dr = pickDoctor(a);
-      const doctor = dr.extId ? doctorMap.get(dr.extId) : undefined;
+      if (!dr.extId || !doctorMap.has(dr.extId)) {
+        skippedInactive++;
+        continue;
+      }
+      const doctor = doctorMap.get(dr.extId)!;
       const extId = String(a.id ?? a.appointment_id ?? `${pickPatientExtId(a)}_${at}`);
       appointmentRows.push({
         external_id: extId,
         patient_external_id: pickPatientExtId(a),
         patient_name: pickPatientName(a),
         patient_phone: pickPatientPhone(a),
-        doctor_id: doctor?.id ?? null,
+        doctor_id: doctor.id,
         doctor_external_id: dr.extId,
-        doctor_name: dr.name,
+        doctor_name: doctor.name, // usa nome do banco, não da API
         appointment_at: at,
         duration_min: typeof a.duration === "number" ? a.duration : null,
         status: (a.status as string) || "scheduled",
         synced_at: new Date().toISOString(),
       });
     }
-    console.error("[clinicorp] parsed appointments", {
-      extractedCount: list.length,
-      parsedCount: appointmentRows.length,
-      firstUnparsedSample: list.find((item) => !toIsoDate(item)) ? JSON.stringify(list.find((item) => !toIsoDate(item))).slice(0, 1200) : null,
+    console.error("[clinicorp] filtered appointments", {
+      total: list.length,
+      kept: appointmentRows.length,
+      skippedInactive,
     });
+
+    // Limpar agendas/tarefas antigas de doutores que NÃO estão mais ativos
+    const activeIds = [...doctorMap.values()].map((d) => d.id);
+    if (activeIds.length) {
+      await supabase
+        .from("clinic_daily_tasks")
+        .delete()
+        .not("doctor_id", "is", null)
+        .not("doctor_id", "in", `(${activeIds.map((id) => `"${id}"`).join(",")})`);
+      await supabase
+        .from("clinic_appointments")
+        .delete()
+        .not("doctor_id", "is", null)
+        .not("doctor_id", "in", `(${activeIds.map((id) => `"${id}"`).join(",")})`);
+    }
+
     if (appointmentRows.length) {
       const { error: apptErr } = await supabase
         .from("clinic_appointments")
