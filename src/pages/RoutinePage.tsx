@@ -13,20 +13,37 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
+import { useProfile, useSectors } from "@/lib/useProfile";
 import { Plus, Trash2, TrendingUp, Calendar, Users2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Task = { id: string; title: string; description: string | null; sort_order: number };
+type Task = {
+  id: string;
+  title: string;
+  description: string | null;
+  sort_order: number;
+  sector_id: string | null;
+};
 type Completion = { id: string; task_id: string; user_id: string };
-type Profile = { user_id: string; display_name: string | null };
+type Profile = { user_id: string; display_name: string | null; sector_id: string | null };
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
 export default function RoutinePage() {
   const { user } = useAuth();
+  const { profile } = useProfile();
+  const { sectors } = useSectors();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -34,14 +51,24 @@ export default function RoutinePage() {
   const [openNew, setOpenNew] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newSectorId, setNewSectorId] = useState<string>("");
+  const [activeSectorId, setActiveSectorId] = useState<string>("");
 
   const today = todayStr();
+
+  // Default tab to user's sector once known
+  useEffect(() => {
+    if (profile?.sector_id && !activeSectorId) {
+      setActiveSectorId(profile.sector_id);
+      setNewSectorId(profile.sector_id);
+    }
+  }, [profile, activeSectorId]);
 
   async function load() {
     const [t, c, p] = await Promise.all([
       supabase.from("routine_tasks").select("*").eq("active", true).order("sort_order"),
       supabase.from("task_completions").select("id, task_id, user_id").eq("completion_date", today),
-      supabase.from("profiles").select("user_id, display_name"),
+      supabase.from("profiles").select("user_id, display_name, sector_id"),
     ]);
     if (t.data) setTasks(t.data as Task[]);
     if (c.data) setCompletions(c.data as Completion[]);
@@ -70,6 +97,11 @@ export default function RoutinePage() {
     [completions, user]
   );
 
+  const visibleTasks = useMemo(
+    () => (activeSectorId ? tasks.filter((t) => t.sector_id === activeSectorId) : tasks),
+    [tasks, activeSectorId]
+  );
+
   async function toggle(taskId: string) {
     if (!user) return;
     const isDone = myCompletions.has(taskId);
@@ -93,11 +125,16 @@ export default function RoutinePage() {
 
   async function addTask() {
     if (!newTitle.trim()) return;
-    const order = tasks.length ? Math.max(...tasks.map((t) => t.sort_order)) + 1 : 1;
+    const sectorId = newSectorId || activeSectorId || profile?.sector_id || null;
+    const sectorTasks = tasks.filter((t) => t.sector_id === sectorId);
+    const order = sectorTasks.length
+      ? Math.max(...sectorTasks.map((t) => t.sort_order)) + 1
+      : 1;
     const { error } = await supabase.from("routine_tasks").insert({
       title: newTitle.trim(),
       description: newDesc.trim() || null,
       sort_order: order,
+      sector_id: sectorId,
     });
     if (error) return toast.error(error.message);
     toast.success("Tarefa adicionada");
@@ -113,17 +150,26 @@ export default function RoutinePage() {
     load();
   }
 
-  const myDone = myCompletions.size;
-  const total = tasks.length;
+  // My sector progress only
+  const mySectorTasks = tasks.filter((t) => t.sector_id === profile?.sector_id);
+  const myDone = mySectorTasks.filter((t) => myCompletions.has(t.id)).length;
+  const total = mySectorTasks.length;
   const pct = total ? Math.round((myDone / total) * 100) : 0;
 
-  // Team progress: per user count
+  // Team progress: per user count within their own sector
   const teamProgress = profiles
+    .filter((p) => p.sector_id)
     .map((p) => {
-      const count = completions.filter((c) => c.user_id === p.user_id).length;
-      return { ...p, count };
+      const sectorTaskIds = tasks.filter((t) => t.sector_id === p.sector_id).map((t) => t.id);
+      const count = completions.filter(
+        (c) => c.user_id === p.user_id && sectorTaskIds.includes(c.task_id)
+      ).length;
+      const sectorName = sectors.find((s) => s.id === p.sector_id)?.name ?? "—";
+      return { ...p, count, sectorTotal: sectorTaskIds.length, sectorName };
     })
     .sort((a, b) => b.count - a.count);
+
+  const activeSector = sectors.find((s) => s.id === activeSectorId);
 
   return (
     <AppShell>
@@ -146,7 +192,7 @@ export default function RoutinePage() {
         <Card className="p-5 bg-gradient-card border-border/50">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs uppercase tracking-widest text-muted-foreground">
-              Seu progresso
+              Seu progresso ({sectors.find((s) => s.id === profile?.sector_id)?.name ?? "—"})
             </span>
             <TrendingUp className="h-4 w-4 text-primary" />
           </div>
@@ -175,15 +221,18 @@ export default function RoutinePage() {
             {teamProgress.length === 0 && (
               <p className="text-sm text-muted-foreground">Nenhum membro ainda.</p>
             )}
-            {teamProgress.slice(0, 5).map((p) => {
-              const ratio = total ? (p.count / total) * 100 : 0;
+            {teamProgress.slice(0, 6).map((p) => {
+              const ratio = p.sectorTotal ? (p.count / p.sectorTotal) * 100 : 0;
               return (
                 <div key={p.user_id} className="flex items-center gap-3">
-                  <div className="w-32 text-sm truncate">
+                  <div className="w-40 text-sm truncate">
                     {p.display_name || "Sem nome"}
                     {p.user_id === user?.id && (
                       <span className="ml-1 text-xs text-primary">(você)</span>
                     )}
+                    <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">
+                      {p.sectorName}
+                    </span>
                   </div>
                   <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                     <div
@@ -192,7 +241,7 @@ export default function RoutinePage() {
                     />
                   </div>
                   <div className="text-xs text-muted-foreground w-16 text-right tabular-nums">
-                    {p.count}/{total}
+                    {p.count}/{p.sectorTotal}
                   </div>
                 </div>
               );
@@ -202,7 +251,7 @@ export default function RoutinePage() {
       </div>
 
       <Card className="p-6 bg-card border-border/50">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
             <h2 className="text-lg font-semibold">Checklist</h2>
             <p className="text-xs text-muted-foreground">
@@ -220,6 +269,21 @@ export default function RoutinePage() {
                 <DialogTitle>Adicionar tarefa à rotina</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
+                <div>
+                  <Label>Setor</Label>
+                  <Select value={newSectorId} onValueChange={setNewSectorId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sectors.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div>
                   <Label>Título</Label>
                   <Input
@@ -244,15 +308,30 @@ export default function RoutinePage() {
           </Dialog>
         </div>
 
+        <Tabs value={activeSectorId} onValueChange={setActiveSectorId} className="mb-5">
+          <TabsList className="flex flex-wrap h-auto bg-secondary/50">
+            {sectors.map((s) => (
+              <TabsTrigger key={s.id} value={s.id} className="text-xs">
+                {s.name}
+                {s.id === profile?.sector_id && (
+                  <span className="ml-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Carregando…</p>
-        ) : tasks.length === 0 ? (
+        ) : visibleTasks.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Nenhuma tarefa cadastrada ainda.</p>
+            <p className="text-muted-foreground">
+              Nenhuma tarefa cadastrada para {activeSector?.name ?? "este setor"}.
+            </p>
           </div>
         ) : (
           <ul className="divide-y divide-border/50">
-            {tasks.map((task) => {
+            {visibleTasks.map((task) => {
               const done = myCompletions.has(task.id);
               const completedBy = completions
                 .filter((c) => c.task_id === task.id)

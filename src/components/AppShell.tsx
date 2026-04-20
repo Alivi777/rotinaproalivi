@@ -1,15 +1,26 @@
 import { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { CheckCircle2, Users, MessageSquareText, LogOut, ListChecks } from "lucide-react";
+import {
+  CheckCircle2,
+  Users,
+  MessageSquareText,
+  LogOut,
+  ListChecks,
+  LayoutDashboard,
+  FileText,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import SectorPickerDialog from "./SectorPickerDialog";
 
 const nav = [
-  { to: "/", label: "Rotina", icon: ListChecks, end: true },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/rotina", label: "Rotina", icon: ListChecks },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
+  { to: "/relatorio", label: "Relatório", icon: FileText },
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -110,6 +121,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
         {children}
       </main>
+      <SectorPickerDialog />
     </div>
   );
 }
