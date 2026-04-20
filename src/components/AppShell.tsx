@@ -38,6 +38,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
   const { count: pendingPriorities } = usePendingPriorities();
+  // Global subscription so toast+beep happens on any page
+  usePendingAttendances();
   const nav = isAdmin
     ? [
         ...baseNav,
