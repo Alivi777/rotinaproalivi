@@ -140,10 +140,15 @@ export default function WhatsAppTimeDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, custom.start, custom.end]);
 
-  // Filter to current user if not admin
-  const visibleProfiles = isAdmin
+  // Filter to current user if not admin; admin can pick "all" or a specific user
+  const baseProfiles = isAdmin
     ? profiles.filter((p) => p.is_active)
     : profiles.filter((p) => p.user_id === user?.id);
+
+  const visibleProfiles =
+    isAdmin && selectedUser !== "all"
+      ? baseProfiles.filter((p) => p.user_id === selectedUser)
+      : baseProfiles;
 
   const merged = visibleProfiles
     .map((p) => {
