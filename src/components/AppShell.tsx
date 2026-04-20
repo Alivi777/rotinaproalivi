@@ -21,6 +21,7 @@ import { useIsAdmin } from "@/lib/useIsAdmin";
 import { usePendingPriorities } from "@/lib/usePendingPriorities";
 import { cn } from "@/lib/utils";
 import SectorPickerDialog from "./SectorPickerDialog";
+import { usePendingAttendances } from "@/lib/usePendingAttendances";
 
 const baseNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
