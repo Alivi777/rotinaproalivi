@@ -313,7 +313,8 @@ export default function ClientsPage() {
                           </Select>
                         </div>
                       </Card>
-                    ))}
+                      );
+                    })}
                     {items.length === 0 && (
                       <div className="text-xs text-muted-foreground/50 text-center py-6">
                         Vazio
