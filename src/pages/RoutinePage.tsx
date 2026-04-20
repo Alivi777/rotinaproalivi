@@ -1,0 +1,310 @@
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import AppShell from "@/components/AppShell";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { useAuth } from "@/lib/auth";
+import { Plus, Trash2, TrendingUp, Calendar, Users2 } from "lucide-react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+type Task = { id: string; title: string; description: string | null; sort_order: number };
+type Completion = { id: string; task_id: string; user_id: string };
+type Profile = { user_id: string; display_name: string | null };
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+export default function RoutinePage() {
+  const { user } = useAuth();
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [completions, setCompletions] = useState<Completion[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [openNew, setOpenNew] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
+
+  const today = todayStr();
+
+  async function load() {
+    const [t, c, p] = await Promise.all([
+      supabase.from("routine_tasks").select("*").eq("active", true).order("sort_order"),
+      supabase.from("task_completions").select("id, task_id, user_id").eq("completion_date", today),
+      supabase.from("profiles").select("user_id, display_name"),
+    ]);
+    if (t.data) setTasks(t.data as Task[]);
+    if (c.data) setCompletions(c.data as Completion[]);
+    if (p.data) setProfiles(p.data as Profile[]);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    const channel = supabase
+      .channel("completions-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "task_completions" },
+        () => load()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const myCompletions = useMemo(
+    () => new Set(completions.filter((c) => c.user_id === user?.id).map((c) => c.task_id)),
+    [completions, user]
+  );
+
+  async function toggle(taskId: string) {
+    if (!user) return;
+    const isDone = myCompletions.has(taskId);
+    if (isDone) {
+      const { error } = await supabase
+        .from("task_completions")
+        .delete()
+        .eq("task_id", taskId)
+        .eq("user_id", user.id)
+        .eq("completion_date", today);
+      if (error) toast.error(error.message);
+    } else {
+      const { error } = await supabase.from("task_completions").insert({
+        task_id: taskId,
+        user_id: user.id,
+        completion_date: today,
+      });
+      if (error) toast.error(error.message);
+    }
+  }
+
+  async function addTask() {
+    if (!newTitle.trim()) return;
+    const order = tasks.length ? Math.max(...tasks.map((t) => t.sort_order)) + 1 : 1;
+    const { error } = await supabase.from("routine_tasks").insert({
+      title: newTitle.trim(),
+      description: newDesc.trim() || null,
+      sort_order: order,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Tarefa adicionada");
+    setNewTitle("");
+    setNewDesc("");
+    setOpenNew(false);
+    load();
+  }
+
+  async function removeTask(id: string) {
+    const { error } = await supabase.from("routine_tasks").update({ active: false }).eq("id", id);
+    if (error) return toast.error(error.message);
+    load();
+  }
+
+  const myDone = myCompletions.size;
+  const total = tasks.length;
+  const pct = total ? Math.round((myDone / total) * 100) : 0;
+
+  // Team progress: per user count
+  const teamProgress = profiles
+    .map((p) => {
+      const count = completions.filter((c) => c.user_id === p.user_id).length;
+      return { ...p, count };
+    })
+    .sort((a, b) => b.count - a.count);
+
+  return (
+    <AppShell>
+      <header className="mb-8">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground mb-2">
+          <Calendar className="h-3.5 w-3.5" />
+          {new Date().toLocaleDateString("pt-BR", {
+            weekday: "long",
+            day: "2-digit",
+            month: "long",
+          })}
+        </div>
+        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Rotina diária</h1>
+        <p className="text-muted-foreground mt-1">
+          Marque cada tarefa conforme conclui. Reseta automaticamente todo dia.
+        </p>
+      </header>
+
+      <div className="grid lg:grid-cols-3 gap-4 mb-8">
+        <Card className="p-5 bg-gradient-card border-border/50">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">
+              Seu progresso
+            </span>
+            <TrendingUp className="h-4 w-4 text-primary" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-bold">{pct}%</span>
+            <span className="text-sm text-muted-foreground">
+              {myDone}/{total} tarefas
+            </span>
+          </div>
+          <div className="mt-3 h-2 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full bg-gradient-primary transition-all duration-500"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </Card>
+
+        <Card className="p-5 bg-gradient-card border-border/50 lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">
+              Time hoje
+            </span>
+            <Users2 className="h-4 w-4 text-primary" />
+          </div>
+          <div className="space-y-2.5">
+            {teamProgress.length === 0 && (
+              <p className="text-sm text-muted-foreground">Nenhum membro ainda.</p>
+            )}
+            {teamProgress.slice(0, 5).map((p) => {
+              const ratio = total ? (p.count / total) * 100 : 0;
+              return (
+                <div key={p.user_id} className="flex items-center gap-3">
+                  <div className="w-32 text-sm truncate">
+                    {p.display_name || "Sem nome"}
+                    {p.user_id === user?.id && (
+                      <span className="ml-1 text-xs text-primary">(você)</span>
+                    )}
+                  </div>
+                  <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${ratio}%` }}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground w-16 text-right tabular-nums">
+                    {p.count}/{total}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+
+      <Card className="p-6 bg-card border-border/50">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-lg font-semibold">Checklist</h2>
+            <p className="text-xs text-muted-foreground">
+              Sua marcação só conta para você. Cada membro tem sua própria visão.
+            </p>
+          </div>
+          <Dialog open={openNew} onOpenChange={setOpenNew}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-4 w-4 mr-1" /> Nova tarefa
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Adicionar tarefa à rotina</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Título</Label>
+                  <Input
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Ex: Conferir caixa do dia"
+                  />
+                </div>
+                <div>
+                  <Label>Descrição (opcional)</Label>
+                  <Textarea
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    placeholder="Detalhes ou critérios"
+                  />
+                </div>
+                <Button onClick={addTask} className="w-full">
+                  Adicionar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Carregando…</p>
+        ) : tasks.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">Nenhuma tarefa cadastrada ainda.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {tasks.map((task) => {
+              const done = myCompletions.has(task.id);
+              const completedBy = completions
+                .filter((c) => c.task_id === task.id)
+                .map((c) => profiles.find((p) => p.user_id === c.user_id)?.display_name)
+                .filter(Boolean);
+              return (
+                <li
+                  key={task.id}
+                  className={cn(
+                    "py-4 flex items-start gap-4 group transition-smooth",
+                    done && "opacity-60"
+                  )}
+                >
+                  <Checkbox
+                    checked={done}
+                    onCheckedChange={() => toggle(task.id)}
+                    className="mt-1 h-5 w-5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className={cn(
+                        "font-medium transition-smooth",
+                        done && "line-through text-muted-foreground"
+                      )}
+                    >
+                      {task.title}
+                    </div>
+                    {task.description && (
+                      <div className="text-sm text-muted-foreground mt-0.5">
+                        {task.description}
+                      </div>
+                    )}
+                    {completedBy.length > 0 && (
+                      <div className="text-xs text-primary mt-1.5">
+                        ✓ {completedBy.join(", ")}
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="opacity-0 group-hover:opacity-100 transition-smooth text-muted-foreground hover:text-destructive"
+                    onClick={() => removeTask(task.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+    </AppShell>
+  );
+}
