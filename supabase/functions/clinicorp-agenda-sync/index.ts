@@ -27,6 +27,13 @@ type Appointment = {
   appointment_at?: string;
   status?: string;
   duration?: number;
+  Patient_PersonId?: string | number;
+  PatientName?: string;
+  MobilePhone?: string;
+  Dentist_PersonId?: string | number;
+  DentistName?: string;
+  fromTime?: string;
+  toTime?: string;
   [k: string]: unknown;
 };
 
@@ -73,55 +80,73 @@ async function clinicorpGet(path: string, params: Record<string, string> = {}) {
 
 function extractList(res: unknown): Record<string, unknown>[] {
   if (Array.isArray(res)) return res as Record<string, unknown>[];
-  const obj = res as Record<string, unknown>;
-  for (const key of ["data", "result", "appointments", "items"]) {
-    const v = obj?.[key];
-    if (Array.isArray(v)) return v as Record<string, unknown>[];
+  if (!res || typeof res !== "object") return [];
+
+  const tryKeys = ["data", "result", "appointments", "items", "list", "rows", "agendamentos", "agenda", "schedules"];
+  const queue: unknown[] = [res];
+  const seen = new Set<unknown>();
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
+    seen.add(current);
+
+    if (Array.isArray(current)) {
+      if (current.length > 0 && typeof current[0] === "object") return current as Record<string, unknown>[];
+      continue;
+    }
+
+    const obj = current as Record<string, unknown>;
+    for (const key of tryKeys) {
+      const value = obj[key];
+      if (Array.isArray(value)) return value as Record<string, unknown>[];
+      if (value && typeof value === "object") queue.push(value);
+    }
+
+    for (const value of Object.values(obj)) {
+      if (value && typeof value === "object") queue.push(value);
+    }
   }
+
   return [];
 }
 
 function toIsoDate(a: Appointment): string | null {
-  if (a.appointment_at) return new Date(a.appointment_at as string).toISOString();
-  const date = (a.start_date || a.date) as string | undefined;
-  const time = (a.start_time || a.time) as string | undefined;
-  if (!date) return null;
-  const dt = time ? `${date}T${time}` : `${date}T00:00:00`;
-  const d = new Date(dt);
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString();
+  const baseDate = (a.date || a.start_date || a.appointment_at || a.appointment_date || a.schedule_date || a.data || a.data_agendamento) as string | undefined;
+  const time = (a.fromTime || a.start_time || a.time || a.appointment_time || a.schedule_time || a.hour || a.hora) as string | undefined;
+
+  if (!baseDate) return null;
+
+  const parsedBase = new Date(baseDate);
+  if (isNaN(parsedBase.getTime())) return null;
+
+  if (!time) {
+    return parsedBase.toISOString();
+  }
+
+  const [hours, minutes] = time.split(":").map((part) => Number(part));
+  if (Number.isNaN(hours) || Number.isNaN(minutes)) return parsedBase.toISOString();
+
+  parsedBase.setUTCHours(hours, minutes, 0, 0);
+  return parsedBase.toISOString();
 }
 
 function pickPatientName(a: Appointment): string {
-  return (
-    a.patient?.full_name ||
-    a.patient?.name ||
-    (a.patient_name as string) ||
-    "Paciente"
-  );
+  return a.PatientName || a.patient?.full_name || a.patient?.name || (a.patient_name as string) || "Paciente";
 }
 
 function pickPatientPhone(a: Appointment): string | null {
-  return (
-    a.patient?.cell_phone ||
-    a.patient?.phone ||
-    (a.patient_phone as string) ||
-    null
-  );
+  return a.MobilePhone || a.patient?.cell_phone || a.patient?.phone || (a.patient_phone as string) || null;
 }
 
 function pickPatientExtId(a: Appointment): string | null {
-  const v = a.patient?.id ?? a.patient_id;
+  const v = a.Patient_PersonId ?? a.patient?.id ?? a.patient_id;
   return v != null ? String(v) : null;
 }
 
 function pickDoctor(a: Appointment): { extId: string | null; name: string | null } {
-  const id = a.professional?.id ?? a.professional_id ?? a.doctor_id;
-  const name =
-    a.professional?.name ||
-    (a.professional_name as string) ||
-    (a.doctor_name as string) ||
-    null;
+  const id = a.Dentist_PersonId ?? a.professional?.id ?? a.professional_id ?? a.doctor_id;
+  const name = a.DentistName || a.professional?.name || (a.professional_name as string) || (a.doctor_name as string) || null;
   return { extId: id != null ? String(id) : null, name };
 }
 
@@ -173,6 +198,14 @@ Deno.serve(async (req) => {
       to: fmt(end),
     });
     const list = extractList(res) as Appointment[];
+    if (list.length === 0) {
+      const topLevelKeys = res && typeof res === "object" ? Object.keys(res as Record<string, unknown>).slice(0, 20) : [];
+      console.warn("[clinicorp] appointment/list returned no extracted items", {
+        responseType: Array.isArray(res) ? "array" : typeof res,
+        topLevelKeys,
+        sample: JSON.stringify(res).slice(0, 1200),
+      });
+    }
 
     // 2) Load doctors map (and auto-create new ones)
     const { data: existingDoctors } = await supabase
@@ -235,6 +268,11 @@ Deno.serve(async (req) => {
         synced_at: new Date().toISOString(),
       });
     }
+    console.error("[clinicorp] parsed appointments", {
+      extractedCount: list.length,
+      parsedCount: appointmentRows.length,
+      firstUnparsedSample: list.find((item) => !toIsoDate(item)) ? JSON.stringify(list.find((item) => !toIsoDate(item))).slice(0, 1200) : null,
+    });
     if (appointmentRows.length) {
       const { error: apptErr } = await supabase
         .from("clinic_appointments")
