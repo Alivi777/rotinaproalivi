@@ -53,6 +53,8 @@ function authHeaders() {
 
 async function clinicorpGet(path: string, params: Record<string, string> = {}) {
   const url = new URL(`${CLINICORP_BASE}${path}`);
+  const subscriber = Deno.env.get("CLINICORP_SUBSCRIBER");
+  if (subscriber && !params.subscriber) params.subscriber = subscriber;
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   const res = await fetch(url.toString(), { headers: authHeaders() });
   const text = await res.text();
