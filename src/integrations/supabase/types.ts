@@ -153,6 +153,50 @@ export type Database = {
           },
         ]
       }
+      daily_plan_deliverables: {
+        Row: {
+          created_at: string
+          daily_plan_id: string
+          due_date: string | null
+          id: string
+          responsible: string | null
+          responsible_user_id: string | null
+          sort_order: number
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          daily_plan_id: string
+          due_date?: string | null
+          id?: string
+          responsible?: string | null
+          responsible_user_id?: string | null
+          sort_order?: number
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          daily_plan_id?: string
+          due_date?: string | null
+          id?: string
+          responsible?: string | null
+          responsible_user_id?: string | null
+          sort_order?: number
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_plan_deliverables_daily_plan_id_fkey"
+            columns: ["daily_plan_id"]
+            isOneToOne: false
+            referencedRelation: "manager_daily_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_priorities: {
         Row: {
           acknowledged_at: string | null
@@ -321,6 +365,251 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      manager_daily_assignments: {
+        Row: {
+          assignee_id: string
+          created_at: string
+          daily_plan_id: string
+          id: string
+          main_mission: string
+          observation: string | null
+          secondary_1: string | null
+          secondary_2: string | null
+          updated_at: string
+        }
+        Insert: {
+          assignee_id: string
+          created_at?: string
+          daily_plan_id: string
+          id?: string
+          main_mission: string
+          observation?: string | null
+          secondary_1?: string | null
+          secondary_2?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string
+          created_at?: string
+          daily_plan_id?: string
+          id?: string
+          main_mission?: string
+          observation?: string | null
+          secondary_1?: string | null
+          secondary_2?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_daily_assignments_daily_plan_id_fkey"
+            columns: ["daily_plan_id"]
+            isOneToOne: false
+            referencedRelation: "manager_daily_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manager_daily_plans: {
+        Row: {
+          closing_checklist: Json | null
+          conducted_by: string | null
+          created_at: string
+          during_checklist: Json | null
+          id: string
+          main_mission: string | null
+          manager_id: string
+          meeting_duration_min: number | null
+          meeting_end: string | null
+          meeting_start: string | null
+          method: string
+          needs_support: string | null
+          not_today: string | null
+          notes: string | null
+          opening_checklist: Json | null
+          participant_1: string | null
+          participant_2: string | null
+          participant_3: string | null
+          pending_next: string | null
+          plan_date: string
+          secondary_1: string | null
+          secondary_2: string | null
+          to_block: string | null
+          to_delegate: string | null
+          today_bottlenecks: string | null
+          today_fixed: string | null
+          today_main_risk: string | null
+          today_urgencies: string | null
+          updated_at: string
+          yesterday_advanced: string | null
+          yesterday_blocked: string | null
+          yesterday_main_mission: string | null
+          yesterday_pending: string | null
+          yesterday_status: string | null
+        }
+        Insert: {
+          closing_checklist?: Json | null
+          conducted_by?: string | null
+          created_at?: string
+          during_checklist?: Json | null
+          id?: string
+          main_mission?: string | null
+          manager_id: string
+          meeting_duration_min?: number | null
+          meeting_end?: string | null
+          meeting_start?: string | null
+          method?: string
+          needs_support?: string | null
+          not_today?: string | null
+          notes?: string | null
+          opening_checklist?: Json | null
+          participant_1?: string | null
+          participant_2?: string | null
+          participant_3?: string | null
+          pending_next?: string | null
+          plan_date?: string
+          secondary_1?: string | null
+          secondary_2?: string | null
+          to_block?: string | null
+          to_delegate?: string | null
+          today_bottlenecks?: string | null
+          today_fixed?: string | null
+          today_main_risk?: string | null
+          today_urgencies?: string | null
+          updated_at?: string
+          yesterday_advanced?: string | null
+          yesterday_blocked?: string | null
+          yesterday_main_mission?: string | null
+          yesterday_pending?: string | null
+          yesterday_status?: string | null
+        }
+        Update: {
+          closing_checklist?: Json | null
+          conducted_by?: string | null
+          created_at?: string
+          during_checklist?: Json | null
+          id?: string
+          main_mission?: string | null
+          manager_id?: string
+          meeting_duration_min?: number | null
+          meeting_end?: string | null
+          meeting_start?: string | null
+          method?: string
+          needs_support?: string | null
+          not_today?: string | null
+          notes?: string | null
+          opening_checklist?: Json | null
+          participant_1?: string | null
+          participant_2?: string | null
+          participant_3?: string | null
+          pending_next?: string | null
+          plan_date?: string
+          secondary_1?: string | null
+          secondary_2?: string | null
+          to_block?: string | null
+          to_delegate?: string | null
+          today_bottlenecks?: string | null
+          today_fixed?: string | null
+          today_main_risk?: string | null
+          today_urgencies?: string | null
+          updated_at?: string
+          yesterday_advanced?: string | null
+          yesterday_blocked?: string | null
+          yesterday_main_mission?: string | null
+          yesterday_pending?: string | null
+          yesterday_status?: string | null
+        }
+        Relationships: []
+      }
+      manager_weekly_plans: {
+        Row: {
+          classification: string | null
+          created_at: string
+          fixed_commitments: string | null
+          id: string
+          ind_alignments_done: number | null
+          ind_blocks_protected: number | null
+          ind_days_tomorrow_defined: number | null
+          ind_interruptions: number | null
+          ind_meetings_under_31: number | null
+          ind_missions_done: number | null
+          ind_tasks_delegated: number | null
+          ind_tasks_eliminated: number | null
+          manager_id: string
+          method: string
+          mission_blocks: string | null
+          not_this_week: string | null
+          notes: string | null
+          prev_excess_alignment: string | null
+          prev_excess_execution: string | null
+          prev_repeated_block: string | null
+          prev_single_correction: string | null
+          prev_time_wasters: string | null
+          prev_what_worked: string | null
+          secondary_blocks: string | null
+          updated_at: string
+          week_focus: string | null
+          week_start: string
+        }
+        Insert: {
+          classification?: string | null
+          created_at?: string
+          fixed_commitments?: string | null
+          id?: string
+          ind_alignments_done?: number | null
+          ind_blocks_protected?: number | null
+          ind_days_tomorrow_defined?: number | null
+          ind_interruptions?: number | null
+          ind_meetings_under_31?: number | null
+          ind_missions_done?: number | null
+          ind_tasks_delegated?: number | null
+          ind_tasks_eliminated?: number | null
+          manager_id: string
+          method?: string
+          mission_blocks?: string | null
+          not_this_week?: string | null
+          notes?: string | null
+          prev_excess_alignment?: string | null
+          prev_excess_execution?: string | null
+          prev_repeated_block?: string | null
+          prev_single_correction?: string | null
+          prev_time_wasters?: string | null
+          prev_what_worked?: string | null
+          secondary_blocks?: string | null
+          updated_at?: string
+          week_focus?: string | null
+          week_start: string
+        }
+        Update: {
+          classification?: string | null
+          created_at?: string
+          fixed_commitments?: string | null
+          id?: string
+          ind_alignments_done?: number | null
+          ind_blocks_protected?: number | null
+          ind_days_tomorrow_defined?: number | null
+          ind_interruptions?: number | null
+          ind_meetings_under_31?: number | null
+          ind_missions_done?: number | null
+          ind_tasks_delegated?: number | null
+          ind_tasks_eliminated?: number | null
+          manager_id?: string
+          method?: string
+          mission_blocks?: string | null
+          not_this_week?: string | null
+          notes?: string | null
+          prev_excess_alignment?: string | null
+          prev_excess_execution?: string | null
+          prev_repeated_block?: string | null
+          prev_single_correction?: string | null
+          prev_time_wasters?: string | null
+          prev_what_worked?: string | null
+          secondary_blocks?: string | null
+          updated_at?: string
+          week_focus?: string | null
+          week_start?: string
+        }
+        Relationships: []
       }
       monthly_goals: {
         Row: {

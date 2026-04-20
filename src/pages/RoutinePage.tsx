@@ -28,6 +28,7 @@ import { Plus, Trash2, TrendingUp, Calendar, Users2, UserCheck, ExternalLink } f
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PriorityAlert from "@/components/PriorityAlert";
+import MyAssignmentCard from "@/components/MyAssignmentCard";
 import { Link } from "react-router-dom";
 
 type Task = {
@@ -223,6 +224,7 @@ export default function RoutinePage() {
       </header>
 
       <PriorityAlert />
+      <MyAssignmentCard />
 
       {clientTasks.length > 0 && (
         <Card className="p-5 mb-6 bg-gradient-card border-primary/30">
