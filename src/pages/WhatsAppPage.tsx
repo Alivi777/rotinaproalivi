@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { MessageSquareText, Plus, Phone, Clock, Info } from "lucide-react";
 import { toast } from "sonner";
+import WhatsAppTimer from "@/components/WhatsAppTimer";
 
 type Message = {
   id: string;
