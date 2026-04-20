@@ -16,6 +16,15 @@ import {
 import { MessageSquareText, Plus, Phone, Clock, Info } from "lucide-react";
 import { toast } from "sonner";
 import WhatsAppTimer from "@/components/WhatsAppTimer";
+import PendingAttendancesCard from "@/components/PendingAttendancesCard";
+import WorkingHoursPanel from "@/components/WorkingHoursPanel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Message = {
   id: string;
@@ -35,6 +44,7 @@ export default function WhatsAppPage() {
   const [phone, setPhone] = useState("");
   const [text, setText] = useState("");
   const [fromName, setFromName] = useState("");
+  const [classification, setClassification] = useState("recepcao");
 
   async function load() {
     const [m, c] = await Promise.all([
@@ -75,12 +85,14 @@ export default function WhatsAppPage() {
       from_name: fromName.trim() || null,
       message_text: text.trim(),
       client_id: matched?.id ?? null,
+      classification,
     });
     if (error) return toast.error(error.message);
     toast.success("Entrada registrada");
     setPhone("");
     setText("");
     setFromName("");
+    setClassification("recepcao");
     setOpen(false);
     load();
   }
@@ -114,6 +126,18 @@ export default function WhatsAppPage() {
                 <Input value={fromName} onChange={(e) => setFromName(e.target.value)} />
               </div>
               <div>
+                <Label>Classificação *</Label>
+                <Select value={classification} onValueChange={setClassification}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recepcao">Recepção</SelectItem>
+                    <SelectItem value="comercial">Comercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Mensagem *</Label>
                 <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} />
               </div>
@@ -123,7 +147,13 @@ export default function WhatsAppPage() {
         </Dialog>
       </header>
 
+      <PendingAttendancesCard />
+
       <WhatsAppTimer />
+
+      <div className="mb-6">
+        <WorkingHoursPanel />
+      </div>
 
       <Card className="p-4 mb-6 bg-primary/5 border-primary/20 flex items-start gap-3">
         <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />

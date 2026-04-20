@@ -1060,8 +1060,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_working_hours: {
+        Row: {
+          active: boolean
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          start_time: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          start_time: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          start_time?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_messages: {
         Row: {
+          classification: string
           client_id: string | null
           created_at: string
           from_name: string | null
@@ -1073,6 +1107,7 @@ export type Database = {
           wa_message_id: string | null
         }
         Insert: {
+          classification?: string
           client_id?: string | null
           created_at?: string
           from_name?: string | null
@@ -1084,6 +1119,7 @@ export type Database = {
           wa_message_id?: string | null
         }
         Update: {
+          classification?: string
           client_id?: string | null
           created_at?: string
           from_name?: string | null
@@ -1100,6 +1136,78 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_pending_attendances: {
+        Row: {
+          assigned_to: string | null
+          classification: string
+          client_id: string | null
+          created_at: string
+          from_name: string | null
+          from_phone: string
+          id: string
+          last_message_at: string
+          resolved_at: string | null
+          resolved_by: string | null
+          sector_id: string | null
+          status: string
+          transfer_note: string | null
+          transferred_from: string | null
+          transferred_to: string | null
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          classification?: string
+          client_id?: string | null
+          created_at?: string
+          from_name?: string | null
+          from_phone: string
+          id?: string
+          last_message_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sector_id?: string | null
+          status?: string
+          transfer_note?: string | null
+          transferred_from?: string | null
+          transferred_to?: string | null
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          classification?: string
+          client_id?: string | null
+          created_at?: string
+          from_name?: string | null
+          from_phone?: string
+          id?: string
+          last_message_at?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          sector_id?: string | null
+          status?: string
+          transfer_note?: string | null
+          transferred_from?: string | null
+          transferred_to?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_pending_attendances_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_pending_attendances_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
         ]
@@ -1161,6 +1269,10 @@ export type Database = {
         Returns: boolean
       }
       is_user_active: { Args: { _user_id: string }; Returns: boolean }
+      transfer_attendance: {
+        Args: { _attendance_id: string; _note?: string; _to_user: string }
+        Returns: undefined
+      }
       whatsapp_user_minutes: {
         Args: { _end_date: string; _start_date: string }
         Returns: {
