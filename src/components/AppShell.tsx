@@ -10,6 +10,7 @@ import {
   FileText,
   ShieldCheck,
   Crosshair,
+  MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ const baseNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/rotina", label: "Rotina", icon: ListChecks },
   { to: "/prioridades", label: "Prioridades", icon: Crosshair },
+  { to: "/feedbacks", label: "Feedbacks", icon: MessageCircle },
   { to: "/clientes", label: "Clientes", icon: Users },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
   { to: "/relatorio", label: "Relatório", icon: FileText },

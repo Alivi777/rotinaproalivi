@@ -468,6 +468,129 @@ export type Database = {
           },
         ]
       }
+      team_feedbacks: {
+        Row: {
+          attitude_1: string | null
+          attitude_2: string | null
+          attitude_3: string | null
+          closing_message: string | null
+          collaborator_response: string | null
+          collaborator_signature_name: string | null
+          collaborator_signed_at: string | null
+          commitment_goal: string | null
+          commitment_how: string | null
+          commitment_meetings: string | null
+          created_at: string
+          deliverables: string | null
+          department: string | null
+          expected_behavior: string | null
+          feedback_type: string
+          id: string
+          last_week_behavior: string | null
+          last_week_closings: string | null
+          last_week_conversion: string | null
+          last_week_focus_energy: string | null
+          last_week_hit_goal: string | null
+          last_week_numbers: string | null
+          last_week_organization: string | null
+          manager_id: string
+          manager_signature_name: string | null
+          manager_signed_at: string | null
+          needs_improvement: string | null
+          next_alignment_date: string | null
+          non_negotiables: string | null
+          observation: string | null
+          period_end: string | null
+          period_start: string | null
+          reference_date: string
+          reference_month: string
+          role: string | null
+          updated_at: string
+          user_id: string
+          week_of_month: number
+        }
+        Insert: {
+          attitude_1?: string | null
+          attitude_2?: string | null
+          attitude_3?: string | null
+          closing_message?: string | null
+          collaborator_response?: string | null
+          collaborator_signature_name?: string | null
+          collaborator_signed_at?: string | null
+          commitment_goal?: string | null
+          commitment_how?: string | null
+          commitment_meetings?: string | null
+          created_at?: string
+          deliverables?: string | null
+          department?: string | null
+          expected_behavior?: string | null
+          feedback_type?: string
+          id?: string
+          last_week_behavior?: string | null
+          last_week_closings?: string | null
+          last_week_conversion?: string | null
+          last_week_focus_energy?: string | null
+          last_week_hit_goal?: string | null
+          last_week_numbers?: string | null
+          last_week_organization?: string | null
+          manager_id: string
+          manager_signature_name?: string | null
+          manager_signed_at?: string | null
+          needs_improvement?: string | null
+          next_alignment_date?: string | null
+          non_negotiables?: string | null
+          observation?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          reference_date?: string
+          reference_month?: string
+          role?: string | null
+          updated_at?: string
+          user_id: string
+          week_of_month?: number
+        }
+        Update: {
+          attitude_1?: string | null
+          attitude_2?: string | null
+          attitude_3?: string | null
+          closing_message?: string | null
+          collaborator_response?: string | null
+          collaborator_signature_name?: string | null
+          collaborator_signed_at?: string | null
+          commitment_goal?: string | null
+          commitment_how?: string | null
+          commitment_meetings?: string | null
+          created_at?: string
+          deliverables?: string | null
+          department?: string | null
+          expected_behavior?: string | null
+          feedback_type?: string
+          id?: string
+          last_week_behavior?: string | null
+          last_week_closings?: string | null
+          last_week_conversion?: string | null
+          last_week_focus_energy?: string | null
+          last_week_hit_goal?: string | null
+          last_week_numbers?: string | null
+          last_week_organization?: string | null
+          manager_id?: string
+          manager_signature_name?: string | null
+          manager_signed_at?: string | null
+          needs_improvement?: string | null
+          next_alignment_date?: string | null
+          non_negotiables?: string | null
+          observation?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          reference_date?: string
+          reference_month?: string
+          role?: string | null
+          updated_at?: string
+          user_id?: string
+          week_of_month?: number
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
