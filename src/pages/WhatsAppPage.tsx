@@ -85,12 +85,14 @@ export default function WhatsAppPage() {
       from_name: fromName.trim() || null,
       message_text: text.trim(),
       client_id: matched?.id ?? null,
+      classification,
     });
     if (error) return toast.error(error.message);
     toast.success("Entrada registrada");
     setPhone("");
     setText("");
     setFromName("");
+    setClassification("recepcao");
     setOpen(false);
     load();
   }
