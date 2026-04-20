@@ -156,6 +156,8 @@ export default function RoutinePage() {
     if (error) return toast.error(error.message);
     load();
   }
+
+  async function addTask() {
     if (!newTitle.trim()) return;
     const sectorId = newSectorId || activeSectorId || profile?.sector_id || null;
     const sectorTasks = tasks.filter((t) => t.sector_id === sectorId);
