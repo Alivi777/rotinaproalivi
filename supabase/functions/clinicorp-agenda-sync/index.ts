@@ -117,9 +117,36 @@ function extractList(res: unknown): Record<string, unknown>[] {
 }
 
 function toIsoDate(a: Appointment): string | null {
-  if (a.appointment_at) return new Date(a.appointment_at as string).toISOString();
-  const date = (a.start_date || a.date) as string | undefined;
-  const time = (a.start_time || a.time) as string | undefined;
+  const directDateTime = [
+    a.appointment_at,
+    a.start_at,
+    a.datetime,
+    a.date_time,
+    a.schedule_at,
+    a.horario,
+  ].find((value) => typeof value === "string" && value.trim());
+
+  if (typeof directDateTime === "string") {
+    const parsed = new Date(directDateTime);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString();
+  }
+
+  const date = (
+    a.start_date ||
+    a.date ||
+    a.appointment_date ||
+    a.schedule_date ||
+    a.data ||
+    a.data_agendamento
+  ) as string | undefined;
+  const time = (
+    a.start_time ||
+    a.time ||
+    a.appointment_time ||
+    a.schedule_time ||
+    a.hour ||
+    a.hora
+  ) as string | undefined;
   if (!date) return null;
   const dt = time ? `${date}T${time}` : `${date}T00:00:00`;
   const d = new Date(dt);
@@ -278,6 +305,11 @@ Deno.serve(async (req) => {
         synced_at: new Date().toISOString(),
       });
     }
+    console.error("[clinicorp] parsed appointments", {
+      extractedCount: list.length,
+      parsedCount: appointmentRows.length,
+      firstUnparsedSample: list.find((item) => !toIsoDate(item)) ? JSON.stringify(list.find((item) => !toIsoDate(item))).slice(0, 1200) : null,
+    });
     if (appointmentRows.length) {
       const { error: apptErr } = await supabase
         .from("clinic_appointments")
