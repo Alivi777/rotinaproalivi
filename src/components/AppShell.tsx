@@ -33,6 +33,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
+  const { count: pendingPriorities } = usePendingPriorities();
   const nav = isAdmin
     ? [...baseNav, { to: "/admin", label: "Admin", icon: ShieldCheck, end: false }]
     : baseNav;
@@ -58,24 +59,38 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="space-y-1 flex-1">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          ))}
+          {nav.map((item) => {
+            const showBadge =
+              isAdmin &&
+              pendingPriorities > 0 &&
+              (item.to === "/admin" || item.to === "/prioridades");
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                  )
+                }
+              >
+                <item.icon className="h-4 w-4" />
+                <span className="flex-1">{item.label}</span>
+                {showBadge && (
+                  <Badge
+                    variant="destructive"
+                    className="h-5 min-w-5 px-1.5 text-[10px] font-bold animate-pulse-slow"
+                  >
+                    {pendingPriorities}
+                  </Badge>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="border-t border-sidebar-border pt-4 space-y-3">
