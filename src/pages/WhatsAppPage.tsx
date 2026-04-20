@@ -44,6 +44,7 @@ export default function WhatsAppPage() {
   const [phone, setPhone] = useState("");
   const [text, setText] = useState("");
   const [fromName, setFromName] = useState("");
+  const [classification, setClassification] = useState("recepcao");
 
   async function load() {
     const [m, c] = await Promise.all([
