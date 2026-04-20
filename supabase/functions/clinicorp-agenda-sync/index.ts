@@ -48,11 +48,20 @@ function authHeaders() {
 async function clinicorpGet(path: string, params: Record<string, string> = {}) {
   const url = new URL(`${CLINICORP_BASE}${path}`);
   const subscriber = Deno.env.get("CLINICORP_SUBSCRIBER");
-  if (subscriber && !params.subscriber) params.subscriber = subscriber;
+  if (subscriber) {
+    // Clinicorp aceita nomes diferentes; mandamos todas as variantes para garantir
+    if (!params.subscriber) params.subscriber = subscriber;
+    if (!params.subscriber_id) params.subscriber_id = subscriber;
+    if (!params.id_subscriber) params.id_subscriber = subscriber;
+    if (!params.assinante) params.assinante = subscriber;
+    if (!params.id_assinante) params.id_assinante = subscriber;
+  }
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  console.log(`[clinicorp] GET ${url.toString().replace(subscriber ?? "____", "***")}`);
   const res = await fetch(url.toString(), { headers: authHeaders() });
   const text = await res.text();
   if (!res.ok) {
+    console.error(`[clinicorp] ${path} ${res.status}: ${text.slice(0, 500)}`);
     throw new Error(`Clinicorp ${path} ${res.status}: ${text.slice(0, 300)}`);
   }
   try {
@@ -154,6 +163,14 @@ Deno.serve(async (req) => {
     const res = await clinicorpGet("/appointment/list", {
       start_date: fmt(today),
       end_date: fmt(end),
+      start_date_json: fmt(today),
+      end_date_json: fmt(end),
+      data_inicial: fmt(today),
+      data_final: fmt(end),
+      data_inicio: fmt(today),
+      data_fim: fmt(end),
+      from: fmt(today),
+      to: fmt(end),
     });
     const list = extractList(res) as Appointment[];
 
