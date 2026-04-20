@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CalendarRange,
   RefreshCw,
@@ -12,12 +13,15 @@ import {
   ChevronRight,
   Cake,
   Loader2,
+  LayoutGrid,
+  Columns3,
 } from "lucide-react";
 import { useAgendaClinica, getWeekDates, dateOnly } from "@/lib/useAgendaClinica";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AgendaTaskCard from "@/components/AgendaTaskCard";
+import DoctorKanbanView from "@/components/DoctorKanbanView";
 
 const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
