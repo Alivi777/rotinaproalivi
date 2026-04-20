@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Crosshair,
   MessageCircle,
+  ClipboardList,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { isAdmin } = useIsAdmin();
   const { count: pendingPriorities } = usePendingPriorities();
   const nav = isAdmin
-    ? [...baseNav, { to: "/admin", label: "Admin", icon: ShieldCheck, end: false }]
+    ? [
+        ...baseNav,
+        { to: "/planejamento", label: "Planejamento", icon: ClipboardList, end: false },
+        { to: "/admin", label: "Admin", icon: ShieldCheck, end: false },
+      ]
     : baseNav;
 
   async function logout() {
