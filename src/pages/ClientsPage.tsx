@@ -344,12 +344,24 @@ export default function ClientsPage() {
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
               {clients.map((c) => {
                 const stage = stages.find((s) => s.id === c.stage_id);
+                const reasons = alerts[c.id] ?? [];
+                const isAlert = reasons.length > 0;
                 return (
                   <Card
                     key={c.id}
-                    className="p-5 bg-gradient-card border-border/50 hover:border-primary/30 transition-smooth group cursor-pointer"
+                    className={cn(
+                      "p-5 bg-gradient-card border-border/50 hover:border-primary/30 transition-smooth group cursor-pointer",
+                      isAlert && "border-destructive bg-destructive/5 ring-1 ring-destructive/40",
+                    )}
                     onClick={() => setDetailClient(c)}
+                    title={isAlert ? alertLabel(reasons) : undefined}
                   >
+                    {isAlert && (
+                      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-2">
+                        <AlertTriangle className="h-3 w-3" />
+                        {alertLabel(reasons)}
+                      </div>
+                    )}
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold truncate">{c.name}</h3>
