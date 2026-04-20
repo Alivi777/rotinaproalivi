@@ -21,6 +21,7 @@ import {
   Users,
   Lock,
   Crosshair,
+  Stethoscope,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ import TeamAdminPanel from "@/components/TeamAdminPanel";
 import PrioritiesAdminPanel from "@/components/PrioritiesAdminPanel";
 import WeeklyRankingPanel from "@/components/WeeklyRankingPanel";
 import KanbanStagesAdminPanel from "@/components/KanbanStagesAdminPanel";
+import DoctorsAdminPanel from "@/components/DoctorsAdminPanel";
 
 type Goal = {
   id: string;
@@ -279,7 +281,14 @@ export default function AdminPage() {
           <TabsTrigger value="kanban">
             <Users className="h-4 w-4 mr-1.5" /> Kanban
           </TabsTrigger>
+          <TabsTrigger value="doctors">
+            <Stethoscope className="h-4 w-4 mr-1.5" /> Doutores
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="doctors" className="mt-4">
+          <DoctorsAdminPanel />
+        </TabsContent>
 
         <TabsContent value="kanban" className="mt-4">
           <KanbanStagesAdminPanel />

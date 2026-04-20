@@ -153,6 +153,179 @@ export type Database = {
           },
         ]
       }
+      clinic_appointments: {
+        Row: {
+          appointment_at: string
+          contact_id: string | null
+          created_at: string
+          doctor_external_id: string | null
+          doctor_id: string | null
+          doctor_name: string | null
+          duration_min: number | null
+          external_id: string | null
+          id: string
+          notes: string | null
+          patient_external_id: string | null
+          patient_name: string
+          patient_phone: string | null
+          status: string
+          synced_at: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_at: string
+          contact_id?: string | null
+          created_at?: string
+          doctor_external_id?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          duration_min?: number | null
+          external_id?: string | null
+          id?: string
+          notes?: string | null
+          patient_external_id?: string | null
+          patient_name: string
+          patient_phone?: string | null
+          status?: string
+          synced_at?: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_at?: string
+          contact_id?: string | null
+          created_at?: string
+          doctor_external_id?: string | null
+          doctor_id?: string | null
+          doctor_name?: string | null
+          duration_min?: number | null
+          external_id?: string | null
+          id?: string
+          notes?: string | null
+          patient_external_id?: string | null
+          patient_name?: string
+          patient_phone?: string | null
+          status?: string
+          synced_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_appointments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_doctors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinic_daily_tasks: {
+        Row: {
+          appointment_at: string | null
+          appointment_id: string | null
+          assigned_to: string | null
+          completed_at: string | null
+          completed_by: string | null
+          contact_id: string | null
+          created_at: string
+          doctor_id: string | null
+          doctor_name: string | null
+          id: string
+          notes: string | null
+          patient_name: string
+          patient_phone: string | null
+          status: string
+          task_date: string
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          appointment_at?: string | null
+          appointment_id?: string | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          contact_id?: string | null
+          created_at?: string
+          doctor_id?: string | null
+          doctor_name?: string | null
+          id?: string
+          notes?: string | null
+          patient_name: string
+          patient_phone?: string | null
+          status?: string
+          task_date: string
+          task_type: string
+          updated_at?: string
+        }
+        Update: {
+          appointment_at?: string | null
+          appointment_id?: string | null
+          assigned_to?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          contact_id?: string | null
+          created_at?: string
+          doctor_id?: string | null
+          doctor_name?: string | null
+          id?: string
+          notes?: string | null
+          patient_name?: string
+          patient_phone?: string | null
+          status?: string
+          task_date?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_daily_tasks_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clinic_daily_tasks_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_doctors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinic_doctors: {
+        Row: {
+          active: boolean
+          assigned_user_id: string | null
+          color: string | null
+          created_at: string
+          external_id: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          assigned_user_id?: string | null
+          color?: string | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          assigned_user_id?: string | null
+          color?: string | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contact_imports: {
         Row: {
           created_at: string
