@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import TeamAdminPanel from "@/components/TeamAdminPanel";
 import PrioritiesAdminPanel from "@/components/PrioritiesAdminPanel";
 import WeeklyRankingPanel from "@/components/WeeklyRankingPanel";
+import KanbanStagesAdminPanel from "@/components/KanbanStagesAdminPanel";
 
 type Goal = {
   id: string;
@@ -275,7 +276,14 @@ export default function AdminPage() {
           <TabsTrigger value="breakdown">
             <DollarSign className="h-4 w-4 mr-1.5" /> Mix de pagamento
           </TabsTrigger>
+          <TabsTrigger value="kanban">
+            <Users className="h-4 w-4 mr-1.5" /> Kanban
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="kanban" className="mt-4">
+          <KanbanStagesAdminPanel />
+        </TabsContent>
 
         <TabsContent value="team" className="mt-4">
           <TeamAdminPanel />
