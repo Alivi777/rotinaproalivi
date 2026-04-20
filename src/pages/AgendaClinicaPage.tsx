@@ -31,6 +31,8 @@ export default function AgendaClinicaPage() {
   const [doctorFilter, setDoctorFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [viewMode, setViewMode] = useState<"day" | "doctor">("doctor");
+  const [selectedDay, setSelectedDay] = useState<string>(dateOnly(new Date()));
 
   const weekDates = useMemo(() => getWeekDates(refDate), [refDate]);
   const { tasks, doctors, loading } = useAgendaClinica(weekDates);
