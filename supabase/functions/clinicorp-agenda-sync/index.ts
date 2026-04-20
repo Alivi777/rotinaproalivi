@@ -73,11 +73,46 @@ async function clinicorpGet(path: string, params: Record<string, string> = {}) {
 
 function extractList(res: unknown): Record<string, unknown>[] {
   if (Array.isArray(res)) return res as Record<string, unknown>[];
-  const obj = res as Record<string, unknown>;
-  for (const key of ["data", "result", "appointments", "items"]) {
-    const v = obj?.[key];
-    if (Array.isArray(v)) return v as Record<string, unknown>[];
+  if (!res || typeof res !== "object") return [];
+
+  const tryKeys = [
+    "data",
+    "result",
+    "appointments",
+    "items",
+    "list",
+    "rows",
+    "agendamentos",
+    "agenda",
+    "schedules",
+  ];
+
+  const queue: unknown[] = [res];
+  const seen = new Set<unknown>();
+
+  while (queue.length) {
+    const current = queue.shift();
+    if (!current || typeof current !== "object" || seen.has(current)) continue;
+    seen.add(current);
+
+    if (Array.isArray(current)) {
+      if (current.length === 0) continue;
+      if (typeof current[0] === "object") return current as Record<string, unknown>[];
+      continue;
+    }
+
+    const obj = current as Record<string, unknown>;
+    for (const key of tryKeys) {
+      const value = obj[key];
+      if (Array.isArray(value)) return value as Record<string, unknown>[];
+      if (value && typeof value === "object") queue.push(value);
+    }
+
+    for (const value of Object.values(obj)) {
+      if (value && typeof value === "object") queue.push(value);
+    }
   }
+
   return [];
 }
 
@@ -173,6 +208,14 @@ Deno.serve(async (req) => {
       to: fmt(end),
     });
     const list = extractList(res) as Appointment[];
+    if (list.length === 0) {
+      const topLevelKeys = res && typeof res === "object" ? Object.keys(res as Record<string, unknown>).slice(0, 20) : [];
+      console.warn("[clinicorp] appointment/list returned no extracted items", {
+        responseType: Array.isArray(res) ? "array" : typeof res,
+        topLevelKeys,
+        sample: JSON.stringify(res).slice(0, 1200),
+      });
+    }
 
     // 2) Load doctors map (and auto-create new ones)
     const { data: existingDoctors } = await supabase
