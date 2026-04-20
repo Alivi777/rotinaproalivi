@@ -263,12 +263,25 @@ export default function ClientsPage() {
                     </Badge>
                   </div>
                   <div className="space-y-2 min-h-[60px]">
-                    {items.map((c) => (
+                    {items.map((c) => {
+                      const reasons = alerts[c.id] ?? [];
+                      const isAlert = reasons.length > 0;
+                      return (
                       <Card
                         key={c.id}
-                        className="p-3 bg-card hover:border-primary/30 transition-smooth cursor-pointer"
+                        className={cn(
+                          "p-3 bg-card hover:border-primary/30 transition-smooth cursor-pointer",
+                          isAlert && "border-destructive bg-destructive/5 ring-1 ring-destructive/40",
+                        )}
                         onClick={() => setDetailClient(c)}
+                        title={isAlert ? alertLabel(reasons) : undefined}
                       >
+                        {isAlert && (
+                          <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            {alertLabel(reasons)}
+                          </div>
+                        )}
                         <div className="font-medium text-sm truncate">{c.name}</div>
                         {c.phone && (
                           <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
