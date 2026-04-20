@@ -8,6 +8,7 @@ import ClientsPage from "./pages/ClientsPage";
 import WhatsAppPage from "./pages/WhatsAppPage";
 import DashboardPage from "./pages/DashboardPage";
 import ReportPage from "./pages/ReportPage";
+import AdminPage from "./pages/AdminPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -59,6 +60,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <ReportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPage />
               </ProtectedRoute>
             }
           />

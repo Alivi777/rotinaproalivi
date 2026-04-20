@@ -8,14 +8,16 @@ import {
   ListChecks,
   LayoutDashboard,
   FileText,
+  ShieldCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { cn } from "@/lib/utils";
 import SectorPickerDialog from "./SectorPickerDialog";
 
-const nav = [
+const baseNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/rotina", label: "Rotina", icon: ListChecks },
   { to: "/clientes", label: "Clientes", icon: Users },
@@ -26,6 +28,10 @@ const nav = [
 export default function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
+  const nav = isAdmin
+    ? [...baseNav, { to: "/admin", label: "Admin", icon: ShieldCheck, end: false }]
+    : baseNav;
 
   async function logout() {
     await supabase.auth.signOut();

@@ -118,6 +118,72 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_goals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          new_clients_target: number
+          new_patients_target: number
+          notes: string | null
+          period_month: string
+          profit_target: number
+          revenue_target: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_clients_target?: number
+          new_patients_target?: number
+          notes?: string | null
+          period_month: string
+          profit_target?: number
+          revenue_target?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          new_clients_target?: number
+          new_patients_target?: number
+          notes?: string | null
+          period_month?: string
+          profit_target?: number
+          revenue_target?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      payment_methods: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -200,6 +266,66 @@ export type Database = {
           },
         ]
       }
+      sales: {
+        Row: {
+          amount: number
+          client_id: string
+          cost: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_new_patient: boolean
+          payment_method_id: string | null
+          profit: number | null
+          sale_date: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_new_patient?: boolean
+          payment_method_id?: string | null
+          profit?: number | null
+          sale_date?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          cost?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_new_patient?: boolean
+          payment_method_id?: string | null
+          profit?: number | null
+          sale_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_payment_method_id_fkey"
+            columns: ["payment_method_id"]
+            isOneToOne: false
+            referencedRelation: "payment_methods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sectors: {
         Row: {
           color: string | null
@@ -262,6 +388,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_messages: {
         Row: {
           client_id: string | null
@@ -311,10 +458,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -441,6 +594,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "member"],
+    },
   },
 } as const
