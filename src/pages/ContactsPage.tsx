@@ -45,6 +45,7 @@ import { useIsAdmin } from "@/lib/useIsAdmin";
 import ContactImportDialog from "@/components/ContactImportDialog";
 import ClinicorpSyncDialog from "@/components/ClinicorpSyncDialog";
 import { toast } from "@/hooks/use-toast";
+import { openWhatsappWeb } from "@/lib/whatsapp";
 
 export default function ContactsPage() {
   const { isAdmin } = useIsAdmin();
@@ -72,13 +73,10 @@ export default function ContactsPage() {
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
 
   function openWaWeb(phone: string | null) {
-    const digits = (phone || "").replace(/\D/g, "");
-    if (!digits) {
+    const ok = openWhatsappWeb(phone);
+    if (!ok) {
       toast({ title: "Telefone não cadastrado", variant: "destructive" });
-      return;
     }
-    const num = digits.length <= 11 ? `55${digits}` : digits;
-    window.open(`https://wa.me/${num}`, "_blank");
   }
 
   function sendViaSystem() {

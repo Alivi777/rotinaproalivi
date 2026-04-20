@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MessageCircle, Stethoscope, Clock } from "lucide-react";
 import { ClinicTask, ClinicDoctor } from "@/lib/useAgendaClinica";
 import { cn } from "@/lib/utils";
+import { whatsappWebLink } from "@/lib/whatsapp";
 
 interface Props {
   task: ClinicTask;
@@ -19,21 +20,13 @@ function fmtTime(iso: string | null) {
   });
 }
 
-function waLink(phone: string | null): string | null {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, "");
-  if (!digits) return null;
-  const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
-  return `https://wa.me/${withCountry}`;
-}
-
 /**
  * Card simplificado da Agenda Clínica: nome, horário, doutor e WhatsApp.
  * Ações de tarefa (concluir, badges de tipo) foram movidas para o
  * kanban de Recepção (gerado pela função clinic-tasks-to-reception).
  */
 export default function AgendaTaskCard({ task, doctor }: Props) {
-  const wa = waLink(task.patient_phone);
+  const wa = whatsappWebLink(task.patient_phone);
   const time = fmtTime(task.appointment_at);
 
   return (
