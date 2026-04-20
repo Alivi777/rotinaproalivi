@@ -125,24 +125,38 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 max-w-[1400px]">
         <div className="lg:hidden mb-4 flex gap-2 overflow-x-auto">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-smooth",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-card text-muted-foreground"
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          ))}
+          {nav.map((item) => {
+            const showBadge =
+              isAdmin &&
+              pendingPriorities > 0 &&
+              (item.to === "/admin" || item.to === "/prioridades");
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-smooth",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground"
+                  )
+                }
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+                {showBadge && (
+                  <Badge
+                    variant="destructive"
+                    className="h-4 min-w-4 px-1 text-[10px] font-bold animate-pulse-slow"
+                  >
+                    {pendingPriorities}
+                  </Badge>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
         {children}
       </main>
