@@ -99,10 +99,16 @@ export default function ContactsPage() {
             </p>
           </div>
           {isAdmin && (
-            <Button onClick={() => setImportOpen(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Importar Clinicorp
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" />
+                Importar CSV
+              </Button>
+              <Button onClick={() => setSyncOpen(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Sincronizar Clinicorp
+              </Button>
+            </div>
           )}
         </div>
 
