@@ -5,6 +5,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import {
@@ -62,6 +69,7 @@ export default function WhatsAppTimeDashboard() {
   const [priorityAck, setPriorityAck] = useState<Record<string, number>>({});
   const [taskCompletions, setTaskCompletions] = useState<Record<string, number>>({});
   const [taskTotals, setTaskTotals] = useState<Record<string, number>>({});
+  const [selectedUser, setSelectedUser] = useState<string>("all");
 
   async function load() {
     const { start, end } = rangeDates(range, custom);
@@ -132,10 +140,15 @@ export default function WhatsAppTimeDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [range, custom.start, custom.end]);
 
-  // Filter to current user if not admin
-  const visibleProfiles = isAdmin
+  // Filter to current user if not admin; admin can pick "all" or a specific user
+  const baseProfiles = isAdmin
     ? profiles.filter((p) => p.is_active)
     : profiles.filter((p) => p.user_id === user?.id);
+
+  const visibleProfiles =
+    isAdmin && selectedUser !== "all"
+      ? baseProfiles.filter((p) => p.user_id === selectedUser)
+      : baseProfiles;
 
   const merged = visibleProfiles
     .map((p) => {
@@ -172,9 +185,34 @@ export default function WhatsAppTimeDashboard() {
             <h2 className="text-lg font-semibold">Tempo de atendimento WhatsApp</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            Horário de São Paulo · {isAdmin ? "Time inteiro" : "Apenas você"}
+            Horário de São Paulo ·{" "}
+            {isAdmin
+              ? selectedUser === "all"
+                ? "Time inteiro"
+                : baseProfiles.find((p) => p.user_id === selectedUser)?.display_name || "Usuário"
+              : "Apenas você"}
           </p>
         </div>
+        {isAdmin && (
+          <Select value={selectedUser} onValueChange={setSelectedUser}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Prestador" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Geral (todos)</SelectItem>
+              {baseProfiles
+                .slice()
+                .sort((a, b) =>
+                  (a.display_name || "").localeCompare(b.display_name || "")
+                )
+                .map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.display_name || "Sem nome"}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        )}
         <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
           <TabsList>
             <TabsTrigger value="day">Dia</TabsTrigger>
