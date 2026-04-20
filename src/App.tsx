@@ -10,6 +10,7 @@ import DashboardPage from "./pages/DashboardPage";
 import ReportPage from "./pages/ReportPage";
 import AdminPage from "./pages/AdminPage";
 import PrioritiesPage from "./pages/PrioritiesPage";
+import FeedbacksPage from "./pages/FeedbacksPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -69,6 +70,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <PrioritiesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedbacks"
+            element={
+              <ProtectedRoute>
+                <FeedbacksPage />
               </ProtectedRoute>
             }
           />
