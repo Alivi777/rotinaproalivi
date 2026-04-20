@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppShell from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { useSectors } from "@/lib/useProfile";
+import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
 import {
   CheckCircle2,
   MessageSquareText,
