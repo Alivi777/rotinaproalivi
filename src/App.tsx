@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import RoutinePage from "./pages/RoutinePage";
 import ClientsPage from "./pages/ClientsPage";
 import WhatsAppPage from "./pages/WhatsAppPage";
+import DashboardPage from "./pages/DashboardPage";
+import ReportPage from "./pages/ReportPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -22,6 +24,14 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route
             path="/"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/rotina"
             element={
               <ProtectedRoute>
                 <RoutinePage />
@@ -41,6 +51,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <WhatsAppPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/relatorio"
+            element={
+              <ProtectedRoute>
+                <ReportPage />
               </ProtectedRoute>
             }
           />
