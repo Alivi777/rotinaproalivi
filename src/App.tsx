@@ -12,6 +12,7 @@ import AdminPage from "./pages/AdminPage";
 import PrioritiesPage from "./pages/PrioritiesPage";
 import FeedbacksPage from "./pages/FeedbacksPage";
 import PlanningPage from "./pages/PlanningPage";
+import ContactsPage from "./pages/ContactsPage";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -47,6 +48,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <ClientsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/contatos"
+            element={
+              <ProtectedRoute>
+                <ContactsPage />
               </ProtectedRoute>
             }
           />
