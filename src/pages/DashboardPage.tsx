@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import AppShell from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
 import { useSectors } from "@/lib/useProfile";
+import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
 import {
   CheckCircle2,
   MessageSquareText,
@@ -191,8 +192,13 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      <div className="mb-6">
+        <WeeklyAdherenceChart />
+      </div>
+
       <div className="grid md:grid-cols-3 gap-4">
         <QuickLink
+
           to="/rotina"
           icon={<CheckCircle2 className="h-5 w-5" />}
           title="Marcar rotina"
