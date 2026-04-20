@@ -126,6 +126,18 @@ export default function WhatsAppPage() {
                 <Input value={fromName} onChange={(e) => setFromName(e.target.value)} />
               </div>
               <div>
+                <Label>Classificação *</Label>
+                <Select value={classification} onValueChange={setClassification}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recepcao">Recepção</SelectItem>
+                    <SelectItem value="comercial">Comercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Mensagem *</Label>
                 <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} />
               </div>
