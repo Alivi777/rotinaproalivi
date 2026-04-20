@@ -270,6 +270,11 @@ export default function ContactsPage() {
         onOpenChange={setImportOpen}
         onDone={reload}
       />
+      <ClinicorpSyncDialog
+        open={syncOpen}
+        onOpenChange={setSyncOpen}
+        onDone={reload}
+      />
     </AppShell>
   );
 }
