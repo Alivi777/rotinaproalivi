@@ -189,13 +189,16 @@ export default function DashboardPage() {
               <span className="text-xs">disponível em breve</span>
             </p>
           </div>
+        </Card>
       </div>
 
       <div className="mb-6">
         <WeeklyAdherenceChart />
       </div>
 
+      <div className="grid md:grid-cols-3 gap-4">
         <QuickLink
+
           to="/rotina"
           icon={<CheckCircle2 className="h-5 w-5" />}
           title="Marcar rotina"
