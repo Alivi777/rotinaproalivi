@@ -144,7 +144,18 @@ export default function RoutinePage() {
     }
   }
 
-  async function addTask() {
+  async function toggleClientTask(t: ClientTask) {
+    if (!user) return;
+    const { error } = await supabase
+      .from("client_tasks")
+      .update({
+        completed_at: t.completed_at ? null : new Date().toISOString(),
+        completed_by: t.completed_at ? null : user.id,
+      })
+      .eq("id", t.id);
+    if (error) return toast.error(error.message);
+    load();
+  }
     if (!newTitle.trim()) return;
     const sectorId = newSectorId || activeSectorId || profile?.sector_id || null;
     const sectorTasks = tasks.filter((t) => t.sector_id === sectorId);
