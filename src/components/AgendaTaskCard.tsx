@@ -26,7 +26,7 @@ function fmtTime(iso: string | null) {
  * kanban de Recepção (gerado pela função clinic-tasks-to-reception).
  */
 export default function AgendaTaskCard({ task, doctor }: Props) {
-  const wa = waLink(task.patient_phone);
+  const wa = whatsappWebLink(task.patient_phone);
   const time = fmtTime(task.appointment_at);
 
   return (

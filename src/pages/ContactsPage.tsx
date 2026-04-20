@@ -72,13 +72,10 @@ export default function ContactsPage() {
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
 
   function openWaWeb(phone: string | null) {
-    const digits = (phone || "").replace(/\D/g, "");
-    if (!digits) {
+    const ok = openWhatsappWeb(phone);
+    if (!ok) {
       toast({ title: "Telefone não cadastrado", variant: "destructive" });
-      return;
     }
-    const num = digits.length <= 11 ? `55${digits}` : digits;
-    window.open(`https://wa.me/${num}`, "_blank");
   }
 
   function sendViaSystem() {
