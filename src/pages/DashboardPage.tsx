@@ -6,6 +6,8 @@ import { useSectors } from "@/lib/useProfile";
 import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
 import PriorityAlert from "@/components/PriorityAlert";
 import WhatsAppTimeDashboard from "@/components/WhatsAppTimeDashboard";
+import ClinicDashboardTab from "@/components/ClinicDashboardTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle2,
   MessageSquareText,
@@ -13,6 +15,8 @@ import {
   Calendar,
   TrendingUp,
   Activity,
+  LayoutDashboard,
+  Stethoscope,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -126,105 +130,118 @@ export default function DashboardPage() {
 
       <PriorityAlert />
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard
-          icon={<TrendingUp className="h-4 w-4 text-primary" />}
-          label="Aderência geral"
-          value={`${orgPct}%`}
-          hint={`${distinctDone}/${totalTasks} tarefas`}
-        />
-        <KpiCard
-          icon={<MessageSquareText className="h-4 w-4 text-primary" />}
-          label="Atendimentos WhatsApp"
-          value={String(waToday)}
-          hint={`${uniqueClients} contatos únicos`}
-        />
-        <KpiCard
-          icon={<UserPlus className="h-4 w-4 text-primary" />}
-          label="Novos clientes"
-          value={String(newClients)}
-          hint="cadastrados hoje"
-        />
-        <KpiCard
-          icon={<Activity className="h-4 w-4 text-primary" />}
-          label="Membros ativos"
-          value={String(activeMembers)}
-          hint={`${totalDoneRecords} marcações totais`}
-        />
-      </div>
+      <Tabs defaultValue="geral" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="geral" className="gap-2">
+            <LayoutDashboard className="h-4 w-4" />
+            Geral
+          </TabsTrigger>
+          <TabsTrigger value="clinica" className="gap-2">
+            <Stethoscope className="h-4 w-4" />
+            Clínica
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="grid lg:grid-cols-3 gap-4 mb-6">
-        <Card className="p-6 bg-gradient-card border-border/50 lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Aderência por setor</h2>
-            <span className="text-xs text-muted-foreground">tempo real</span>
+        <TabsContent value="geral" className="space-y-6 mt-0">
+          {/* KPI Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard
+              icon={<TrendingUp className="h-4 w-4 text-primary" />}
+              label="Aderência geral"
+              value={`${orgPct}%`}
+              hint={`${distinctDone}/${totalTasks} tarefas`}
+            />
+            <KpiCard
+              icon={<MessageSquareText className="h-4 w-4 text-primary" />}
+              label="Atendimentos WhatsApp"
+              value={String(waToday)}
+              hint={`${uniqueClients} contatos únicos`}
+            />
+            <KpiCard
+              icon={<UserPlus className="h-4 w-4 text-primary" />}
+              label="Novos clientes"
+              value={String(newClients)}
+              hint="cadastrados hoje"
+            />
+            <KpiCard
+              icon={<Activity className="h-4 w-4 text-primary" />}
+              label="Membros ativos"
+              value={String(activeMembers)}
+              hint={`${totalDoneRecords} marcações totais`}
+            />
           </div>
-          <div className="space-y-3">
-            {perSector.map((s) => (
-              <div key={s.id}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="font-medium">{s.name}</span>
-                  <span className="text-muted-foreground tabular-nums">
-                    {s.done}/{s.total} · {s.pct}%
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-primary transition-all duration-500"
-                    style={{ width: `${s.pct}%` }}
-                  />
-                </div>
+
+          <div className="grid lg:grid-cols-3 gap-4">
+            <Card className="p-6 bg-gradient-card border-border/50 lg:col-span-2">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Aderência por setor</h2>
+                <span className="text-xs text-muted-foreground">tempo real</span>
               </div>
-            ))}
+              <div className="space-y-3">
+                {perSector.map((s) => (
+                  <div key={s.id}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium">{s.name}</span>
+                      <span className="text-muted-foreground tabular-nums">
+                        {s.done}/{s.total} · {s.pct}%
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-primary transition-all duration-500"
+                        style={{ width: `${s.pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-6 bg-gradient-card border-border/50">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Agenda</h2>
+                <Calendar className="h-4 w-4 text-primary" />
+              </div>
+              <div className="text-center py-10">
+                <Calendar className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  Conexão com Google Agenda
+                  <br />
+                  <span className="text-xs">disponível em breve</span>
+                </p>
+              </div>
+            </Card>
           </div>
-        </Card>
 
-        <Card className="p-6 bg-gradient-card border-border/50">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Agenda</h2>
-            <Calendar className="h-4 w-4 text-primary" />
+          <WeeklyAdherenceChart />
+          <WhatsAppTimeDashboard />
+
+          <div className="grid md:grid-cols-3 gap-4">
+            <QuickLink
+              to="/rotina"
+              icon={<CheckCircle2 className="h-5 w-5" />}
+              title="Marcar rotina"
+              desc="Acessar checklist do seu setor"
+            />
+            <QuickLink
+              to="/whatsapp"
+              icon={<MessageSquareText className="h-5 w-5" />}
+              title="Entradas WhatsApp"
+              desc="Ver mensagens recebidas hoje"
+            />
+            <QuickLink
+              to="/relatorio"
+              icon={<TrendingUp className="h-5 w-5" />}
+              title="Relatório do dia"
+              desc="Gerar e exportar fechamento"
+            />
           </div>
-          <div className="text-center py-10">
-            <Calendar className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              Conexão com Google Agenda
-              <br />
-              <span className="text-xs">disponível em breve</span>
-            </p>
-          </div>
-        </Card>
-      </div>
+        </TabsContent>
 
-      <div className="mb-6">
-        <WeeklyAdherenceChart />
-      </div>
-
-      <div className="mb-6">
-        <WhatsAppTimeDashboard />
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        <QuickLink
-
-          to="/rotina"
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          title="Marcar rotina"
-          desc="Acessar checklist do seu setor"
-        />
-        <QuickLink
-          to="/whatsapp"
-          icon={<MessageSquareText className="h-5 w-5" />}
-          title="Entradas WhatsApp"
-          desc="Ver mensagens recebidas hoje"
-        />
-        <QuickLink
-          to="/relatorio"
-          icon={<TrendingUp className="h-5 w-5" />}
-          title="Relatório do dia"
-          desc="Gerar e exportar fechamento"
-        />
-      </div>
+        <TabsContent value="clinica" className="mt-0">
+          <ClinicDashboardTab />
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }
