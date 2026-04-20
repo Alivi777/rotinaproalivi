@@ -54,6 +54,7 @@ export default function ContactsPage() {
   const [sectorFilter, setSectorFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [importOpen, setImportOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   const sectorId = useMemo(() => {
     if (sectorFilter === "all") return null;
