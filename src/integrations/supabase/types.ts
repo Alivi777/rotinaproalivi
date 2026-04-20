@@ -44,6 +44,51 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_priorities: {
+        Row: {
+          acknowledged_at: string | null
+          created_at: string
+          id: string
+          manager_id: string
+          mission_main: string
+          priority_date: string
+          secondary_1: string | null
+          secondary_2: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          yesterday_feedback: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          created_at?: string
+          id?: string
+          manager_id: string
+          mission_main: string
+          priority_date?: string
+          secondary_1?: string | null
+          secondary_2?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          yesterday_feedback?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          created_at?: string
+          id?: string
+          manager_id?: string
+          mission_main?: string
+          priority_date?: string
+          secondary_1?: string | null
+          secondary_2?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          yesterday_feedback?: string | null
+        }
+        Relationships: []
+      }
       daily_reports: {
         Row: {
           created_at: string
@@ -183,6 +228,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      priority_messages: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          message: string
+          priority_id: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          message: string
+          priority_id: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          priority_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "priority_messages_priority_id_fkey"
+            columns: ["priority_id"]
+            isOneToOne: false
+            referencedRelation: "daily_priorities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
