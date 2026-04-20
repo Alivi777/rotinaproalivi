@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { useSectors } from "@/lib/useProfile";
 import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
 import PriorityAlert from "@/components/PriorityAlert";
+import WhatsAppTimeDashboard from "@/components/WhatsAppTimeDashboard";
 import {
   CheckCircle2,
   MessageSquareText,
@@ -197,6 +198,10 @@ export default function DashboardPage() {
 
       <div className="mb-6">
         <WeeklyAdherenceChart />
+      </div>
+
+      <div className="mb-6">
+        <WhatsAppTimeDashboard />
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
