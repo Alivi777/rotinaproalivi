@@ -1,6 +1,12 @@
 // Sincroniza tarefas da Agenda Clínica (clinic_daily_tasks) da semana corrente
-// para o kanban do setor Recepção, criando 1 card por tarefa na coluna do tipo
-// (task-birthday, task-confirm-d7..d4, task-protocol-d3, task-urgency-d2, task-unbook-d1).
+// para o kanban do setor Recepção.
+//
+// Regras:
+//  - 1 card único por paciente + task_date (sem duplicar paciente no mesmo dia).
+//  - O card é colocado na coluna do tipo da tarefa MAIS URGENTE do dia
+//    (D-1 > D-2 > D-3 > D-4 > D-5 > D-6 > D-7 > Aniversário).
+//  - O notes do card lista TODAS as tarefas pendentes do paciente naquele dia,
+//    no formato da Agenda Clínica (tipo + como fazer + horário + telefone).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
@@ -21,6 +27,18 @@ const TASK_TYPE_TO_SLUG: Record<string, string> = {
   unbook_confirm_d1: "task-unbook-d1",
 };
 
+// Quanto MENOR, mais urgente (define em qual coluna o card consolidado vai).
+const TASK_TYPE_PRIORITY: Record<string, number> = {
+  unbook_confirm_d1: 1,
+  urgency_d2: 2,
+  protocol_d3: 3,
+  confirm_d4: 4,
+  confirm_d5: 5,
+  confirm_d6: 6,
+  confirm_d7: 7,
+  birthday: 8,
+};
+
 const TASK_TYPE_LABEL: Record<string, string> = {
   birthday: "🎂 Aniversário",
   confirm_d7: "Confirmar (D-7)",
@@ -30,6 +48,18 @@ const TASK_TYPE_LABEL: Record<string, string> = {
   protocol_d3: "Protocolo falta confirmação (D-3)",
   urgency_d2: "Urgência/escassez (D-2)",
   unbook_confirm_d1: "Confirmação desmarque (D-1)",
+};
+
+// "Como fazer" — script orientador para a recepção, igual ao guia interno.
+const TASK_TYPE_HOWTO: Record<string, string> = {
+  birthday: "Mensagem de feliz aniversário + convite para revisão/agendamento.",
+  confirm_d7: "Primeiro contato de confirmação. Confirme dia, hora e doutor(a).",
+  confirm_d6: "2º toque de confirmação caso não tenha respondido D-7.",
+  confirm_d5: "3º toque. Reforce horário e endereço.",
+  confirm_d4: "4º toque. Pergunte se há alguma dúvida ou ajuste de horário.",
+  protocol_d3: "Falta confirmação: aplique protocolo (ligar + WhatsApp + voz).",
+  urgency_d2: "Crie senso de urgência/escassez. Confirme presença HOJE.",
+  unbook_confirm_d1: "Última chance: confirmar ou desmarcar para liberar a vaga.",
 };
 
 function getWeekRangeSP(): { monday: string; saturday: string } {
@@ -49,10 +79,20 @@ function fmtTime(iso: string | null): string | null {
 }
 
 function fmtDate(d: string): string {
-  // d = YYYY-MM-DD
   const [, m, dd] = d.split("-");
   return `${dd}/${m}`;
 }
+
+type Task = {
+  id: string;
+  task_type: string;
+  task_date: string;
+  patient_name: string;
+  patient_phone: string | null;
+  doctor_name: string | null;
+  appointment_at: string | null;
+  notes: string | null;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -63,14 +103,14 @@ Deno.serve(async (req) => {
   );
 
   try {
+    const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+    const wipe: boolean = !!body.wipe;
+
     const { monday, saturday } = getWeekRangeSP();
 
     // 1) Setor Recepção
     const { data: sector, error: secErr } = await supabase
-      .from("sectors")
-      .select("id")
-      .eq("slug", "recepcao")
-      .single();
+      .from("sectors").select("id").eq("slug", "recepcao").single();
     if (secErr || !sector) throw new Error("Setor recepcao não encontrado");
 
     // 2) Mapa slug → stage_id
@@ -82,52 +122,101 @@ Deno.serve(async (req) => {
     const stageBySlug = new Map((stages || []).map((s) => [s.slug, s.id]));
 
     // 3) Tarefas da semana
-    const { data: tasks, error: tErr } = await supabase
+    const { data: tasksRaw, error: tErr } = await supabase
       .from("clinic_daily_tasks")
-      .select("id, task_type, task_date, patient_name, patient_phone, doctor_name, appointment_at, status, notes")
+      .select("id, task_type, task_date, patient_name, patient_phone, doctor_name, appointment_at, notes")
       .gte("task_date", monday)
       .lte("task_date", saturday)
       .order("task_date", { ascending: true });
     if (tErr) throw tErr;
+    const tasks = (tasksRaw ?? []) as Task[];
 
-    console.log(`[tasks-to-reception] week ${monday}..${saturday}, ${tasks?.length ?? 0} tasks`);
-
-    // 4) Buscar cards já criados nesta semana (evita duplicar a cada cron)
-    //    Identificador no notes: [task:<task_id>]
-    const { data: existing } = await supabase
-      .from("clients")
-      .select("id, notes")
-      .eq("sector_id", sector.id)
-      .ilike("notes", "%[task:%");
-    const existingTaskIds = new Set<string>();
-    for (const c of existing || []) {
-      const m = String(c.notes ?? "").match(/\[task:([0-9a-f-]{36})\]/);
-      if (m) existingTaskIds.add(m[1]);
+    // 4) Agrupar por paciente+dia
+    type Group = {
+      key: string;
+      patient_name: string;
+      patient_phone: string | null;
+      doctor_name: string | null;
+      task_date: string;
+      appointment_at: string | null;
+      tasks: Task[];
+    };
+    const groups = new Map<string, Group>();
+    for (const t of tasks) {
+      const key = `${(t.patient_phone ?? "").replace(/\D/g, "") || t.patient_name}|${t.task_date}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = {
+          key,
+          patient_name: t.patient_name,
+          patient_phone: t.patient_phone,
+          doctor_name: t.doctor_name,
+          task_date: t.task_date,
+          appointment_at: t.appointment_at,
+          tasks: [],
+        };
+        groups.set(key, g);
+      }
+      g.tasks.push(t);
+      // Mantém o appointment_at mais cedo (deve ser igual entre tarefas, mas seguro)
+      if (t.appointment_at && (!g.appointment_at || t.appointment_at < g.appointment_at)) {
+        g.appointment_at = t.appointment_at;
+      }
+      if (t.doctor_name && !g.doctor_name) g.doctor_name = t.doctor_name;
     }
 
-    // 5) Inserir cards faltantes
-    let created = 0, skipped = 0, missingStage = 0;
+    console.log(`[tasks-to-reception] ${tasks.length} tasks → ${groups.size} cards consolidados`);
+
+    // 5) Limpar Recepção (somente cards gerados por essa função — marcadores [task:])
+    if (wipe || true /* sempre limpa pra reconciliar dia a dia */) {
+      const stageIds = Array.from(stageBySlug.values());
+      if (stageIds.length > 0) {
+        const { error: delErr } = await supabase
+          .from("clients")
+          .delete()
+          .eq("sector_id", sector.id)
+          .in("stage_id", stageIds);
+        if (delErr) console.error("wipe err:", delErr.message);
+      }
+    }
+
+    // 6) Inserir 1 card por grupo
+    let created = 0, missingStage = 0;
     const rows: Array<Record<string, unknown>> = [];
-    for (const t of tasks ?? []) {
-      if (existingTaskIds.has(t.id)) { skipped++; continue; }
-      const slug = TASK_TYPE_TO_SLUG[t.task_type];
+
+    for (const g of groups.values()) {
+      // Mais urgente define a coluna
+      const sorted = [...g.tasks].sort(
+        (a, b) => (TASK_TYPE_PRIORITY[a.task_type] ?? 99) - (TASK_TYPE_PRIORITY[b.task_type] ?? 99),
+      );
+      const mostUrgent = sorted[0];
+      const slug = TASK_TYPE_TO_SLUG[mostUrgent.task_type];
       const stageId = slug ? stageBySlug.get(slug) : undefined;
       if (!stageId) { missingStage++; continue; }
 
-      const time = fmtTime(t.appointment_at);
-      const lines = [
-        `📋 ${TASK_TYPE_LABEL[t.task_type] ?? t.task_type}`,
-        `📅 ${fmtDate(t.task_date)}${time ? ` • Consulta ${time}` : ""}`,
-        t.doctor_name ? `👨‍⚕️ Dr(a). ${t.doctor_name}` : null,
-        t.patient_phone ? `📱 ${t.patient_phone}` : null,
-        t.notes ? `\n📝 ${t.notes}` : null,
-        `\n[task:${t.id}]`,
-      ].filter(Boolean).join("\n");
+      const time = fmtTime(g.appointment_at);
+      const taskIds = g.tasks.map((t) => t.id);
+
+      const lines: string[] = [];
+      lines.push(`📅 ${fmtDate(g.task_date)}${time ? ` • Consulta às ${time}` : ""}`);
+      if (g.doctor_name) lines.push(`👨‍⚕️ Dr(a). ${g.doctor_name}`);
+      if (g.patient_phone) lines.push(`📱 ${g.patient_phone}`);
+      lines.push("");
+      lines.push("📋 TAREFAS DO DIA:");
+      for (const t of sorted) {
+        const label = TASK_TYPE_LABEL[t.task_type] ?? t.task_type;
+        const howto = TASK_TYPE_HOWTO[t.task_type] ?? "";
+        lines.push(`• ${label}`);
+        if (howto) lines.push(`   → ${howto}`);
+        if (t.notes) lines.push(`   📝 ${t.notes}`);
+      }
+      lines.push("");
+      lines.push(`[tasks:${taskIds.join(",")}]`);
 
       rows.push({
-        name: t.patient_name,
-        phone: t.patient_phone,
-        notes: lines,
+        name: g.patient_name,
+        phone: g.patient_phone,
+        notes: lines.join("\n"),
         sector_id: sector.id,
         stage_id: stageId,
         board_position: 0,
@@ -138,20 +227,17 @@ Deno.serve(async (req) => {
     for (let i = 0; i < rows.length; i += batchSize) {
       const slice = rows.slice(i, i + batchSize);
       const { error: insErr } = await supabase.from("clients").insert(slice);
-      if (insErr) {
-        console.error("insert err:", insErr.message);
-      } else {
-        created += slice.length;
-      }
+      if (insErr) console.error("insert err:", insErr.message);
+      else created += slice.length;
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         week: { monday, saturday },
-        tasks: tasks?.length ?? 0,
+        total_tasks: tasks.length,
+        consolidated_cards: groups.size,
         cards_created: created,
-        skipped_existing: skipped,
         missing_stage: missingStage,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
