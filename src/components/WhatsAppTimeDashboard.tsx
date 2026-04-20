@@ -69,6 +69,7 @@ export default function WhatsAppTimeDashboard() {
   const [priorityAck, setPriorityAck] = useState<Record<string, number>>({});
   const [taskCompletions, setTaskCompletions] = useState<Record<string, number>>({});
   const [taskTotals, setTaskTotals] = useState<Record<string, number>>({});
+  const [selectedUser, setSelectedUser] = useState<string>("all");
 
   async function load() {
     const { start, end } = rangeDates(range, custom);
