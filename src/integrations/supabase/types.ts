@@ -44,12 +44,87 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_reports: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          notes: string | null
+          report_date: string
+          sector_id: string
+          submitted_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          notes?: string | null
+          report_date?: string
+          sector_id: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          notes?: string | null
+          report_date?: string
+          sector_id?: string
+          submitted_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_reports_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_calendar_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string | null
+          refresh_token: string | null
+          scope: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string | null
+          refresh_token?: string | null
+          scope?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
           display_name: string | null
           email: string | null
           id: string
+          sector_id: string | null
           updated_at: string
           user_id: string
         }
@@ -58,6 +133,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          sector_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -66,17 +142,28 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          sector_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       routine_tasks: {
         Row: {
           active: boolean
           created_at: string
           description: string | null
+          frequency: string | null
           id: string
+          sector_id: string | null
           sort_order: number
           title: string
           updated_at: string
@@ -85,7 +172,9 @@ export type Database = {
           active?: boolean
           created_at?: string
           description?: string | null
+          frequency?: string | null
           id?: string
+          sector_id?: string | null
           sort_order?: number
           title: string
           updated_at?: string
@@ -94,10 +183,50 @@ export type Database = {
           active?: boolean
           created_at?: string
           description?: string | null
+          frequency?: string | null
           id?: string
+          sector_id?: string | null
           sort_order?: number
           title?: string
           updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_tasks_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sectors: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          slug: string
+          sort_order: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
         }
         Relationships: []
       }
