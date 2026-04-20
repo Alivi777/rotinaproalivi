@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare, AlertTriangle } from "lucide-react";
+import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare, AlertTriangle, CalendarSync, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import NewSaleDialog from "@/components/NewSaleDialog";
 import ClientDetailDialog from "@/components/ClientDetailDialog";
@@ -30,6 +30,7 @@ import ClientCloseDialog from "@/components/ClientCloseDialog";
 import { useKanbanStages } from "@/lib/useKanbanStages";
 import { useSectors, useProfile } from "@/lib/useProfile";
 import { useAuth } from "@/lib/auth";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { cn } from "@/lib/utils";
 import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
 
@@ -49,11 +50,13 @@ type Profile = { user_id: string; display_name: string | null; sector_id: string
 export default function ClientsPage() {
   const { user } = useAuth();
   const { profile } = useProfile();
+  const { isAdmin } = useIsAdmin();
   const { sectors } = useSectors();
   const [clients, setClients] = useState<Client[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [view, setView] = useState<"kanban" | "list">("kanban");
   const [boardSectorId, setBoardSectorId] = useState<string>("");
+  const [syncingWeek, setSyncingWeek] = useState(false);
   const { stages } = useKanbanStages(boardSectorId || profile?.sector_id);
   const { alerts } = useClientAlerts(
     useMemo(() => clients.map((c) => ({ id: c.id, phone: c.phone })), [clients]),
@@ -121,6 +124,25 @@ export default function ClientsPage() {
     load();
   }
 
+  async function syncWeekFromAgenda() {
+    setSyncingWeek(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("clinic-week-to-clients", {
+        body: {},
+      });
+      if (error) throw error;
+      const d = data as { cards_created?: number; appointments?: number };
+      toast.success(
+        `Agenda da semana sincronizada: ${d.cards_created ?? 0} cards de ${d.appointments ?? 0} agendamentos`,
+      );
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncingWeek(false);
+    }
+  }
+
   async function moveTo(client: Client, stageId: string) {
     const stage = stages.find((s) => s.id === stageId);
     if (!stage || stage.id === client.stage_id) return;
@@ -163,6 +185,21 @@ export default function ClientsPage() {
               ))}
             </SelectContent>
           </Select>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              onClick={syncWeekFromAgenda}
+              disabled={syncingWeek}
+              title="Cria 1 card por agendamento da semana em Recepção, Auditoria e Sucesso do Cliente"
+            >
+              {syncingWeek ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <CalendarSync className="h-4 w-4 mr-1" />
+              )}
+              Sincronizar agenda da semana
+            </Button>
+          )}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>
