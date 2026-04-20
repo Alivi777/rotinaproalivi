@@ -163,6 +163,14 @@ Deno.serve(async (req) => {
     const res = await clinicorpGet("/appointment/list", {
       start_date: fmt(today),
       end_date: fmt(end),
+      start_date_json: fmt(today),
+      end_date_json: fmt(end),
+      data_inicial: fmt(today),
+      data_final: fmt(end),
+      data_inicio: fmt(today),
+      data_fim: fmt(end),
+      from: fmt(today),
+      to: fmt(end),
     });
     const list = extractList(res) as Appointment[];
 
