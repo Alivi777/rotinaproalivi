@@ -185,9 +185,34 @@ export default function WhatsAppTimeDashboard() {
             <h2 className="text-lg font-semibold">Tempo de atendimento WhatsApp</h2>
           </div>
           <p className="text-xs text-muted-foreground">
-            Horário de São Paulo · {isAdmin ? "Time inteiro" : "Apenas você"}
+            Horário de São Paulo ·{" "}
+            {isAdmin
+              ? selectedUser === "all"
+                ? "Time inteiro"
+                : baseProfiles.find((p) => p.user_id === selectedUser)?.display_name || "Usuário"
+              : "Apenas você"}
           </p>
         </div>
+        {isAdmin && (
+          <Select value={selectedUser} onValueChange={setSelectedUser}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Prestador" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Geral (todos)</SelectItem>
+              {baseProfiles
+                .slice()
+                .sort((a, b) =>
+                  (a.display_name || "").localeCompare(b.display_name || "")
+                )
+                .map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.display_name || "Sem nome"}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        )}
         <Tabs value={range} onValueChange={(v) => setRange(v as Range)}>
           <TabsList>
             <TabsTrigger value="day">Dia</TabsTrigger>
