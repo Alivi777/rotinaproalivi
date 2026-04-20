@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import { usePendingPriorities } from "@/lib/usePendingPriorities";
 import { cn } from "@/lib/utils";
 import SectorPickerDialog from "./SectorPickerDialog";
 
@@ -31,6 +33,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
+  const { count: pendingPriorities } = usePendingPriorities();
   const nav = isAdmin
     ? [...baseNav, { to: "/admin", label: "Admin", icon: ShieldCheck, end: false }]
     : baseNav;
@@ -56,24 +59,38 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         <nav className="space-y-1 flex-1">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          ))}
+          {nav.map((item) => {
+            const showBadge =
+              isAdmin &&
+              pendingPriorities > 0 &&
+              (item.to === "/admin" || item.to === "/prioridades");
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                  )
+                }
+              >
+                <item.icon className="h-4 w-4" />
+                <span className="flex-1">{item.label}</span>
+                {showBadge && (
+                  <Badge
+                    variant="destructive"
+                    className="h-5 min-w-5 px-1.5 text-[10px] font-bold animate-pulse-slow"
+                  >
+                    {pendingPriorities}
+                  </Badge>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="border-t border-sidebar-border pt-4 space-y-3">
@@ -108,24 +125,38 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 max-w-[1400px]">
         <div className="lg:hidden mb-4 flex gap-2 overflow-x-auto">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-smooth",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-card text-muted-foreground"
-                )
-              }
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </NavLink>
-          ))}
+          {nav.map((item) => {
+            const showBadge =
+              isAdmin &&
+              pendingPriorities > 0 &&
+              (item.to === "/admin" || item.to === "/prioridades");
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={({ isActive }) =>
+                  cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-smooth",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-muted-foreground"
+                  )
+                }
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+                {showBadge && (
+                  <Badge
+                    variant="destructive"
+                    className="h-4 min-w-4 px-1 text-[10px] font-bold animate-pulse-slow"
+                  >
+                    {pendingPriorities}
+                  </Badge>
+                )}
+              </NavLink>
+            );
+          })}
         </div>
         {children}
       </main>

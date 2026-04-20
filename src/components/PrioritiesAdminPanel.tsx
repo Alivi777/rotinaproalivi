@@ -147,14 +147,25 @@ export default function PrioritiesAdminPanel() {
   }
 
   const todayByUser = new Map(priorities.map((p) => [p.user_id, p]));
+  const pendingCount = priorities.filter((p) => p.status !== "acknowledged").length;
 
   return (
     <Card className="p-6 bg-card border-border/50">
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <Crosshair className="h-5 w-5 text-destructive" />
             <h2 className="text-lg font-semibold">Prioridades do dia</h2>
+            {pendingCount > 0 && (
+              <Badge variant="destructive" className="gap-1 animate-pulse-slow">
+                {pendingCount} {pendingCount === 1 ? "pendente" : "pendentes"}
+              </Badge>
+            )}
+            {priorities.length > 0 && pendingCount === 0 && (
+              <Badge variant="default" className="gap-1">
+                Todos aceitaram
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Delegue 1 missão principal + até 2 secundárias para cada pessoa, com o
