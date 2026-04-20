@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Phone, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
+import NewSaleDialog from "@/components/NewSaleDialog";
 
 type Client = {
   id: string;
@@ -144,6 +145,9 @@ export default function ClientsPage() {
               {c.notes && (
                 <p className="text-sm text-muted-foreground mt-3 line-clamp-3">{c.notes}</p>
               )}
+              <div className="mt-4 pt-3 border-t border-border/50">
+                <NewSaleDialog clientId={c.id} clientName={c.name} onCreated={load} />
+              </div>
             </Card>
           ))}
         </div>
