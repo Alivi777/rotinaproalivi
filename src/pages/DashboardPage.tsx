@@ -6,6 +6,8 @@ import { useSectors } from "@/lib/useProfile";
 import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
 import PriorityAlert from "@/components/PriorityAlert";
 import WhatsAppTimeDashboard from "@/components/WhatsAppTimeDashboard";
+import ClinicDashboardTab from "@/components/ClinicDashboardTab";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle2,
   MessageSquareText,
@@ -13,6 +15,8 @@ import {
   Calendar,
   TrendingUp,
   Activity,
+  LayoutDashboard,
+  Stethoscope,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
