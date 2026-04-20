@@ -24,10 +24,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useSectors } from "@/lib/useProfile";
-import { Plus, Trash2, TrendingUp, Calendar, Users2 } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Calendar, Users2, UserCheck, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PriorityAlert from "@/components/PriorityAlert";
+import { Link } from "react-router-dom";
 
 type Task = {
   id: string;
@@ -38,6 +39,15 @@ type Task = {
 };
 type Completion = { id: string; task_id: string; user_id: string };
 type Profile = { user_id: string; display_name: string | null; sector_id: string | null };
+type ClientTask = {
+  id: string;
+  client_id: string;
+  title: string;
+  description: string | null;
+  due_date: string;
+  completed_at: string | null;
+  clients?: { name: string } | null;
+};
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 
@@ -54,6 +64,7 @@ export default function RoutinePage() {
   const [newDesc, setNewDesc] = useState("");
   const [newSectorId, setNewSectorId] = useState<string>("");
   const [activeSectorId, setActiveSectorId] = useState<string>("");
+  const [clientTasks, setClientTasks] = useState<ClientTask[]>([]);
 
   const today = todayStr();
 
@@ -66,14 +77,23 @@ export default function RoutinePage() {
   }, [profile, activeSectorId]);
 
   async function load() {
-    const [t, c, p] = await Promise.all([
+    const [t, c, p, ct] = await Promise.all([
       supabase.from("routine_tasks").select("*").eq("active", true).order("sort_order"),
       supabase.from("task_completions").select("id, task_id, user_id").eq("completion_date", today),
       supabase.from("profiles").select("user_id, display_name, sector_id"),
+      user
+        ? supabase
+            .from("client_tasks")
+            .select("id, client_id, title, description, due_date, completed_at, clients(name)")
+            .eq("assigned_to", user.id)
+            .lte("due_date", today)
+            .order("due_date", { ascending: true })
+        : Promise.resolve({ data: [] as ClientTask[] }),
     ]);
     if (t.data) setTasks(t.data as Task[]);
     if (c.data) setCompletions(c.data as Completion[]);
     if (p.data) setProfiles(p.data as Profile[]);
+    if (ct.data) setClientTasks(ct.data as unknown as ClientTask[]);
     setLoading(false);
   }
 
@@ -122,6 +142,19 @@ export default function RoutinePage() {
       });
       if (error) toast.error(error.message);
     }
+  }
+
+  async function toggleClientTask(t: ClientTask) {
+    if (!user) return;
+    const { error } = await supabase
+      .from("client_tasks")
+      .update({
+        completed_at: t.completed_at ? null : new Date().toISOString(),
+        completed_by: t.completed_at ? null : user.id,
+      })
+      .eq("id", t.id);
+    if (error) return toast.error(error.message);
+    load();
   }
 
   async function addTask() {
@@ -190,6 +223,73 @@ export default function RoutinePage() {
       </header>
 
       <PriorityAlert />
+
+      {clientTasks.length > 0 && (
+        <Card className="p-5 mb-6 bg-gradient-card border-primary/30">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-primary" />
+              <h2 className="font-semibold text-sm">
+                Tarefas de clientes para hoje
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                ({clientTasks.filter((t) => !t.completed_at).length} pendentes)
+              </span>
+            </div>
+          </div>
+          <ul className="divide-y divide-border/50">
+            {clientTasks.map((t) => {
+              const overdue = t.due_date < today && !t.completed_at;
+              return (
+                <li
+                  key={t.id}
+                  className={cn(
+                    "py-3 flex items-start gap-3",
+                    t.completed_at && "opacity-50"
+                  )}
+                >
+                  <Checkbox
+                    checked={!!t.completed_at}
+                    onCheckedChange={() => toggleClientTask(t)}
+                    className="mt-1 h-5 w-5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className={cn(
+                        "font-medium text-sm",
+                        t.completed_at && "line-through text-muted-foreground"
+                      )}
+                    >
+                      {t.title}
+                      <Link
+                        to="/clientes"
+                        className="ml-2 inline-flex items-center gap-0.5 text-xs text-primary hover:underline"
+                      >
+                        {t.clients?.name ?? "cliente"}
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </div>
+                    {t.description && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {t.description}
+                      </div>
+                    )}
+                    <div
+                      className={cn(
+                        "text-xs mt-1",
+                        overdue ? "text-destructive font-medium" : "text-muted-foreground"
+                      )}
+                    >
+                      {overdue ? "⚠ Atrasada · " : ""}
+                      {new Date(t.due_date + "T00:00:00").toLocaleDateString("pt-BR")}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4 mb-8">
         <Card className="p-5 bg-gradient-card border-border/50">
