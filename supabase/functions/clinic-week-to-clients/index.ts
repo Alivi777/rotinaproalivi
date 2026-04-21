@@ -31,8 +31,14 @@ const spTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
 // SP timezone: get current Monday 00:00 → Saturday 23:59 range
 function getWeekRangeSP(): { monday: Date; saturday: Date } {
   const now = new Date();
-  const weekday = Number(new Intl.DateTimeFormat("en-US", { timeZone: SP_TZ, weekday: "numeric" }).format(now));
-  const diffToMon = weekday === 1 ? -6 : 2 - weekday;
+  // Get short weekday in SP and map to 0..6 (Sun..Sat)
+  const wdShort = new Intl.DateTimeFormat("en-US", { timeZone: SP_TZ, weekday: "short" })
+    .format(now)
+    .toLowerCase();
+  const wdMap: Record<string, number> = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  const weekday = wdMap[wdShort] ?? 1;
+  // Days to subtract to reach Monday: Sun(0)→-6, Mon(1)→0, Tue(2)→-1, ...
+  const diffToMon = weekday === 0 ? -6 : 1 - weekday;
   const spToday = new Intl.DateTimeFormat("en-CA", {
     timeZone: SP_TZ,
     year: "numeric",
