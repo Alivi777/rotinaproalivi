@@ -199,10 +199,17 @@ export default function ClientCloseDialog({
       }
     }
 
-    // 4) Move stage
+    // 4) Move stage — também grava o resumo em clients.notes para satisfazer
+    //    o trigger enforce_note_on_won_stage e dar contexto direto no card.
+    const summary = [
+      noteText && `✍️ ${noteText}`,
+      copyText && `📋 Mensagem enviada:\n${copyText}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     const { error: stageErr } = await supabase
       .from("clients")
-      .update({ stage_id: targetStageId })
+      .update({ stage_id: targetStageId, notes: summary })
       .eq("id", clientId);
     if (stageErr) {
       setSaving(false);
