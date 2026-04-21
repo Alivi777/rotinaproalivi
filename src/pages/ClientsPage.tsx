@@ -163,13 +163,19 @@ export default function ClientsPage() {
   async function syncTasksToReception() {
     setSyncingWeek(true);
     try {
-      const { data, error } = await supabase.functions.invoke("clinic-tasks-to-reception", {
-        body: {},
-      });
-      if (error) throw error;
-      const d = data as { cards_created?: number; tasks?: number; skipped_existing?: number };
+      // 1) Sincroniza tarefas da Recepção (D-7..D-1, aniversário)
+      const t = await supabase.functions.invoke("clinic-tasks-to-reception", { body: {} });
+      if (t.error) throw t.error;
+      const td = t.data as { cards_created?: number; tasks?: number };
+
+      // 2) Sincroniza agenda da semana para Recepção + Sucesso + Auditoria
+      //    (cria as 6 colunas Seg-Sáb automaticamente em cada setor)
+      const w = await supabase.functions.invoke("clinic-week-to-clients", { body: {} });
+      if (w.error) throw w.error;
+      const wd = w.data as { cards_created?: number; appointments?: number; sectors?: number };
+
       toast.success(
-        `Tarefas → Recepção: ${d.cards_created ?? 0} novos · ${d.skipped_existing ?? 0} já existiam (de ${d.tasks ?? 0} tarefas)`,
+        `Recepção: ${td.cards_created ?? 0} tarefas (de ${td.tasks ?? 0}) · Agenda: ${wd.cards_created ?? 0} cards em ${wd.sectors ?? 0} setores`,
       );
       load();
     } catch (e) {
