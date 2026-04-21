@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -11,12 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, AlertTriangle, CheckCircle2, Clock, Phone, MessageCircle, Stethoscope } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { parseClientNotesMeta, relativeDayLabel } from "@/lib/clientNotesMeta";
-import { openWhatsappWeb } from "@/lib/whatsapp";
+import { Users, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { spToday, spDate } from "@/lib/spTime";
-import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 import { useAuth } from "@/lib/auth";
 
@@ -51,7 +46,7 @@ export default function CollaboratorTasksPanel() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [range, setRange] = useState<"today" | "pending" | "week">("today");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
-  const [checking, setChecking] = useState<{ item: ClientTaskItem; clientName: string } | null>(null);
+  
 
   const today = spToday();
 
@@ -197,117 +192,54 @@ export default function CollaboratorTasksPanel() {
         <p className="text-sm text-muted-foreground text-center py-8">Nenhuma tarefa no período.</p>
       )}
 
-      <div className="space-y-6">
+      <div className="space-y-2">
         {visibleGroups.map((g) => {
           const gPending = g.rows.filter((r) => r.item.status !== "done").length;
           const gDone = g.rows.length - gPending;
+          const gOverdue = g.rows.filter(
+            (r) => r.item.status !== "done" && r.item.task_date < today,
+          ).length;
+          const total = g.rows.length;
+          const pct = total > 0 ? Math.round((gDone / total) * 100) : 0;
           return (
-            <section key={g.uid ?? "none"}>
-              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center">
-                    <Users className="h-3.5 w-3.5" />
-                  </div>
-                  <h3 className="font-semibold text-sm">
-                    {g.name}
-                    {g.uid === user?.id && <span className="ml-1.5 text-xs text-primary">(você)</span>}
-                  </h3>
+            <section
+              key={g.uid ?? "none"}
+              className="rounded-lg border border-border/40 bg-card/40 px-3 py-2.5 flex items-center gap-3 flex-wrap"
+            >
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center shrink-0">
+                  <Users className="h-3.5 w-3.5" />
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Badge variant="secondary" className="h-5 text-[10px]">{gPending} pendentes</Badge>
-                  <Badge className="h-5 text-[10px] bg-success/20 text-success hover:bg-success/30">{gDone} feitas</Badge>
+                <div className="min-w-0">
+                  <div className="font-semibold text-sm truncate">
+                    {g.name}
+                    {g.uid === user?.id && (
+                      <span className="ml-1.5 text-xs text-primary">(você)</span>
+                    )}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {total} tarefa{total === 1 ? "" : "s"} no período · {pct}% concluído
+                  </div>
                 </div>
               </div>
-
-              <ul className="divide-y divide-border/40 rounded-lg border border-border/40 bg-card/40">
-                {g.rows.map(({ item, client, apptTime }) => {
-                  const isDone = item.status === "done";
-                  const overdue = !isDone && item.task_date < today;
-                  const meta = parseClientNotesMeta(client.notes);
-                  return (
-                    <li
-                      key={item.id}
-                      className={cn("py-3 px-3 flex items-start gap-3", isDone && "opacity-60")}
-                    >
-                      <Checkbox
-                        checked={isDone}
-                        disabled={isDone}
-                        onCheckedChange={() => {
-                          if (!isDone) setChecking({ item, clientName: client.name });
-                        }}
-                        className="mt-1 h-5 w-5"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {apptTime && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold tabular-nums px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
-                              <Clock className="h-2.5 w-2.5" />
-                              {apptTime}
-                            </span>
-                          )}
-                          <span className={cn("font-medium text-sm", isDone && "line-through text-muted-foreground")}>
-                            {item.task_label}
-                          </span>
-                          {overdue && (
-                            <Badge variant="destructive" className="h-4 text-[10px] px-1.5 gap-1">
-                              <AlertTriangle className="h-2.5 w-2.5" /> Atrasada
-                            </Badge>
-                          )}
-                          {meta.doctorName && (
-                            <span
-                              className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                              style={{
-                                background: (meta.doctorColor || "hsl(var(--muted))") + "33",
-                                color: meta.doctorColor || "hsl(var(--foreground))",
-                                border: `1px solid ${meta.doctorColor || "hsl(var(--border))"}55`,
-                              }}
-                            >
-                              <Stethoscope className="h-3 w-3" />
-                              {meta.doctorName}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                          <span className="font-medium text-foreground/80">{client.name}</span>
-                          {client.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" /> {client.phone}
-                            </span>
-                          )}
-                          <span className="text-[10px] uppercase tracking-wider">
-                            {relativeDayLabel(item.task_date)}
-                          </span>
-                        </div>
-                      </div>
-                      {client.phone && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openWhatsappWeb(client.phone);
-                          }}
-                          className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-success hover:underline"
-                          title="Abrir WhatsApp Web"
-                        >
-                          <MessageCircle className="h-3.5 w-3.5" />
-                          WhatsApp
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="secondary" className="h-6 text-[11px] gap-1">
+                  <Clock className="h-3 w-3" /> {gPending} pendentes
+                </Badge>
+                <Badge className="h-6 text-[11px] gap-1 bg-success/20 text-success hover:bg-success/30">
+                  <CheckCircle2 className="h-3 w-3" /> {gDone} feitas
+                </Badge>
+                {gOverdue > 0 && (
+                  <Badge variant="destructive" className="h-6 text-[11px] gap-1">
+                    <AlertTriangle className="h-3 w-3" /> {gOverdue} atrasadas
+                  </Badge>
+                )}
+              </div>
             </section>
           );
         })}
       </div>
 
-      <TaskItemCheckDialog
-        open={!!checking}
-        onOpenChange={(v) => !v && setChecking(null)}
-        item={checking?.item ?? null}
-        clientName={checking?.clientName ?? ""}
-      />
     </Card>
   );
 }
