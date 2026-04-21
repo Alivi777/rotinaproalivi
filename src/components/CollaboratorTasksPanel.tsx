@@ -53,17 +53,17 @@ export default function CollaboratorTasksPanel() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [checking, setChecking] = useState<{ item: ClientTaskItem; clientName: string } | null>(null);
 
-  const today = todayKey();
+  const today = spToday();
 
   async function load() {
     const start =
       range === "week"
         ? (() => {
-            const d = new Date();
-            const dow = d.getDay();
-            const diff = dow === 0 ? -6 : 1 - dow;
-            d.setDate(d.getDate() + diff);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            // Início da semana (segunda) em SP
+            const refSp = new Date(`${spToday()}T00:00:00-03:00`);
+            const dow = refSp.getUTCDay() === 0 ? 7 : refSp.getUTCDay();
+            refSp.setUTCDate(refSp.getUTCDate() - (dow - 1));
+            return spDate(refSp);
           })()
         : today;
 
@@ -104,15 +104,17 @@ export default function CollaboratorTasksPanel() {
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
 
   // Agrupar por colaborador (responsável do cliente)
-  type Row = { item: ClientTaskItem; client: Client };
+  type Row = { item: ClientTaskItem; client: Client; apptIso: string | null; apptTime: string | null };
   const byAssignee = useMemo(() => {
     const m = new Map<string | null, Row[]>();
     for (const it of items) {
       const c = clientById.get(it.client_id);
       if (!c) continue;
       const uid = c.assigned_to;
+      const apptIso = extractApptIso(c.notes);
+      const apptTime = fmtTimeSP(apptIso);
       if (!m.has(uid)) m.set(uid, []);
-      m.get(uid)!.push({ item: it, client: c });
+      m.get(uid)!.push({ item: it, client: c, apptIso, apptTime });
     }
     return Array.from(m.entries())
       .map(([uid, rows]) => ({
@@ -122,6 +124,13 @@ export default function CollaboratorTasksPanel() {
           const ad = a.item.status === "done" ? 1 : 0;
           const bd = b.item.status === "done" ? 1 : 0;
           if (ad !== bd) return ad - bd;
+          // ordena por data, depois horário do agendamento, depois nome
+          if (a.item.task_date !== b.item.task_date) {
+            return a.item.task_date.localeCompare(b.item.task_date);
+          }
+          const at = a.apptIso ?? "";
+          const bt = b.apptIso ?? "";
+          if (at !== bt) return at.localeCompare(bt);
           return a.client.name.localeCompare(b.client.name);
         }),
       }))
