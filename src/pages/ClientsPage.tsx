@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare, AlertTriangle, CalendarSync, Loader2, Stethoscope, CalendarDays } from "lucide-react";
+import { Plus, Phone, Trash2, User, LayoutGrid, List, AlertTriangle, CalendarSync, Loader2, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
 import NewSaleDialog from "@/components/NewSaleDialog";
 import ClientDetailDialog from "@/components/ClientDetailDialog";
