@@ -420,78 +420,12 @@ export default function ClientsPage() {
         </TabsContent>
 
         <TabsContent value="list" className="mt-4">
-          {clients.length === 0 ? (
-            <Card className="p-12 text-center bg-gradient-card border-border/50">
-              <User className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">Nenhum cliente ainda.</p>
-            </Card>
-          ) : (
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {clients.map((c) => {
-                const stage = stages.find((s) => s.id === c.stage_id);
-                const reasons = alerts[c.id] ?? [];
-                const isAlert = reasons.length > 0;
-                return (
-                  <Card
-                    key={c.id}
-                    className={cn(
-                      "p-5 bg-gradient-card border-border/50 hover:border-primary/30 transition-smooth group cursor-pointer",
-                      isAlert && "border-destructive bg-destructive/5 ring-1 ring-destructive/40",
-                    )}
-                    onClick={() => setDetailClient(c)}
-                    title={isAlert ? alertLabel(reasons) : undefined}
-                  >
-                    {isAlert && (
-                      <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-2">
-                        <AlertTriangle className="h-3 w-3" />
-                        {alertLabel(reasons)}
-                      </div>
-                    )}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold truncate">{c.name}</h3>
-                        {c.phone && (
-                          <div className="text-sm text-muted-foreground flex items-center gap-1.5 mt-1">
-                            <Phone className="h-3.5 w-3.5" />
-                            {c.phone}
-                          </div>
-                        )}
-                        {stage && (
-                          <Badge
-                            variant="secondary"
-                            className="mt-2"
-                            style={{
-                              background: (stage.color ?? "hsl(var(--muted))") + "22",
-                              color: stage.color ?? undefined,
-                            }}
-                          >
-                            {stage.name}
-                          </Badge>
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          remove(c.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                      <User className="h-3 w-3" /> {nameOf(c.assigned_to)}
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
-                      <NewSaleDialog clientId={c.id} clientName={c.name} onCreated={load} />
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+          <TasksByDayView
+            clients={boardClients}
+            stages={stages}
+            profiles={profiles}
+            onOpenClient={(c) => setDetailClient(c)}
+          />
         </TabsContent>
       </Tabs>
 
