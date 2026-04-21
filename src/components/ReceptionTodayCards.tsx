@@ -471,7 +471,7 @@ export default function ReceptionTodayCards({
 
       {totalToday === 0 && pending.length === 0 && (
         <Card className="p-8 text-center text-sm text-muted-foreground">
-          Nenhuma tarefa para hoje. Use “Sincronizar tarefas da semana”.
+          Nenhuma tarefa para hoje. Use “Sincronizar agendas da semana”.
         </Card>
       )}
     </div>
