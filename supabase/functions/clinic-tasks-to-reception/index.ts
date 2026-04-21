@@ -173,18 +173,25 @@ Deno.serve(async (req) => {
     console.log(`[tasks-to-reception] ${tasks.length} tasks → ${groups.size} cards`);
 
     // 5) Limpar cards anteriores gerados pela função (mantém manuais)
-    //    Critério: tem [tasks:...] no notes E está em 'Fazer hoje' ou nas
-    //    colunas antigas (task-*). Não mexe nos Concluídos.
+    //    Critério: tem [tasks:...] no notes E NÃO está em 'Concluído'.
+    //    Deleta em LOTES para não estourar o timeout do PostgREST.
     const { data: oldCards } = await supabase
       .from("clients")
-      .select("id, stage_id, notes")
+      .select("id")
       .eq("sector_id", sector.id)
       .like("notes", "%[tasks:%")
       .neq("stage_id", doneStageId ?? "00000000-0000-0000-0000-000000000000");
     const oldIds = (oldCards ?? []).map((c) => c.id);
-    if (oldIds.length > 0) {
-      await supabase.from("client_task_items").delete().in("client_id", oldIds);
-      await supabase.from("clients").delete().in("id", oldIds);
+    console.log(`[tasks-to-reception] cleaning ${oldIds.length} old cards`);
+    const DEL_BATCH = 100;
+    for (let i = 0; i < oldIds.length; i += DEL_BATCH) {
+      const chunk = oldIds.slice(i, i + DEL_BATCH);
+      const { error: delItemsErr } = await supabase
+        .from("client_task_items").delete().in("client_id", chunk);
+      if (delItemsErr) console.error("del items err:", delItemsErr.message);
+      const { error: delCardsErr } = await supabase
+        .from("clients").delete().in("id", chunk);
+      if (delCardsErr) console.error("del cards err:", delCardsErr.message);
     }
 
     // 6) Inserir cards + items em LOTE (evita timeout/502 com muitos roundtrips)
