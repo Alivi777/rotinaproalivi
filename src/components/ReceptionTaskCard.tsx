@@ -119,7 +119,15 @@ export default function ReceptionTaskCard({
           </div>
         )}
 
-        <div className="font-medium text-sm truncate">{client.name}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {apptTime && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold tabular-nums px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+              <Clock className="h-3 w-3" />
+              {apptTime}
+            </span>
+          )}
+          <div className="font-medium text-sm truncate">{client.name}</div>
+        </div>
 
         {client.phone && (
           <div className="text-xs text-muted-foreground flex items-center justify-between gap-1 mt-1">
