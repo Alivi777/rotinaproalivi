@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { CalendarDays, Search } from "lucide-react";
 import { spToday } from "@/lib/spTime";
 import ReceptionTaskCard from "@/components/ReceptionTaskCard";
-import ClientDetailDialog from "@/components/ClientDetailDialog";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 
 type Client = {
@@ -23,15 +22,20 @@ type Props = {
   clients: Client[];
   profiles: Profile[];
   taskItemsByClient: Map<string, ClientTaskItem[]>;
+  onOpenClient: (client: Client) => void;
 };
 
 /**
  * Grid de cards de paciente — cada card lista TODAS as tarefas de hoje
  * daquele paciente (D-7..D-1 / aniversário) com checkbox individual.
  */
-export default function ReceptionTodayCards({ clients, profiles, taskItemsByClient }: Props) {
+export default function ReceptionTodayCards({
+  clients,
+  profiles,
+  taskItemsByClient,
+  onOpenClient,
+}: Props) {
   const [search, setSearch] = useState("");
-  const [openClient, setOpenClient] = useState<Client | null>(null);
 
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
   const today = spToday();
@@ -121,20 +125,12 @@ export default function ReceptionTodayCards({ clients, profiles, taskItemsByClie
                     ? profileById.get(client.assigned_to)?.display_name || "Sem responsável"
                     : "— Sem responsável —"
                 }
-                onClick={() => setOpenClient(client)}
+                onClick={() => onOpenClient(client)}
               />
             ))}
           </div>
         )}
       </div>
-
-      <ClientDetailDialog
-        clientId={openClient?.id ?? null}
-        clientName={openClient?.name ?? ""}
-        clientPhone={openClient?.phone ?? null}
-        open={!!openClient}
-        onOpenChange={(v) => !v && setOpenClient(null)}
-      />
     </>
   );
 }
