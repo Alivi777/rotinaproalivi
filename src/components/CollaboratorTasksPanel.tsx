@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -11,12 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, AlertTriangle, CheckCircle2, Clock, Phone, MessageCircle, Stethoscope } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { parseClientNotesMeta, relativeDayLabel } from "@/lib/clientNotesMeta";
-import { openWhatsappWeb } from "@/lib/whatsapp";
+import { Users, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { spToday, spDate } from "@/lib/spTime";
-import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 import { useAuth } from "@/lib/auth";
 
