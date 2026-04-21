@@ -33,7 +33,7 @@ import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { cn } from "@/lib/utils";
 import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
-import { parseClientNotesMeta, relativeDayLabel } from "@/lib/clientNotesMeta";
+import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import TasksByDayView from "@/components/TasksByDayView";
 
