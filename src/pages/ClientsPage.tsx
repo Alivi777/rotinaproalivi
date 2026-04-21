@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Phone, Trash2, User, LayoutGrid, List, AlertTriangle, CalendarSync, Loader2, Stethoscope } from "lucide-react";
+import { Plus, Phone, Trash2, User, LayoutGrid, List, AlertTriangle, CalendarSync, Loader2, Stethoscope, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import NewSaleDialog from "@/components/NewSaleDialog";
 import ClientDetailDialog from "@/components/ClientDetailDialog";
@@ -36,6 +36,9 @@ import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
 import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import TasksByDayView from "@/components/TasksByDayView";
+import ReceptionTaskCard from "@/components/ReceptionTaskCard";
+import ProductivityPanel from "@/components/ProductivityPanel";
+import { useClientTaskItems } from "@/lib/useClientTaskItems";
 
 type Client = {
   id: string;
@@ -57,7 +60,7 @@ export default function ClientsPage() {
   const { sectors } = useSectors();
   const [clients, setClients] = useState<Client[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [view, setView] = useState<"kanban" | "list">("kanban");
+  const [view, setView] = useState<"kanban" | "list" | "productivity">("kanban");
   const [boardSectorId, setBoardSectorId] = useState<string>("");
   const [syncingWeek, setSyncingWeek] = useState(false);
   const { stages } = useKanbanStages(boardSectorId || profile?.sector_id);
