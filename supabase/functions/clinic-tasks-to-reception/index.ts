@@ -245,9 +245,10 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       const time = fmtTime(g.appointment_at);
       const taskIds = g.tasks.map((t) => t.id);
 
-      // Coluna específica baseada na tarefa de maior prioridade do grupo
-      const primarySlug = TASK_TYPE_STAGE_SLUG[sorted[0]?.task_type] ?? "reception-todo";
-      const stageId = stageBySlug.get(primarySlug) ?? todoStageId;
+      // Coluna baseada na DATA da tarefa: hoje vs amanhã (resto vai pra hoje)
+      const stageId = g.task_date === tomorrowKey
+        ? tomorrowStageId
+        : todoStageId;
 
       const lines: string[] = [];
       if (docName) lines.push(`[doctor:${docName}|${docColor}]`);
