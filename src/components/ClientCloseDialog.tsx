@@ -97,6 +97,7 @@ export default function ClientCloseDialog({
 
   function reset() {
     setNote("");
+    setMessageCopy("");
     setTaskTitle("");
     setAmount("");
     setCost("0");
@@ -105,7 +106,10 @@ export default function ClientCloseDialog({
 
   async function confirm() {
     if (!user) return;
-    if (!note.trim()) return toast.error("Registre uma observação");
+    const noteText = note.trim();
+    const copyText = messageCopy.trim();
+    if (!noteText && !copyText)
+      return toast.error("Registre o que foi feito OU cole a cópia da mensagem enviada");
     const finalAssignee = assigneeId || user.id;
 
     if (mode === "won") {
@@ -122,11 +126,19 @@ export default function ClientCloseDialog({
 
     setSaving(true);
 
+    // Compose body: observação + cópia da mensagem (se ambos existirem)
+    const composedBody = [
+      noteText && `[→ ${targetStageName}] ${noteText}`,
+      copyText && `📋 Cópia da mensagem:\n${copyText}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     // 1) Note (timeline)
     const { error: noteErr } = await supabase.from("client_notes").insert({
       client_id: clientId,
       author_id: user.id,
-      body: `[→ ${targetStageName}] ${note.trim()}`,
+      body: composedBody,
     });
     if (noteErr) {
       setSaving(false);
