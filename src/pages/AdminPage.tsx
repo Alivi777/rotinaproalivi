@@ -282,7 +282,7 @@ export default function AdminPage() {
             <Users className="h-4 w-4 mr-1.5" /> Kanban
           </TabsTrigger>
           <TabsTrigger value="doctors">
-            <Stethoscope className="h-4 w-4 mr-1.5" /> Doutores
+            <Stethoscope className="h-4 w-4 mr-1.5" /> Delegação por doutor
           </TabsTrigger>
         </TabsList>
 

@@ -66,6 +66,7 @@ export default function ClientCloseDialog({
 
   // shared
   const [note, setNote] = useState("");
+  const [messageCopy, setMessageCopy] = useState("");
 
   // transition / lost task
   const [taskTitle, setTaskTitle] = useState("");
@@ -96,6 +97,7 @@ export default function ClientCloseDialog({
 
   function reset() {
     setNote("");
+    setMessageCopy("");
     setTaskTitle("");
     setAmount("");
     setCost("0");
@@ -104,7 +106,10 @@ export default function ClientCloseDialog({
 
   async function confirm() {
     if (!user) return;
-    if (!note.trim()) return toast.error("Registre uma observação");
+    const noteText = note.trim();
+    const copyText = messageCopy.trim();
+    if (!noteText && !copyText)
+      return toast.error("Registre o que foi feito OU cole a cópia da mensagem enviada");
     const finalAssignee = assigneeId || user.id;
 
     if (mode === "won") {
@@ -121,11 +126,19 @@ export default function ClientCloseDialog({
 
     setSaving(true);
 
+    // Compose body: observação + cópia da mensagem (se ambos existirem)
+    const composedBody = [
+      noteText && `[→ ${targetStageName}] ${noteText}`,
+      copyText && `📋 Cópia da mensagem:\n${copyText}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     // 1) Note (timeline)
     const { error: noteErr } = await supabase.from("client_notes").insert({
       client_id: clientId,
       author_id: user.id,
-      body: `[→ ${targetStageName}] ${note.trim()}`,
+      body: composedBody,
     });
     if (noteErr) {
       setSaving(false);
@@ -186,10 +199,17 @@ export default function ClientCloseDialog({
       }
     }
 
-    // 4) Move stage
+    // 4) Move stage — também grava o resumo em clients.notes para satisfazer
+    //    o trigger enforce_note_on_won_stage e dar contexto direto no card.
+    const summary = [
+      noteText && `✍️ ${noteText}`,
+      copyText && `📋 Mensagem enviada:\n${copyText}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     const { error: stageErr } = await supabase
       .from("clients")
-      .update({ stage_id: targetStageId })
+      .update({ stage_id: targetStageId, notes: summary })
       .eq("id", clientId);
     if (stageErr) {
       setSaving(false);
@@ -311,22 +331,41 @@ export default function ClientCloseDialog({
             </>
           )}
 
-          <div>
-            <Label>Observação *</Label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={
-                mode === "won"
-                  ? "Resumo do fechamento, condições combinadas…"
-                  : mode === "lost"
-                    ? "Motivo da perda, aprendizados…"
-                    : "O que avançou nessa etapa? Próximos passos…"
-              }
-              rows={3}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Registrada com data e hora automaticamente no histórico.
+          <div className="rounded-lg border border-border/60 bg-secondary/30 p-3 space-y-3">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
+              Comprovação obrigatória — preencha pelo menos um *
+            </div>
+
+            <div>
+              <Label>✍️ O que foi feito (observação)</Label>
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={
+                  mode === "won"
+                    ? "Resumo do fechamento, condições combinadas…"
+                    : mode === "lost"
+                      ? "Motivo da perda, aprendizados…"
+                      : "O que avançou nessa etapa? Próximos passos…"
+                }
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label>📋 Cópia da mensagem enviada</Label>
+              <Textarea
+                value={messageCopy}
+                onChange={(e) => setMessageCopy(e.target.value)}
+                placeholder="Cole aqui o conteúdo da mensagem que enviou ao cliente (WhatsApp, ligação, etc.)"
+                rows={3}
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Para arrastar/concluir é obrigatório registrar pelo menos um dos dois
+              (observação OU cópia da mensagem). Os dois ficam no histórico com
+              data e hora.
             </p>
           </div>
 
