@@ -170,25 +170,44 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
 
     // 5) Limpar cards anteriores gerados pela função (mantém manuais)
     //    Critério: tem [tasks:...] no notes E NÃO está em 'Concluído'.
-    //    Deleta em LOTES para não estourar o timeout do PostgREST.
-    const { data: oldCards } = await supabase
-      .from("clients")
-      .select("id")
-      .eq("sector_id", sector.id)
-      .like("notes", "%[tasks:%")
-      .neq("stage_id", doneStageId ?? "00000000-0000-0000-0000-000000000000");
-    const oldIds = (oldCards ?? []).map((c) => c.id);
-    console.log(`[tasks-to-reception] cleaning ${oldIds.length} old cards`);
+    //    Busca em páginas de 1000 para não parar no limite padrão do PostgREST.
     const DEL_BATCH = 100;
-    for (let i = 0; i < oldIds.length; i += DEL_BATCH) {
-      const chunk = oldIds.slice(i, i + DEL_BATCH);
-      const { error: delItemsErr } = await supabase
-        .from("client_task_items").delete().in("client_id", chunk);
-      if (delItemsErr) console.error("del items err:", delItemsErr.message);
-      const { error: delCardsErr } = await supabase
-        .from("clients").delete().in("id", chunk);
-      if (delCardsErr) console.error("del cards err:", delCardsErr.message);
+    let totalDeleted = 0;
+
+    while (true) {
+      const { data: oldCards, error: oldCardsErr } = await supabase
+        .from("clients")
+        .select("id")
+        .eq("sector_id", sector.id)
+        .like("notes", "%[tasks:%")
+        .neq("stage_id", doneStageId ?? "00000000-0000-0000-0000-000000000000")
+        .limit(1000);
+
+      if (oldCardsErr) {
+        console.error("old cards fetch err:", oldCardsErr.message);
+        break;
+      }
+
+      const oldIds = (oldCards ?? []).map((c) => c.id);
+      if (oldIds.length === 0) break;
+
+      console.log(`[tasks-to-reception] cleaning page with ${oldIds.length} old cards`);
+      for (let i = 0; i < oldIds.length; i += DEL_BATCH) {
+        const chunk = oldIds.slice(i, i + DEL_BATCH);
+        const { error: delItemsErr } = await supabase
+          .from("client_task_items").delete().in("client_id", chunk);
+        if (delItemsErr) console.error("del items err:", delItemsErr.message);
+
+        const { error: delCardsErr } = await supabase
+          .from("clients").delete().in("id", chunk);
+        if (delCardsErr) console.error("del cards err:", delCardsErr.message);
+        else totalDeleted += chunk.length;
+      }
+
+      if (oldIds.length < 1000) break;
     }
+
+    console.log(`[tasks-to-reception] cleaned ${totalDeleted} old cards total`);
 
     // 6) Inserir cards + items em LOTE (evita timeout/502 com muitos roundtrips)
     let cardsCreated = 0;
