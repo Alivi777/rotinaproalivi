@@ -102,11 +102,27 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       .from("sectors").select("id").eq("slug", "recepcao").single();
     if (secErr || !sector) throw new Error("Setor recepcao não encontrado");
 
+    // Mapeia task_type → slug da coluna específica
+    const TASK_TYPE_STAGE_SLUG: Record<string, string> = {
+      birthday: "task-birthday",
+      confirm_d7: "task-confirm-d7",
+      confirm_d6: "task-confirm-d6",
+      confirm_d5: "task-confirm-d5",
+      confirm_d4: "task-confirm-d4",
+      protocol_d3: "task-protocol-d3",
+      urgency_d2: "task-urgency-d2",
+      unbook_confirm_d1: "task-unbook-d1",
+    };
+
+    const wantedSlugs = [
+      "reception-todo", "reception-new-urgent", "task-done",
+      ...Object.values(TASK_TYPE_STAGE_SLUG),
+    ];
     const { data: stages } = await supabase
       .from("kanban_stages")
       .select("id, slug")
       .eq("sector_id", sector.id)
-      .in("slug", ["reception-todo", "reception-new-urgent", "task-done"]);
+      .in("slug", wantedSlugs);
     const stageBySlug = new Map((stages ?? []).map((s) => [s.slug, s.id]));
     const todoStageId = stageBySlug.get("reception-todo");
     const doneStageId = stageBySlug.get("task-done");
@@ -220,6 +236,7 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       docColor: string;
       assignedTo: string | null;
       notes: string;
+      stageId: string;
     };
     const prepared: GroupPrepared[] = [];
 
@@ -234,6 +251,10 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       const time = fmtTime(g.appointment_at);
       const taskIds = g.tasks.map((t) => t.id);
 
+      // Coluna específica baseada na tarefa de maior prioridade do grupo
+      const primarySlug = TASK_TYPE_STAGE_SLUG[sorted[0]?.task_type] ?? "reception-todo";
+      const stageId = stageBySlug.get(primarySlug) ?? todoStageId;
+
       const lines: string[] = [];
       if (docName) lines.push(`[doctor:${docName}|${docColor}]`);
       lines.push(`📅 ${fmtDate(g.task_date)}${time ? ` • Consulta às ${time}` : ""}`);
@@ -244,7 +265,7 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       if (g.appointment_at) lines.push(`[appt:${g.appointment_at}]`);
       lines.push(`[tasks:${taskIds.join(",")}]`);
 
-      prepared.push({ g, sorted, docName, docColor, assignedTo, notes: lines.join("\n") });
+      prepared.push({ g, sorted, docName, docColor, assignedTo, notes: lines.join("\n"), stageId });
     }
 
     // Inserir clients em lotes de 200
@@ -256,7 +277,7 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
         phone: p.g.patient_phone,
         notes: p.notes,
         sector_id: sector.id,
-        stage_id: todoStageId,
+        stage_id: p.stageId,
         assigned_to: p.assignedTo,
         board_position: 0,
       }));
