@@ -171,20 +171,7 @@ export default function ClinicDashboardTab() {
   const pendingItems = totalItems - doneItems;
   const completionRate = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
 
-  const profileName = (uid: string | null) =>
-    uid ? profiles.find((p) => p.user_id === uid)?.display_name || "—" : "Sem usuário";
-
-  const perUser = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const it of filteredItems) {
-      if (it.status !== "done" || !it.completed_by) continue;
-      counts.set(it.completed_by, (counts.get(it.completed_by) ?? 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .map(([uid, count]) => ({ uid, name: profileName(uid), count }))
-      .sort((a, b) => b.count - a.count);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredItems, profiles]);
+  // (ranking removido a pedido — só contagens totais permanecem)
 
   const periodLabel: Record<Period, string> = {
     today: "Hoje",

@@ -1,10 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { CalendarDays, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Search,
+  AlertOctagon,
+  CalendarClock,
+  CheckCircle2,
+  MessageSquareText,
+  Clock,
+} from "lucide-react";
 import { spToday } from "@/lib/spTime";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 import ReceptionTaskCard from "@/components/ReceptionTaskCard";
+import { openWhatsappWeb } from "@/lib/whatsapp";
+import { cn } from "@/lib/utils";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 
 type Client = {
@@ -18,6 +31,15 @@ type Client = {
 
 type Profile = { user_id: string; display_name: string | null };
 
+type PendingAttendance = {
+  id: string;
+  from_phone: string;
+  from_name: string | null;
+  client_id: string | null;
+  last_message_at: string;
+  assigned_to: string | null;
+};
+
 type Props = {
   clients: Client[];
   profiles: Profile[];
@@ -25,9 +47,16 @@ type Props = {
   onOpenClient: (client: Client) => void;
 };
 
+type ColumnKey = "novo" | "programadas" | "concluidos";
+
 /**
- * Grid de cards de paciente — cada card lista TODAS as tarefas de hoje
- * daquele paciente (D-7..D-1 / aniversário) com checkbox individual.
+ * Funil de Execução da Recepção — 3 colunas fixas:
+ *   1) Novo Atendimento (WhatsApp pending)
+ *   2) Programadas (pacientes com tarefas de HOJE pendentes)
+ *   3) Concluídos (todas as tarefas de hoje feitas)
+ *
+ * Drag-and-drop: arrastar um card para "Concluídos" marca a próxima
+ * tarefa pendente como feita; arrastar para "Programadas" reabre.
  */
 export default function ReceptionTodayCards({
   clients,
@@ -35,14 +64,46 @@ export default function ReceptionTodayCards({
   taskItemsByClient,
   onOpenClient,
 }: Props) {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [pending, setPending] = useState<PendingAttendance[]>([]);
+  const [overCol, setOverCol] = useState<ColumnKey | null>(null);
 
-  const profileById = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
+  const profileById = useMemo(
+    () => new Map(profiles.map((p) => [p.user_id, p])),
+    [profiles],
+  );
   const today = spToday();
 
-  /** Por paciente: somente itens de hoje. */
-  const cards = useMemo(() => {
-    const list: { client: Client; items: ClientTaskItem[] }[] = [];
+  // ---- Carrega novos atendimentos do WhatsApp ----
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const { data } = await supabase
+        .from("whatsapp_pending_attendances")
+        .select("id, from_phone, from_name, client_id, last_message_at, assigned_to")
+        .eq("status", "waiting")
+        .order("last_message_at", { ascending: true });
+      if (!cancelled) setPending((data ?? []) as PendingAttendance[]);
+    }
+    load();
+    const ch = supabase
+      .channel("recepcao-funil-wpa")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "whatsapp_pending_attendances" },
+        load,
+      )
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, []);
+
+  // ---- Mapeia pacientes com tarefas de HOJE ----
+  const cardsToday = useMemo(() => {
+    const list: { client: Client; items: ClientTaskItem[]; allDone: boolean }[] = [];
     for (const client of clients) {
       const all = taskItemsByClient.get(client.id) ?? [];
       const todayItems = all
@@ -50,87 +111,339 @@ export default function ReceptionTodayCards({
         .sort((a, b) => a.sort_order - b.sort_order);
       if (todayItems.length === 0) continue;
       if (search && !client.name.toLowerCase().includes(search.toLowerCase())) continue;
-      list.push({ client, items: todayItems });
+      const allDone = todayItems.every((i) => i.status === "done");
+      list.push({ client, items: todayItems, allDone });
     }
-    // Ordenação: cards com pendentes primeiro, depois pelo nome
-    list.sort((a, b) => {
-      const ap = a.items.some((i) => i.status === "pending") ? 0 : 1;
-      const bp = b.items.some((i) => i.status === "pending") ? 0 : 1;
-      if (ap !== bp) return ap - bp;
-      return a.client.name.localeCompare(b.client.name);
-    });
+    list.sort((a, b) => a.client.name.localeCompare(b.client.name));
     return list;
   }, [clients, taskItemsByClient, today, search]);
 
-  const totalItems = cards.reduce((s, c) => s + c.items.length, 0);
-  const doneItems = cards.reduce(
-    (s, c) => s + c.items.filter((i) => i.status === "done").length,
-    0,
-  );
-  const pendingItems = totalItems - doneItems;
+  const programadas = cardsToday.filter((c) => !c.allDone);
+  const concluidos = cardsToday.filter((c) => c.allDone);
 
-  if (clients.length === 0 || (cards.length === 0 && !search)) {
-    return (
-      <Card className="p-12 text-center bg-gradient-card border-border/50">
-        <CalendarDays className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-        <p className="text-muted-foreground">
-          Nenhuma tarefa para hoje. Use “Sincronizar tarefas da semana”.
-        </p>
-      </Card>
+  // Filtra novos atendimentos por busca
+  const novosFiltrados = useMemo(() => {
+    if (!search) return pending;
+    const q = search.toLowerCase();
+    return pending.filter(
+      (p) =>
+        (p.from_name ?? "").toLowerCase().includes(q) ||
+        (p.from_phone ?? "").includes(q),
     );
+  }, [pending, search]);
+
+  // ---- Drag handlers ----
+  function onDragStart(e: React.DragEvent, clientId: string) {
+    e.dataTransfer.setData("text/plain", clientId);
+    e.dataTransfer.effectAllowed = "move";
   }
 
+  async function onDropCol(e: React.DragEvent, target: ColumnKey) {
+    e.preventDefault();
+    setOverCol(null);
+    const clientId = e.dataTransfer.getData("text/plain");
+    if (!clientId) return;
+    const items = taskItemsByClient.get(clientId) ?? [];
+    const todayItems = items.filter((i) => i.task_date === today);
+    if (todayItems.length === 0) return;
+
+    if (target === "concluidos") {
+      const next = todayItems.find((i) => i.status === "pending");
+      if (!next) return; // já tudo feito
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("client_task_items")
+        .update({
+          status: "done",
+          completed_at: now,
+          completed_by: user?.id ?? null,
+        })
+        .eq("id", next.id);
+      if (error) return toast.error(error.message);
+      if (next.daily_task_id) {
+        await supabase
+          .from("clinic_daily_tasks")
+          .update({
+            status: "done",
+            completed_at: now,
+            completed_by: user?.id ?? null,
+          })
+          .eq("id", next.daily_task_id);
+      }
+      toast.success(`Tarefa "${next.task_label}" concluída`);
+    } else if (target === "programadas") {
+      // Reabrir a última concluída
+      const lastDone = [...todayItems].reverse().find((i) => i.status === "done");
+      if (!lastDone) return;
+      const { error } = await supabase
+        .from("client_task_items")
+        .update({ status: "pending", completed_at: null, completed_by: null })
+        .eq("id", lastDone.id);
+      if (error) return toast.error(error.message);
+      if (lastDone.daily_task_id) {
+        await supabase
+          .from("clinic_daily_tasks")
+          .update({ status: "pending", completed_at: null, completed_by: null })
+          .eq("id", lastDone.daily_task_id);
+      }
+      toast.message(`Tarefa "${lastDone.task_label}" reaberta`);
+    }
+  }
+
+  function onDragOverCol(e: React.DragEvent, col: ColumnKey) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (overCol !== col) setOverCol(col);
+  }
+
+  async function attendNow(att: PendingAttendance) {
+    const { error } = await supabase
+      .from("whatsapp_pending_attendances")
+      .update({
+        status: "attended",
+        resolved_at: new Date().toISOString(),
+        resolved_by: user?.id ?? null,
+      })
+      .eq("id", att.id);
+    if (error) return toast.error(error.message);
+    toast.success("Atendimento marcado como feito");
+    openWhatsappWeb(att.from_phone);
+  }
+
+  const totalToday = cardsToday.length;
+  const doneCount = concluidos.length;
+  const pendingCount = programadas.length;
+
   return (
-    <>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Tarefas de hoje</h2>
-            <p className="text-xs text-muted-foreground">
-              {cards.length} {cards.length === 1 ? "paciente" : "pacientes"} · {pendingItems} pendentes · {doneItems} feitas
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar paciente..."
-                className="pl-7 h-8 w-52 text-xs"
-              />
-            </div>
-            <Badge variant="secondary" className="text-xs">
-              {pendingItems} pendentes
-            </Badge>
-            <Badge className="text-xs bg-success/20 text-success hover:bg-success/30">
-              {doneItems} feitas
-            </Badge>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Funil da Recepção</h2>
+          <p className="text-xs text-muted-foreground">
+            {pending.length} novos · {pendingCount} programados · {doneCount} concluídos
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar paciente..."
+              className="pl-7 h-8 w-52 text-xs"
+            />
           </div>
         </div>
-
-        {cards.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground text-sm">
-            Nenhum paciente encontrado para “{search}”.
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-            {cards.map(({ client, items }) => (
-              <ReceptionTaskCard
-                key={client.id}
-                client={client}
-                items={items}
-                responsibleName={
-                  client.assigned_to
-                    ? profileById.get(client.assigned_to)?.display_name || "Sem responsável"
-                    : "— Sem responsável —"
-                }
-                onClick={() => onOpenClient(client)}
-              />
-            ))}
-          </div>
-        )}
       </div>
-    </>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* COL 1 — Novo Atendimento */}
+        <FunnelColumn
+          title="Novo Atendimento"
+          subtitle="WhatsApp aguardando — atenda agora"
+          icon={<AlertOctagon className="h-4 w-4 text-destructive" />}
+          accent="destructive"
+          count={novosFiltrados.length}
+          onDragOver={(e) => onDragOverCol(e, "novo")}
+          onDragLeave={() => setOverCol(null)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setOverCol(null);
+          }}
+          highlight={overCol === "novo"}
+        >
+          {novosFiltrados.length === 0 ? (
+            <EmptyHint text="Sem novos atendimentos." />
+          ) : (
+            novosFiltrados.map((att) => (
+              <Card
+                key={att.id}
+                className="p-3 border-destructive/40 bg-destructive/5 ring-1 ring-destructive/30 animate-pulse-slow"
+              >
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <Badge
+                    variant="destructive"
+                    className="h-5 text-[10px] uppercase tracking-wider"
+                  >
+                    Atenda agora
+                  </Badge>
+                  <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {minutesAgo(att.last_message_at)} min
+                  </span>
+                </div>
+                <div className="font-medium text-sm truncate">
+                  {att.from_name || "Contato sem nome"}
+                </div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {att.from_phone}
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1 h-7 text-xs"
+                    onClick={() => attendNow(att)}
+                  >
+                    <MessageSquareText className="h-3 w-3 mr-1" />
+                    Atender
+                  </Button>
+                </div>
+              </Card>
+            ))
+          )}
+        </FunnelColumn>
+
+        {/* COL 2 — Programadas (tarefas de hoje) */}
+        <FunnelColumn
+          title="Programadas para hoje"
+          subtitle="Tarefas da Agenda Clínica do dia"
+          icon={<CalendarClock className="h-4 w-4 text-primary" />}
+          accent="primary"
+          count={programadas.length}
+          onDragOver={(e) => onDragOverCol(e, "programadas")}
+          onDragLeave={() => setOverCol(null)}
+          onDrop={(e) => onDropCol(e, "programadas")}
+          highlight={overCol === "programadas"}
+        >
+          {programadas.length === 0 ? (
+            <EmptyHint text={search ? `Nada para "${search}".` : "Sem programadas hoje."} />
+          ) : (
+            programadas.map(({ client, items }) => (
+              <div
+                key={client.id}
+                draggable
+                onDragStart={(e) => onDragStart(e, client.id)}
+                className="cursor-grab active:cursor-grabbing"
+              >
+                <ReceptionTaskCard
+                  client={client}
+                  items={items}
+                  responsibleName={
+                    client.assigned_to
+                      ? profileById.get(client.assigned_to)?.display_name ||
+                        "Sem responsável"
+                      : "— Sem responsável —"
+                  }
+                  onClick={() => onOpenClient(client)}
+                />
+              </div>
+            ))
+          )}
+        </FunnelColumn>
+
+        {/* COL 3 — Concluídos */}
+        <FunnelColumn
+          title="Concluídos"
+          subtitle="Todas as tarefas do dia feitas"
+          icon={<CheckCircle2 className="h-4 w-4 text-success" />}
+          accent="success"
+          count={concluidos.length}
+          onDragOver={(e) => onDragOverCol(e, "concluidos")}
+          onDragLeave={() => setOverCol(null)}
+          onDrop={(e) => onDropCol(e, "concluidos")}
+          highlight={overCol === "concluidos"}
+        >
+          {concluidos.length === 0 ? (
+            <EmptyHint text="Arraste cards prontos para cá." />
+          ) : (
+            concluidos.map(({ client, items }) => (
+              <div
+                key={client.id}
+                draggable
+                onDragStart={(e) => onDragStart(e, client.id)}
+                className="cursor-grab active:cursor-grabbing"
+              >
+                <ReceptionTaskCard
+                  client={client}
+                  items={items}
+                  responsibleName={
+                    client.assigned_to
+                      ? profileById.get(client.assigned_to)?.display_name ||
+                        "Sem responsável"
+                      : "— Sem responsável —"
+                  }
+                  onClick={() => onOpenClient(client)}
+                />
+              </div>
+            ))
+          )}
+        </FunnelColumn>
+      </div>
+
+      {totalToday === 0 && pending.length === 0 && (
+        <Card className="p-8 text-center text-sm text-muted-foreground">
+          Nenhuma tarefa para hoje. Use “Sincronizar tarefas da semana”.
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function minutesAgo(iso: string): number {
+  return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+}
+
+function EmptyHint({ text }: { text: string }) {
+  return (
+    <div className="text-xs text-muted-foreground/60 text-center py-8 border border-dashed border-border/40 rounded-lg">
+      {text}
+    </div>
+  );
+}
+
+function FunnelColumn({
+  title,
+  subtitle,
+  icon,
+  accent,
+  count,
+  children,
+  highlight,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+}: {
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  accent: "destructive" | "primary" | "success";
+  count: number;
+  children: React.ReactNode;
+  highlight?: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+}) {
+  const accentRing =
+    accent === "destructive"
+      ? "ring-destructive/40"
+      : accent === "success"
+        ? "ring-success/40"
+        : "ring-primary/40";
+
+  return (
+    <section
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={cn(
+        "rounded-xl bg-secondary/30 border border-border/50 p-3 min-h-[200px] transition-all",
+        highlight && `bg-secondary/60 ring-2 ${accentRing}`,
+      )}
+    >
+      <header className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          {icon}
+          <div>
+            <h3 className="font-semibold text-sm leading-none">{title}</h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
+          </div>
+        </div>
+        <Badge variant="secondary" className="h-5 text-xs">
+          {count}
+        </Badge>
+      </header>
+      <div className="space-y-2">{children}</div>
+    </section>
   );
 }
