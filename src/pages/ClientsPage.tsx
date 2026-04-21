@@ -324,6 +324,7 @@ export default function ClientsPage() {
                     {items.map((c) => {
                       const reasons = alerts[c.id] ?? [];
                       const isAlert = reasons.length > 0;
+                      const meta = parseClientNotesMeta(c.notes);
                       return (
                       <Card
                         key={c.id}
@@ -334,6 +335,19 @@ export default function ClientsPage() {
                         onClick={() => setDetailClient(c)}
                         title={isAlert ? alertLabel(reasons) : undefined}
                       >
+                        {meta.doctorName && (
+                          <div
+                            className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded mb-1.5"
+                            style={{
+                              background: (meta.doctorColor || "hsl(var(--muted))") + "33",
+                              color: meta.doctorColor || "hsl(var(--foreground))",
+                              border: `1px solid ${meta.doctorColor || "hsl(var(--border))"}55`,
+                            }}
+                          >
+                            <Stethoscope className="h-3 w-3" />
+                            {meta.doctorName}
+                          </div>
+                        )}
                         {isAlert && (
                           <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
                             <AlertTriangle className="h-3 w-3" />
@@ -342,8 +356,21 @@ export default function ClientsPage() {
                         )}
                         <div className="font-medium text-sm truncate">{c.name}</div>
                         {c.phone && (
-                          <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                            <Phone className="h-3 w-3" /> {c.phone}
+                          <div className="text-xs text-muted-foreground flex items-center justify-between gap-1 mt-1">
+                            <span className="flex items-center gap-1 truncate">
+                              <Phone className="h-3 w-3 shrink-0" /> {c.phone}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openWhatsappWeb(c.phone);
+                              }}
+                              className="text-success hover:underline text-[10px] uppercase tracking-wider font-semibold"
+                              title="Abrir WhatsApp Web"
+                            >
+                              WhatsApp
+                            </button>
                           </div>
                         )}
                         <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
