@@ -15,15 +15,20 @@ export function normalizeWhatsappPhone(phone: string | null | undefined): string
 }
 
 /**
- * Gera link do WhatsApp Web para um telefone.
- * Sempre usa `web.whatsapp.com/send?phone=...` para forçar abrir no navegador desktop.
+ * Gera link do WhatsApp para um telefone.
+ * Usa `wa.me` (link oficial) que abre o WhatsApp Web no desktop e o app no mobile.
+ * O `web.whatsapp.com/send` direto costuma ser recusado quando o usuário não está
+ * com a sessão ativa naquela aba — `wa.me` faz o roteamento correto.
  */
 export function whatsappWebLink(phone: string | null | undefined, text?: string): string | null {
   const num = normalizeWhatsappPhone(phone);
   if (!num) return null;
-  const q = new URLSearchParams({ phone: num });
-  if (text) q.set("text", text);
-  return `https://web.whatsapp.com/send?${q.toString()}`;
+  const base = `https://wa.me/${num}`;
+  if (text) {
+    const q = new URLSearchParams({ text });
+    return `${base}?${q.toString()}`;
+  }
+  return base;
 }
 
 /** Abre o WhatsApp Web em nova aba. */
