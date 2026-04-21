@@ -220,7 +220,7 @@ export default function ClientsPage() {
     <AppShell>
       <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Clientes</h1>
+          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Funis de Execução</h1>
           <p className="text-muted-foreground mt-1">
             {clients.length} {clients.length === 1 ? "cliente" : "clientes"} no total
           </p>

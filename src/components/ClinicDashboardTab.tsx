@@ -341,47 +341,6 @@ export default function ClinicDashboardTab() {
           />
         </div>
 
-        <div className="border-t border-border/50 pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold">Ranking por usuário</h3>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              {perUser.length} {perUser.length === 1 ? "pessoa" : "pessoas"}
-            </span>
-          </div>
-          {perUser.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              Nenhuma tarefa concluída no período.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {perUser.map((u, idx) => {
-                const pct = doneItems > 0 ? (u.count / doneItems) * 100 : 0;
-                return (
-                  <li
-                    key={u.uid}
-                    className="flex items-center gap-3 p-2.5 rounded-lg bg-secondary/40 border border-border/40"
-                  >
-                    <span className="shrink-0 inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold tabular-nums">
-                      {idx + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-sm font-medium truncate">{u.name}</span>
-                        <span className="text-sm font-bold tabular-nums">{u.count}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
       </Card>
     </div>
   );

@@ -31,7 +31,7 @@ const baseNav = [
   { to: "/prioridades", label: "Prioridades", icon: Crosshair },
   { to: "/feedbacks", label: "Feedbacks", icon: MessageCircle },
   { to: "/agenda-clinica", label: "Agenda Clínica", icon: CalendarRange },
-  { to: "/clientes", label: "Clientes", icon: Users },
+  { to: "/clientes", label: "Funis de Execução", icon: Users },
   { to: "/contatos", label: "Contatos", icon: ContactIcon },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
   { to: "/relatorio", label: "Relatório", icon: FileText },
