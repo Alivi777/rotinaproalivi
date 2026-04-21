@@ -466,6 +466,10 @@ export default function ClientsPage() {
             onOpenClient={(c) => setDetailClient(c)}
           />
         </TabsContent>
+
+        <TabsContent value="productivity" className="mt-4">
+          <ProductivityPanel />
+        </TabsContent>
       </Tabs>
 
       <ClientDetailDialog

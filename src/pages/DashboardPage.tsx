@@ -7,6 +7,7 @@ import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
 import PriorityAlert from "@/components/PriorityAlert";
 import WhatsAppTimeDashboard from "@/components/WhatsAppTimeDashboard";
 import ClinicDashboardTab from "@/components/ClinicDashboardTab";
+import ProductivityPanel from "@/components/ProductivityPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle2,
