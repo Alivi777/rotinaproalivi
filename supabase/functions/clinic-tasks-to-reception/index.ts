@@ -236,6 +236,7 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       docColor: string;
       assignedTo: string | null;
       notes: string;
+      stageId: string;
     };
     const prepared: GroupPrepared[] = [];
 
@@ -250,6 +251,10 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       const time = fmtTime(g.appointment_at);
       const taskIds = g.tasks.map((t) => t.id);
 
+      // Coluna específica baseada na tarefa de maior prioridade do grupo
+      const primarySlug = TASK_TYPE_STAGE_SLUG[sorted[0]?.task_type] ?? "reception-todo";
+      const stageId = stageBySlug.get(primarySlug) ?? todoStageId;
+
       const lines: string[] = [];
       if (docName) lines.push(`[doctor:${docName}|${docColor}]`);
       lines.push(`📅 ${fmtDate(g.task_date)}${time ? ` • Consulta às ${time}` : ""}`);
@@ -260,7 +265,7 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       if (g.appointment_at) lines.push(`[appt:${g.appointment_at}]`);
       lines.push(`[tasks:${taskIds.join(",")}]`);
 
-      prepared.push({ g, sorted, docName, docColor, assignedTo, notes: lines.join("\n") });
+      prepared.push({ g, sorted, docName, docColor, assignedTo, notes: lines.join("\n"), stageId });
     }
 
     // Inserir clients em lotes de 200
@@ -272,7 +277,7 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
         phone: p.g.patient_phone,
         notes: p.notes,
         sector_id: sector.id,
-        stage_id: todoStageId,
+        stage_id: p.stageId,
         assigned_to: p.assignedTo,
         board_position: 0,
       }));
