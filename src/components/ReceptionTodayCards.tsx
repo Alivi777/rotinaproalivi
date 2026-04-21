@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import ReceptionTaskCard from "@/components/ReceptionTaskCard";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
+import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 
 type Client = {
