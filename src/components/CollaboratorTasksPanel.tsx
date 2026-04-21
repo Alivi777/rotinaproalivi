@@ -46,7 +46,7 @@ export default function CollaboratorTasksPanel() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [range, setRange] = useState<"today" | "pending" | "week">("today");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
-  const [checking, setChecking] = useState<{ item: ClientTaskItem; clientName: string } | null>(null);
+  
 
   const today = spToday();
 
@@ -240,12 +240,6 @@ export default function CollaboratorTasksPanel() {
         })}
       </div>
 
-      <TaskItemCheckDialog
-        open={!!checking}
-        onOpenChange={(v) => !v && setChecking(null)}
-        item={checking?.item ?? null}
-        clientName={checking?.clientName ?? ""}
-      />
     </Card>
   );
 }
