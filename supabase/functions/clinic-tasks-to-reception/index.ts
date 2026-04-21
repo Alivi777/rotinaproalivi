@@ -187,9 +187,19 @@ Deno.serve(async (req) => {
       await supabase.from("clients").delete().in("id", oldIds);
     }
 
-    // 6) Inserir cards + items
+    // 6) Inserir cards + items em LOTE (evita timeout/502 com muitos roundtrips)
     let cardsCreated = 0;
     let itemsCreated = 0;
+
+    type GroupPrepared = {
+      g: Group;
+      sorted: Task[];
+      docName: string;
+      docColor: string;
+      assignedTo: string | null;
+      notes: string;
+    };
+    const prepared: GroupPrepared[] = [];
 
     for (const g of groups.values()) {
       const sorted = [...g.tasks].sort(
@@ -212,39 +222,57 @@ Deno.serve(async (req) => {
       if (g.appointment_at) lines.push(`[appt:${g.appointment_at}]`);
       lines.push(`[tasks:${taskIds.join(",")}]`);
 
-      const { data: inserted, error: insErr } = await supabase
+      prepared.push({ g, sorted, docName, docColor, assignedTo, notes: lines.join("\n") });
+    }
+
+    // Inserir clients em lotes de 200
+    const BATCH = 200;
+    for (let i = 0; i < prepared.length; i += BATCH) {
+      const slice = prepared.slice(i, i + BATCH);
+      const rows = slice.map((p) => ({
+        name: p.g.patient_name,
+        phone: p.g.patient_phone,
+        notes: p.notes,
+        sector_id: sector.id,
+        stage_id: todoStageId,
+        assigned_to: p.assignedTo,
+        board_position: 0,
+      }));
+      const { data: insertedRows, error: insErr } = await supabase
         .from("clients")
-        .insert({
-          name: g.patient_name,
-          phone: g.patient_phone,
-          notes: lines.join("\n"),
-          sector_id: sector.id,
-          stage_id: todoStageId,
-          assigned_to: assignedTo,
-          board_position: 0,
-        })
-        .select("id")
-        .single();
-      if (insErr || !inserted) {
-        console.error("client insert err:", insErr?.message);
+        .insert(rows)
+        .select("id");
+      if (insErr || !insertedRows) {
+        console.error("client batch insert err:", insErr?.message);
         continue;
       }
-      cardsCreated++;
+      cardsCreated += insertedRows.length;
 
-      const items = sorted.map((t, idx) => ({
-        client_id: inserted.id,
-        daily_task_id: t.id,
-        task_type: t.task_type,
-        task_label: TASK_TYPE_LABEL[t.task_type] ?? t.task_type,
-        task_howto: TASK_TYPE_HOWTO[t.task_type] ?? null,
-        task_date: g.task_date,
-        status: "pending",
-        sort_order: idx,
-      }));
-      if (items.length > 0) {
-        const { error: itemErr } = await supabase.from("client_task_items").insert(items);
+      // Cada linha inserida corresponde, em ordem, a um item de `slice`
+      const itemsBatch: Array<Record<string, unknown>> = [];
+      insertedRows.forEach((row, idx) => {
+        const p = slice[idx];
+        if (!p) return;
+        p.sorted.forEach((t, k) => {
+          itemsBatch.push({
+            client_id: row.id,
+            daily_task_id: t.id,
+            task_type: t.task_type,
+            task_label: TASK_TYPE_LABEL[t.task_type] ?? t.task_type,
+            task_howto: TASK_TYPE_HOWTO[t.task_type] ?? null,
+            task_date: p.g.task_date,
+            status: "pending",
+            sort_order: k,
+          });
+        });
+      });
+
+      // Inserir items em sub-lotes
+      for (let j = 0; j < itemsBatch.length; j += 500) {
+        const chunk = itemsBatch.slice(j, j + 500);
+        const { error: itemErr } = await supabase.from("client_task_items").insert(chunk);
         if (itemErr) console.error("items insert err:", itemErr.message);
-        else itemsCreated += items.length;
+        else itemsCreated += chunk.length;
       }
     }
 
