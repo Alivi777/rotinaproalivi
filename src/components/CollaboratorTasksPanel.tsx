@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/select";
 import { Users, AlertTriangle, CheckCircle2, Clock, Phone, MessageCircle, Stethoscope } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
+import { parseClientNotesMeta, relativeDayLabel } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
+import { spToday, spDate } from "@/lib/spTime";
 import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 import { useAuth } from "@/lib/auth";
@@ -22,9 +23,21 @@ import { useAuth } from "@/lib/auth";
 type Client = { id: string; name: string; phone: string | null; notes: string | null; assigned_to: string | null };
 type Profile = { user_id: string; display_name: string | null };
 
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** HH:mm em SP a partir de ISO. */
+function fmtTimeSP(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
+/** Extrai appointment_at da tag [appt:...] das notes do cliente. */
+function extractApptIso(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+  const m = notes.match(/\[appt:([^\]]+)\]/);
+  return m ? m[1].trim() : null;
 }
 
 /**
