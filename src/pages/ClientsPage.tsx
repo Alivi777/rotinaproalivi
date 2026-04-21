@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
 import { parseClientNotesMeta, relativeDayLabel } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
+import TasksByDayView from "@/components/TasksByDayView";
 
 type Client = {
   id: string;
