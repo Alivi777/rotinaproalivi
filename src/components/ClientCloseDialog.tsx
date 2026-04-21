@@ -66,6 +66,7 @@ export default function ClientCloseDialog({
 
   // shared
   const [note, setNote] = useState("");
+  const [messageCopy, setMessageCopy] = useState("");
 
   // transition / lost task
   const [taskTitle, setTaskTitle] = useState("");
