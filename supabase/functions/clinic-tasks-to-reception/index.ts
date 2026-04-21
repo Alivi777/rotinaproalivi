@@ -209,6 +209,7 @@ Deno.serve(async (req) => {
       if (g.patient_phone) lines.push(`📱 ${g.patient_phone}`);
       lines.push("");
       lines.push(`[task_date:${g.task_date}]`);
+      if (g.appointment_at) lines.push(`[appt:${g.appointment_at}]`);
       lines.push(`[tasks:${taskIds.join(",")}]`);
 
       const { data: inserted, error: insErr } = await supabase

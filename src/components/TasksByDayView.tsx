@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Phone, Stethoscope, User, MessageCircle, ChevronRight } from "lucide-react";
-import { parseClientNotesMeta, relativeDayLabel, stripMetaTags } from "@/lib/clientNotesMeta";
+import { CalendarDays, Phone, Stethoscope, User, MessageCircle, ChevronRight, Clock } from "lucide-react";
+import { parseClientNotesMeta, relativeDayLabel, stripMetaTags, extractApptIso } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import ReceptionTaskCard from "@/components/ReceptionTaskCard";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
@@ -48,7 +48,8 @@ export default function TasksByDayView({
           const meta = parseClientNotesMeta(c.notes);
           const clientItems = taskItemsByClient.get(c.id) ?? [];
           const taskDate = clientItems[0]?.task_date ?? meta.taskDate;
-          return { c, meta, clientItems, taskDate };
+          const apptIso = extractApptIso(c.notes);
+          return { c, meta, clientItems, taskDate, apptIso };
         })
         .filter((x) => !!x.taskDate),
     [clients, taskItemsByClient],
@@ -60,6 +61,15 @@ export default function TasksByDayView({
       const d = item.taskDate!;
       if (!m.has(d)) m.set(d, []);
       m.get(d)!.push(item);
+    }
+    // Dentro de cada dia, ordena por horário do agendamento e depois por nome
+    for (const [, list] of m) {
+      list.sort((a, b) => {
+        const at = a.apptIso ?? "";
+        const bt = b.apptIso ?? "";
+        if (at !== bt) return at.localeCompare(bt);
+        return a.c.name.localeCompare(b.c.name);
+      });
     }
     return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [enriched]);

@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarDays, Phone, Stethoscope, User, AlertTriangle, MessageCircle } from "lucide-react";
+import { CalendarDays, Phone, Stethoscope, User, MessageCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
+import { spToday } from "@/lib/spTime";
 import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 
@@ -25,9 +26,21 @@ type Props = {
   taskItemsByClient: Map<string, ClientTaskItem[]>;
 };
 
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** HH:mm no fuso de São Paulo a partir de um ISO. */
+function fmtApptTime(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
+/** Extrai appointment_at da tag [appt:...] gravada nas notes pelo edge function. */
+function extractApptIso(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+  const m = notes.match(/\[appt:([^\]]+)\]/);
+  return m ? m[1].trim() : null;
 }
 
 /**
@@ -41,24 +54,36 @@ export default function ReceptionTodayList({ clients, profiles, taskItemsByClien
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 
-  const today = todayKey();
+  const today = spToday();
 
   const rows = useMemo(() => {
-    const list: { item: ClientTaskItem; client: Client; meta: ReturnType<typeof parseClientNotesMeta> }[] = [];
+    type Row = {
+      item: ClientTaskItem;
+      client: Client;
+      meta: ReturnType<typeof parseClientNotesMeta>;
+      apptIso: string | null;
+      apptTime: string | null;
+    };
+    const list: Row[] = [];
     for (const [clientId, items] of taskItemsByClient.entries()) {
       const client = clientById.get(clientId);
       if (!client) continue;
       const meta = parseClientNotesMeta(client.notes);
+      const apptIso = extractApptIso(client.notes);
+      const apptTime = fmtApptTime(apptIso);
       for (const item of items) {
         if (item.task_date !== today) continue;
-        list.push({ item, client, meta });
+        list.push({ item, client, meta, apptIso, apptTime });
       }
     }
-    // pendentes primeiro, depois por nome do cliente
+    // Pendentes primeiro, depois por horário do agendamento (asc), depois por nome
     list.sort((a, b) => {
       const ad = a.item.status === "done" ? 1 : 0;
       const bd = b.item.status === "done" ? 1 : 0;
       if (ad !== bd) return ad - bd;
+      const at = a.apptIso ?? "";
+      const bt = b.apptIso ?? "";
+      if (at !== bt) return at.localeCompare(bt);
       return a.client.name.localeCompare(b.client.name);
     });
     return list;
@@ -99,7 +124,7 @@ export default function ReceptionTodayList({ clients, profiles, taskItemsByClien
         </div>
 
         <ul className="divide-y divide-border/50">
-          {rows.map(({ item, client, meta }) => {
+          {rows.map(({ item, client, meta, apptTime }) => {
             const isDone = item.status === "done";
             const responsibleName = client.assigned_to
               ? profileById.get(client.assigned_to)?.display_name || "Sem responsável"
@@ -123,6 +148,12 @@ export default function ReceptionTodayList({ clients, profiles, taskItemsByClien
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {apptTime && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold tabular-nums px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                        <Clock className="h-3 w-3" />
+                        {apptTime}
+                      </span>
+                    )}
                     <span
                       className={cn(
                         "font-medium",

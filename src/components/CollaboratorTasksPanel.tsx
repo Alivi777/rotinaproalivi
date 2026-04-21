@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/select";
 import { Users, AlertTriangle, CheckCircle2, Clock, Phone, MessageCircle, Stethoscope } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
+import { parseClientNotesMeta, relativeDayLabel } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
+import { spToday, spDate } from "@/lib/spTime";
 import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 import { useAuth } from "@/lib/auth";
@@ -22,9 +23,21 @@ import { useAuth } from "@/lib/auth";
 type Client = { id: string; name: string; phone: string | null; notes: string | null; assigned_to: string | null };
 type Profile = { user_id: string; display_name: string | null };
 
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** HH:mm em SP a partir de ISO. */
+function fmtTimeSP(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
+/** Extrai appointment_at da tag [appt:...] das notes do cliente. */
+function extractApptIso(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+  const m = notes.match(/\[appt:([^\]]+)\]/);
+  return m ? m[1].trim() : null;
 }
 
 /**
@@ -40,17 +53,17 @@ export default function CollaboratorTasksPanel() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [checking, setChecking] = useState<{ item: ClientTaskItem; clientName: string } | null>(null);
 
-  const today = todayKey();
+  const today = spToday();
 
   async function load() {
     const start =
       range === "week"
         ? (() => {
-            const d = new Date();
-            const dow = d.getDay();
-            const diff = dow === 0 ? -6 : 1 - dow;
-            d.setDate(d.getDate() + diff);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+            // Início da semana (segunda) em SP
+            const refSp = new Date(`${spToday()}T00:00:00-03:00`);
+            const dow = refSp.getUTCDay() === 0 ? 7 : refSp.getUTCDay();
+            refSp.setUTCDate(refSp.getUTCDate() - (dow - 1));
+            return spDate(refSp);
           })()
         : today;
 
@@ -91,15 +104,17 @@ export default function CollaboratorTasksPanel() {
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
 
   // Agrupar por colaborador (responsável do cliente)
-  type Row = { item: ClientTaskItem; client: Client };
+  type Row = { item: ClientTaskItem; client: Client; apptIso: string | null; apptTime: string | null };
   const byAssignee = useMemo(() => {
     const m = new Map<string | null, Row[]>();
     for (const it of items) {
       const c = clientById.get(it.client_id);
       if (!c) continue;
       const uid = c.assigned_to;
+      const apptIso = extractApptIso(c.notes);
+      const apptTime = fmtTimeSP(apptIso);
       if (!m.has(uid)) m.set(uid, []);
-      m.get(uid)!.push({ item: it, client: c });
+      m.get(uid)!.push({ item: it, client: c, apptIso, apptTime });
     }
     return Array.from(m.entries())
       .map(([uid, rows]) => ({
@@ -109,6 +124,13 @@ export default function CollaboratorTasksPanel() {
           const ad = a.item.status === "done" ? 1 : 0;
           const bd = b.item.status === "done" ? 1 : 0;
           if (ad !== bd) return ad - bd;
+          // ordena por data, depois horário do agendamento, depois nome
+          if (a.item.task_date !== b.item.task_date) {
+            return a.item.task_date.localeCompare(b.item.task_date);
+          }
+          const at = a.apptIso ?? "";
+          const bt = b.apptIso ?? "";
+          if (at !== bt) return at.localeCompare(bt);
           return a.client.name.localeCompare(b.client.name);
         }),
       }))
@@ -198,7 +220,7 @@ export default function CollaboratorTasksPanel() {
               </div>
 
               <ul className="divide-y divide-border/40 rounded-lg border border-border/40 bg-card/40">
-                {g.rows.map(({ item, client }) => {
+                {g.rows.map(({ item, client, apptTime }) => {
                   const isDone = item.status === "done";
                   const overdue = !isDone && item.task_date < today;
                   const meta = parseClientNotesMeta(client.notes);
@@ -217,6 +239,12 @@ export default function CollaboratorTasksPanel() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
+                          {apptTime && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold tabular-nums px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                              <Clock className="h-2.5 w-2.5" />
+                              {apptTime}
+                            </span>
+                          )}
                           <span className={cn("font-medium text-sm", isDone && "line-through text-muted-foreground")}>
                             {item.task_label}
                           </span>
@@ -247,7 +275,7 @@ export default function CollaboratorTasksPanel() {
                             </span>
                           )}
                           <span className="text-[10px] uppercase tracking-wider">
-                            {item.task_date}
+                            {relativeDayLabel(item.task_date)}
                           </span>
                         </div>
                       </div>
