@@ -102,22 +102,9 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       .from("sectors").select("id").eq("slug", "recepcao").single();
     if (secErr || !sector) throw new Error("Setor recepcao não encontrado");
 
-    // Mapeia task_type → slug da coluna específica
-    const TASK_TYPE_STAGE_SLUG: Record<string, string> = {
-      birthday: "task-birthday",
-      confirm_d7: "task-confirm-d7",
-      confirm_d6: "task-confirm-d6",
-      confirm_d5: "task-confirm-d5",
-      confirm_d4: "task-confirm-d4",
-      protocol_d3: "task-protocol-d3",
-      urgency_d2: "task-urgency-d2",
-      unbook_confirm_d1: "task-unbook-d1",
-    };
-
-    const wantedSlugs = [
-      "reception-todo", "reception-new-urgent", "task-done",
-      ...Object.values(TASK_TYPE_STAGE_SLUG),
-    ];
+    // Modelo Hoje/Amanhã: cards com task_date=hoje vão pra "reception-todo",
+    // task_date=amanhã vão pra "reception-tomorrow", outros vão pra "reception-todo".
+    const wantedSlugs = ["reception-todo", "reception-tomorrow", "reception-new-urgent", "task-done"];
     const { data: stages } = await supabase
       .from("kanban_stages")
       .select("id, slug")
@@ -125,8 +112,15 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       .in("slug", wantedSlugs);
     const stageBySlug = new Map((stages ?? []).map((s) => [s.slug, s.id]));
     const todoStageId = stageBySlug.get("reception-todo");
+    const tomorrowStageId = stageBySlug.get("reception-tomorrow") ?? todoStageId;
     const doneStageId = stageBySlug.get("task-done");
     if (!todoStageId) throw new Error("Stage 'reception-todo' não encontrada");
+
+    // Datas de referência em SP
+    const nowSp = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const todayKey = nowSp.toISOString().slice(0, 10);
+    const tomorrowKey = new Date(nowSp.getTime() + 24 * 60 * 60 * 1000)
+      .toISOString().slice(0, 10);
 
     // 2) Tarefas da semana
     const { data: tasksRaw, error: tErr } = await supabase
@@ -251,9 +245,10 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       const time = fmtTime(g.appointment_at);
       const taskIds = g.tasks.map((t) => t.id);
 
-      // Coluna específica baseada na tarefa de maior prioridade do grupo
-      const primarySlug = TASK_TYPE_STAGE_SLUG[sorted[0]?.task_type] ?? "reception-todo";
-      const stageId = stageBySlug.get(primarySlug) ?? todoStageId;
+      // Coluna baseada na DATA da tarefa: hoje vs amanhã (resto vai pra hoje)
+      const stageId = g.task_date === tomorrowKey
+        ? tomorrowStageId
+        : todoStageId;
 
       const lines: string[] = [];
       if (docName) lines.push(`[doctor:${docName}|${docColor}]`);
