@@ -103,6 +103,34 @@ export default function ReceptionTodayCards({
     };
   }, []);
 
+  // ---- Mapa de doutor por cliente (a partir de notes meta) ----
+  const doctorByClient = useMemo(() => {
+    const map = new Map<string, { name: string; color: string | null }>();
+    for (const c of clients) {
+      const meta = parseClientNotesMeta(c.notes);
+      if (meta.doctorName) {
+        map.set(c.id, { name: meta.doctorName, color: meta.doctorColor ?? null });
+      }
+    }
+    return map;
+  }, [clients]);
+
+  // Lista de doutores com tarefas de hoje (para chips)
+  const doctorChips = useMemo(() => {
+    const seen = new Map<string, { name: string; color: string | null; count: number }>();
+    for (const c of clients) {
+      const all = taskItemsByClient.get(c.id) ?? [];
+      const hasToday = all.some((i) => i.task_date === today);
+      if (!hasToday) continue;
+      const d = doctorByClient.get(c.id);
+      if (!d) continue;
+      const cur = seen.get(d.name);
+      if (cur) cur.count += 1;
+      else seen.set(d.name, { name: d.name, color: d.color, count: 1 });
+    }
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [clients, taskItemsByClient, today, doctorByClient]);
+
   // ---- Mapeia pacientes com tarefas de HOJE ----
   const cardsToday = useMemo(() => {
     const list: { client: Client; items: ClientTaskItem[]; allDone: boolean }[] = [];
@@ -113,18 +141,23 @@ export default function ReceptionTodayCards({
         .sort((a, b) => a.sort_order - b.sort_order);
       if (todayItems.length === 0) continue;
       if (search && !client.name.toLowerCase().includes(search.toLowerCase())) continue;
+      if (doctorFilter) {
+        const d = doctorByClient.get(client.id);
+        if (!d || d.name !== doctorFilter) continue;
+      }
       const allDone = todayItems.every((i) => i.status === "done");
       list.push({ client, items: todayItems, allDone });
     }
     list.sort((a, b) => a.client.name.localeCompare(b.client.name));
     return list;
-  }, [clients, taskItemsByClient, today, search]);
+  }, [clients, taskItemsByClient, today, search, doctorFilter, doctorByClient]);
 
   const programadas = cardsToday.filter((c) => !c.allDone);
   const concluidos = cardsToday.filter((c) => c.allDone);
 
-  // Filtra novos atendimentos por busca
+  // Filtra novos atendimentos por busca (chip de doutor oculta a coluna)
   const novosFiltrados = useMemo(() => {
+    if (doctorFilter) return [] as PendingAttendance[];
     if (!search) return pending;
     const q = search.toLowerCase();
     return pending.filter(
@@ -132,7 +165,7 @@ export default function ReceptionTodayCards({
         (p.from_name ?? "").toLowerCase().includes(q) ||
         (p.from_phone ?? "").includes(q),
     );
-  }, [pending, search]);
+  }, [pending, search, doctorFilter]);
 
   // ---- Drag handlers ----
   function onDragStart(e: React.DragEvent, clientId: string) {
