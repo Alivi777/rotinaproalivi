@@ -11,9 +11,11 @@ type Client = {
   name: string;
   phone: string | null;
   notes: string | null;
+  created_at: string;
   stage_id: string | null;
   assigned_to: string | null;
   sector_id: string | null;
+  board_position: number;
 };
 
 type Stage = { id: string; name: string; color: string | null };
