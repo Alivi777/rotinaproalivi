@@ -54,24 +54,36 @@ export default function ReceptionTodayList({ clients, profiles, taskItemsByClien
   const profileById = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 
-  const today = todayKey();
+  const today = spToday();
 
   const rows = useMemo(() => {
-    const list: { item: ClientTaskItem; client: Client; meta: ReturnType<typeof parseClientNotesMeta> }[] = [];
+    type Row = {
+      item: ClientTaskItem;
+      client: Client;
+      meta: ReturnType<typeof parseClientNotesMeta>;
+      apptIso: string | null;
+      apptTime: string | null;
+    };
+    const list: Row[] = [];
     for (const [clientId, items] of taskItemsByClient.entries()) {
       const client = clientById.get(clientId);
       if (!client) continue;
       const meta = parseClientNotesMeta(client.notes);
+      const apptIso = extractApptIso(client.notes);
+      const apptTime = fmtApptTime(apptIso);
       for (const item of items) {
         if (item.task_date !== today) continue;
-        list.push({ item, client, meta });
+        list.push({ item, client, meta, apptIso, apptTime });
       }
     }
-    // pendentes primeiro, depois por nome do cliente
+    // Pendentes primeiro, depois por horário do agendamento (asc), depois por nome
     list.sort((a, b) => {
       const ad = a.item.status === "done" ? 1 : 0;
       const bd = b.item.status === "done" ? 1 : 0;
       if (ad !== bd) return ad - bd;
+      const at = a.apptIso ?? "";
+      const bt = b.apptIso ?? "";
+      if (at !== bt) return at.localeCompare(bt);
       return a.client.name.localeCompare(b.client.name);
     });
     return list;
