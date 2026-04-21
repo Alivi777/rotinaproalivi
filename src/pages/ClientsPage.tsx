@@ -50,6 +50,7 @@ import { openWhatsappWeb } from "@/lib/whatsapp";
 import TasksByDayView from "@/components/TasksByDayView";
 import ProductivityPanel from "@/components/ProductivityPanel";
 import { useClientTaskItems } from "@/lib/useClientTaskItems";
+import ReceptionTodayList from "@/components/ReceptionTodayList";
 
 type Client = {
   id: string;
@@ -321,11 +322,9 @@ export default function ClientsPage() {
       </header>
 
       {isReception ? (
-        <TasksByDayView
+        <ReceptionTodayList
           clients={boardClients}
-          stages={stages}
           profiles={profiles}
-          onOpenClient={(c) => setDetailClient(c)}
           taskItemsByClient={itemsByClient}
         />
       ) : (
