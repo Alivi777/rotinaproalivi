@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays, Phone, Stethoscope, User, MessageCircle, ChevronRight } from "lucide-react";
 import { parseClientNotesMeta, relativeDayLabel, stripMetaTags } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
+import ReceptionTaskCard from "@/components/ReceptionTaskCard";
+import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 
 type Client = {
   id: string;
@@ -26,40 +28,51 @@ type Props = {
   stages: Stage[];
   profiles: Profile[];
   onOpenClient: (c: Client) => void;
+  taskItemsByClient?: Map<string, ClientTaskItem[]>;
 };
 
-export default function TasksByDayView({ clients, stages, profiles, onOpenClient }: Props) {
+export default function TasksByDayView({
+  clients,
+  stages,
+  profiles,
+  onOpenClient,
+  taskItemsByClient = new Map(),
+}: Props) {
   const stageById = useMemo(() => new Map(stages.map((s) => [s.id, s])), [stages]);
-  const profileById = useMemo(
-    () => new Map(profiles.map((p) => [p.user_id, p])),
-    [profiles],
-  );
+  const profileById = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
 
-  // Apenas cards que vieram da Agenda (têm tag [task_date:...])
   const enriched = useMemo(
     () =>
       clients
-        .map((c) => ({ c, meta: parseClientNotesMeta(c.notes) }))
-        .filter((x) => !!x.meta.taskDate),
-    [clients],
+        .map((c) => {
+          const meta = parseClientNotesMeta(c.notes);
+          const clientItems = taskItemsByClient.get(c.id) ?? [];
+          const taskDate = clientItems[0]?.task_date ?? meta.taskDate;
+          return { c, meta, clientItems, taskDate };
+        })
+        .filter((x) => !!x.taskDate),
+    [clients, taskItemsByClient],
   );
 
-  // Agrupar por dia
   const byDay = useMemo(() => {
     const m = new Map<string, typeof enriched>();
     for (const item of enriched) {
-      const d = item.meta.taskDate!;
+      const d = item.taskDate!;
       if (!m.has(d)) m.set(d, []);
       m.get(d)!.push(item);
     }
     return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [enriched]);
 
-  // Soma por responsável (tudo da semana)
+  const totalTasks = useMemo(
+    () => enriched.reduce((sum, { clientItems }) => sum + (clientItems.length || 1), 0),
+    [enriched],
+  );
+
   const totalByAssignee = useMemo(() => {
     const m = new Map<string | null, number>();
-    for (const { c } of enriched) {
-      m.set(c.assigned_to, (m.get(c.assigned_to) ?? 0) + 1);
+    for (const { c, clientItems } of enriched) {
+      m.set(c.assigned_to, (m.get(c.assigned_to) ?? 0) + (clientItems.length || 1));
     }
     return Array.from(m.entries()).sort((a, b) => b[1] - a[1]);
   }, [enriched]);
@@ -77,7 +90,6 @@ export default function TasksByDayView({ clients, stages, profiles, onOpenClient
 
   return (
     <div className="space-y-6">
-      {/* Resumo por responsável */}
       <Card className="p-5 bg-gradient-card border-border/50">
         <div className="flex items-center gap-2 mb-3">
           <User className="h-4 w-4 text-primary" />
@@ -85,7 +97,7 @@ export default function TasksByDayView({ clients, stages, profiles, onOpenClient
             Tarefas da semana por responsável
           </h3>
           <Badge variant="secondary" className="ml-auto">
-            {enriched.length} no total
+            {totalTasks} tarefas
           </Badge>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -108,33 +120,26 @@ export default function TasksByDayView({ clients, stages, profiles, onOpenClient
         </div>
       </Card>
 
-      {/* Lista por dia */}
       {byDay.map(([date, items]) => {
-        // soma por responsável do dia
+        const dayTotalTasks = items.reduce((sum, { clientItems }) => sum + (clientItems.length || 1), 0);
         const dayByAssignee = new Map<string | null, number>();
-        for (const { c } of items) {
-          dayByAssignee.set(c.assigned_to, (dayByAssignee.get(c.assigned_to) ?? 0) + 1);
+        for (const { c, clientItems } of items) {
+          dayByAssignee.set(c.assigned_to, (dayByAssignee.get(c.assigned_to) ?? 0) + (clientItems.length || 1));
         }
-        const dayAssignees = Array.from(dayByAssignee.entries()).sort(
-          (a, b) => b[1] - a[1],
-        );
+        const dayAssignees = Array.from(dayByAssignee.entries()).sort((a, b) => b[1] - a[1]);
 
         return (
           <section key={date}>
             <div className="flex items-end justify-between mb-3 flex-wrap gap-2">
-              <div className="flex items-baseline gap-3">
-                <h2 className="text-xl font-bold tracking-tight">
-                  {relativeDayLabel(date)}
-                </h2>
+              <div className="flex items-baseline gap-3 flex-wrap">
+                <h2 className="text-xl font-bold tracking-tight">{relativeDayLabel(date)}</h2>
                 <Badge variant="secondary" className="text-xs">
-                  {items.length} tarefa{items.length === 1 ? "" : "s"}
+                  {items.length} clientes · {dayTotalTasks} tarefas
                 </Badge>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {dayAssignees.map(([uid, count]) => {
-                  const name = uid
-                    ? profileById.get(uid)?.display_name || "Sem nome"
-                    : "Sem responsável";
+                  const name = uid ? profileById.get(uid)?.display_name || "Sem nome" : "Sem responsável";
                   return (
                     <span
                       key={uid ?? "none"}
@@ -148,11 +153,24 @@ export default function TasksByDayView({ clients, stages, profiles, onOpenClient
             </div>
 
             <div className="grid lg:grid-cols-2 gap-3">
-              {items.map(({ c, meta }) => {
-                const stage = c.stage_id ? stageById.get(c.stage_id) : undefined;
+              {items.map(({ c, meta, clientItems }) => {
                 const responsibleName = c.assigned_to
                   ? profileById.get(c.assigned_to)?.display_name || "Sem nome"
                   : "— Sem responsável —";
+
+                if (clientItems.length > 0) {
+                  return (
+                    <ReceptionTaskCard
+                      key={c.id}
+                      client={c}
+                      items={clientItems}
+                      responsibleName={responsibleName}
+                      onClick={() => onOpenClient(c)}
+                    />
+                  );
+                }
+
+                const stage = c.stage_id ? stageById.get(c.stage_id) : undefined;
                 const cleanNotes = stripMetaTags(c.notes);
                 return (
                   <Card

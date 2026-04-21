@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -23,9 +24,20 @@ type Props = {
   onDone?: () => void;
 };
 
+const completionSchema = z
+  .object({
+    note: z.string().trim().max(1000, "Comentário muito longo"),
+    messageCopy: z.string().trim().max(4000, "Cópia da mensagem muito longa"),
+    nextTask: z.string().trim().max(500, "Próxima tarefa muito longa"),
+  })
+  .refine((data) => data.note.length > 0 || data.messageCopy.length > 0, {
+    message: "Registre o que foi feito OU cole a cópia da mensagem",
+    path: ["note"],
+  });
+
 /**
  * Dialog para concluir UM item da checklist do card.
- * Exige nota OU cópia da mensagem (igual à regra do card principal).
+ * Exige nota OU cópia da mensagem e permite registrar a próxima tarefa.
  */
 export default function TaskItemCheckDialog({
   open,
@@ -37,35 +49,50 @@ export default function TaskItemCheckDialog({
   const { user } = useAuth();
   const [note, setNote] = useState("");
   const [messageCopy, setMessageCopy] = useState("");
+  const [nextTask, setNextTask] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function confirm() {
     if (!item || !user) return;
-    const noteText = note.trim();
-    const copyText = messageCopy.trim();
-    if (!noteText && !copyText)
-      return toast.error("Registre o que foi feito OU cole a cópia da mensagem");
+
+    const parsed = completionSchema.safeParse({ note, messageCopy, nextTask });
+    if (!parsed.success) {
+      return toast.error(parsed.error.issues[0]?.message || "Dados inválidos");
+    }
+
+    const noteText = parsed.data.note;
+    const copyText = parsed.data.messageCopy;
+    const nextTaskText = parsed.data.nextTask;
+    const combinedNote = [
+      noteText,
+      nextTaskText ? `Próxima tarefa: ${nextTaskText}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n")
+      .trim();
 
     setSaving(true);
+    const now = new Date().toISOString();
+
     const { error } = await supabase
       .from("client_task_items")
       .update({
         status: "done",
-        note: noteText || null,
+        note: combinedNote || null,
         message_copy: copyText || null,
-        completed_at: new Date().toISOString(),
+        completed_at: now,
         completed_by: user.id,
       })
       .eq("id", item.id);
 
     if (!error && item.daily_task_id) {
-      // Marca a tarefa original na agenda clínica como concluída também
       await supabase
         .from("clinic_daily_tasks")
         .update({
           status: "done",
-          completed_at: new Date().toISOString(),
+          completed_at: now,
           completed_by: user.id,
+          notes: combinedNote || null,
         })
         .eq("id", item.daily_task_id);
     }
@@ -75,6 +102,7 @@ export default function TaskItemCheckDialog({
     toast.success("Tarefa concluída");
     setNote("");
     setMessageCopy("");
+    setNextTask("");
     onOpenChange(false);
     onDone?.();
   }
@@ -107,7 +135,7 @@ export default function TaskItemCheckDialog({
 
         <div className="space-y-3">
           <div>
-            <Label>✍️ O que foi feito (observação)</Label>
+            <Label>✍️ Comentário do que foi feito</Label>
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -116,7 +144,7 @@ export default function TaskItemCheckDialog({
             />
           </div>
           <div>
-            <Label>📋 Cópia da mensagem enviada</Label>
+            <Label>📋 Cópia / print da mensagem</Label>
             <Textarea
               value={messageCopy}
               onChange={(e) => setMessageCopy(e.target.value)}
@@ -124,8 +152,17 @@ export default function TaskItemCheckDialog({
               placeholder="Cole aqui o conteúdo enviado pelo WhatsApp"
             />
           </div>
+          <div>
+            <Label>🗓️ Próxima tarefa futura</Label>
+            <Textarea
+              value={nextTask}
+              onChange={(e) => setNextTask(e.target.value)}
+              rows={2}
+              placeholder="Ex.: confirmar retorno em 2 dias"
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
-            Para concluir é obrigatório registrar pelo menos um dos dois.
+            Para concluir é obrigatório registrar comentário ou cópia da mensagem.
           </p>
 
           <Button onClick={confirm} disabled={saving} className="w-full">
