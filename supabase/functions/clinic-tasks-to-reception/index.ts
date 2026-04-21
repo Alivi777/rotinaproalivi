@@ -89,10 +89,13 @@ type Task = {
   task_date: string;
   patient_name: string;
   patient_phone: string | null;
+  doctor_id: string | null;
   doctor_name: string | null;
   appointment_at: string | null;
   notes: string | null;
 };
+
+type Doctor = { id: string; name: string; color: string | null; assigned_user_id: string | null };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
