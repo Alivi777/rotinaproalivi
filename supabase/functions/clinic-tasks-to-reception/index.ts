@@ -127,18 +127,27 @@ Deno.serve(async (req) => {
     // 3) Tarefas da semana
     const { data: tasksRaw, error: tErr } = await supabase
       .from("clinic_daily_tasks")
-      .select("id, task_type, task_date, patient_name, patient_phone, doctor_name, appointment_at, notes")
+      .select("id, task_type, task_date, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, notes")
       .gte("task_date", monday)
       .lte("task_date", saturday)
       .order("task_date", { ascending: true });
     if (tErr) throw tErr;
     const tasks = (tasksRaw ?? []) as Task[];
 
+    // 3.1) Doutores (cor + responsável)
+    const { data: docsRaw } = await supabase
+      .from("clinic_doctors")
+      .select("id, name, color, assigned_user_id");
+    const doctorById = new Map<string, Doctor>(
+      (docsRaw ?? []).map((d) => [d.id, d as Doctor]),
+    );
+
     // 4) Agrupar por paciente+dia
     type Group = {
       key: string;
       patient_name: string;
       patient_phone: string | null;
+      doctor_id: string | null;
       doctor_name: string | null;
       task_date: string;
       appointment_at: string | null;
@@ -153,6 +162,7 @@ Deno.serve(async (req) => {
           key,
           patient_name: t.patient_name,
           patient_phone: t.patient_phone,
+          doctor_id: t.doctor_id,
           doctor_name: t.doctor_name,
           task_date: t.task_date,
           appointment_at: t.appointment_at,
@@ -161,11 +171,11 @@ Deno.serve(async (req) => {
         groups.set(key, g);
       }
       g.tasks.push(t);
-      // Mantém o appointment_at mais cedo (deve ser igual entre tarefas, mas seguro)
       if (t.appointment_at && (!g.appointment_at || t.appointment_at < g.appointment_at)) {
         g.appointment_at = t.appointment_at;
       }
       if (t.doctor_name && !g.doctor_name) g.doctor_name = t.doctor_name;
+      if (t.doctor_id && !g.doctor_id) g.doctor_id = t.doctor_id;
     }
 
     console.log(`[tasks-to-reception] ${tasks.length} tasks → ${groups.size} cards consolidados`);
