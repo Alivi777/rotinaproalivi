@@ -251,14 +251,14 @@ export default function ClientsPage() {
               variant="outline"
               onClick={syncTasksToReception}
               disabled={syncingWeek}
-              title="Recepção: cria tarefas D-7..D-1/aniversário. Sucesso e Auditoria: cria 6 colunas Seg-Sáb e duplica os pacientes da agenda."
+              title="Recepção: cria tarefas D-7..D-1 e aniversário da semana. (Sucesso e Auditoria não são afetados.)"
             >
               {syncingWeek ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
               ) : (
                 <CalendarSync className="h-4 w-4 mr-1" />
               )}
-              Sincronizar agendas da semana
+              Sincronizar tarefas Recepção
             </Button>
           )}
           <Dialog open={open} onOpenChange={setOpen}>
