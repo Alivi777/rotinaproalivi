@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
 import {
   Phone,
   Stethoscope,
@@ -51,6 +50,7 @@ export default function ReceptionTaskCard({
   const meta = useMemo(() => parseClientNotesMeta(client.notes), [client.notes]);
   const pending = items.filter((i) => i.status === "pending");
   const done = items.filter((i) => i.status === "done");
+  const nextPending = pending[0] ?? null;
   const taskDate = items[0]?.task_date;
   const overdue = taskDate ? isOverdue(taskDate) && pending.length > 0 : false;
   const allDone = items.length > 0 && pending.length === 0;
@@ -59,12 +59,35 @@ export default function ReceptionTaskCard({
     <>
       <Card
         className={cn(
-          "p-3 bg-card hover:border-primary/30 transition-smooth cursor-pointer",
+          "relative p-3 pr-12 bg-card hover:border-primary/30 transition-smooth cursor-pointer",
           overdue && "border-destructive bg-destructive/5 ring-1 ring-destructive/40",
           allDone && "border-success/60 bg-success/5",
         )}
         onClick={onClick}
       >
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (nextPending) setChecking(nextPending);
+          }}
+          disabled={!nextPending}
+          className={cn(
+            "absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors",
+            allDone && "border-success bg-success text-success-foreground",
+            !allDone && overdue && "border-destructive bg-destructive/10 text-destructive animate-pulse",
+            !allDone && !overdue && "border-primary bg-primary/10 text-primary hover:bg-primary/15",
+            !nextPending && "cursor-default",
+          )}
+          title={allDone ? "Todas as tarefas concluídas" : "Concluir próxima tarefa"}
+        >
+          {allDone ? (
+            <CheckCircle2 className="h-4 w-4" />
+          ) : (
+            <span className={cn("h-2.5 w-2.5 rounded-full", overdue ? "bg-destructive" : "bg-primary")} />
+          )}
+        </button>
+
         {meta.doctorName && (
           <div
             className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded mb-1.5"
@@ -112,12 +135,8 @@ export default function ReceptionTaskCard({
           {responsibleName}
         </div>
 
-        {/* Checklist de tarefas */}
         {items.length > 0 && (
-          <div
-            className="mt-2.5 pt-2 border-t border-border/40 space-y-1.5"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="mt-2.5 pt-2 border-t border-border/40 space-y-1.5" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
               <span>Tarefas do dia</span>
               <Badge variant={allDone ? "default" : "secondary"} className="h-4 text-[10px] px-1.5">
@@ -137,8 +156,7 @@ export default function ReceptionTaskCard({
                   className={cn(
                     "w-full flex items-start gap-2 text-xs rounded px-1.5 py-1 text-left transition-colors",
                     isDone && "opacity-60 line-through cursor-default",
-                    !isDone &&
-                      "hover:bg-primary/10 hover:ring-1 hover:ring-primary/40 cursor-pointer",
+                    !isDone && "hover:bg-primary/10 hover:ring-1 hover:ring-primary/40 cursor-pointer",
                   )}
                   title={isDone ? "Concluída" : "Clique para concluir esta tarefa"}
                 >
@@ -148,14 +166,14 @@ export default function ReceptionTaskCard({
                       isDone
                         ? "bg-success border-success text-success-foreground"
                         : overdue
-                          ? "border-destructive bg-destructive/10 animate-pulse"
+                          ? "border-destructive bg-destructive/10"
                           : "border-primary bg-primary/10",
                     )}
                   >
                     {isDone ? (
                       <CheckCircle2 className="h-3 w-3" />
                     ) : (
-                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      <span className={cn("h-1.5 w-1.5 rounded-full", overdue ? "bg-destructive" : "bg-primary")} />
                     )}
                   </span>
                   <span className="flex-1 leading-tight">{item.task_label}</span>

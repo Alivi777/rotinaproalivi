@@ -22,7 +22,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Phone, Trash2, User, LayoutGrid, List, AlertTriangle, CalendarSync, Loader2, Stethoscope, Trophy } from "lucide-react";
+import {
+  Plus,
+  Phone,
+  Trash2,
+  User,
+  LayoutGrid,
+  List,
+  AlertTriangle,
+  CalendarSync,
+  Loader2,
+  Stethoscope,
+  Trophy,
+} from "lucide-react";
 import { toast } from "sonner";
 import NewSaleDialog from "@/components/NewSaleDialog";
 import ClientDetailDialog from "@/components/ClientDetailDialog";
@@ -36,7 +48,6 @@ import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
 import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import TasksByDayView from "@/components/TasksByDayView";
-import ReceptionTaskCard from "@/components/ReceptionTaskCard";
 import ProductivityPanel from "@/components/ProductivityPanel";
 import { useClientTaskItems } from "@/lib/useClientTaskItems";
 
@@ -68,7 +79,6 @@ export default function ClientsPage() {
     useMemo(() => clients.map((c) => ({ id: c.id, phone: c.phone })), [clients]),
   );
 
-  // New client form
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -76,7 +86,6 @@ export default function ClientsPage() {
   const [newAssignee, setNewAssignee] = useState<string>("");
   const [newSectorId, setNewSectorId] = useState<string>("");
 
-  // Detail / Close dialogs
   const [detailClient, setDetailClient] = useState<Client | null>(null);
   const [closeTarget, setCloseTarget] = useState<{
     client: Client;
@@ -99,6 +108,7 @@ export default function ClientsPage() {
     if (c.data) setClients(c.data as Client[]);
     if (p.data) setProfiles(p.data as Profile[]);
   }
+
   useEffect(() => {
     load();
   }, []);
@@ -179,10 +189,9 @@ export default function ClientsPage() {
     setCloseTarget({ client, stageId, stageName: stage.name, mode });
   }
 
-  // Filter clients to current board sector
   const boardClients = useMemo(
     () => clients.filter((c) => !boardSectorId || c.sector_id === boardSectorId || !c.sector_id),
-    [clients, boardSectorId]
+    [clients, boardSectorId],
   );
 
   const isReception = useMemo(
@@ -190,10 +199,10 @@ export default function ClientsPage() {
     [sectors, boardSectorId],
   );
 
-  // Itens de checklist (só carrega se for setor Recepção pra evitar query extra)
   const { items: taskItems } = useClientTaskItems(
     useMemo(() => (isReception ? boardClients.map((c) => c.id) : []), [isReception, boardClients]),
   );
+
   const itemsByClient = useMemo(() => {
     const m = new Map<string, typeof taskItems>();
     for (const it of taskItems) {
@@ -311,166 +320,153 @@ export default function ClientsPage() {
         </div>
       </header>
 
-      <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list" | "productivity")} className="mb-4">
-        <TabsList>
-          <TabsTrigger value="kanban">
-            <LayoutGrid className="h-4 w-4 mr-1" /> Kanban
-          </TabsTrigger>
-          <TabsTrigger value="list">
-            <List className="h-4 w-4 mr-1" /> Lista
-          </TabsTrigger>
-          <TabsTrigger value="productivity">
-            <Trophy className="h-4 w-4 mr-1" /> Produtividade
-          </TabsTrigger>
-        </TabsList>
+      {isReception ? (
+        <TasksByDayView
+          clients={boardClients}
+          stages={stages}
+          profiles={profiles}
+          onOpenClient={(c) => setDetailClient(c)}
+          taskItemsByClient={itemsByClient}
+        />
+      ) : (
+        <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list" | "productivity")} className="mb-4">
+          <TabsList>
+            <TabsTrigger value="kanban">
+              <LayoutGrid className="h-4 w-4 mr-1" /> Kanban
+            </TabsTrigger>
+            <TabsTrigger value="list">
+              <List className="h-4 w-4 mr-1" /> Lista
+            </TabsTrigger>
+            <TabsTrigger value="productivity">
+              <Trophy className="h-4 w-4 mr-1" /> Produtividade
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="kanban" className="mt-4">
-          <div className="flex gap-3 overflow-x-auto pb-4">
-            {stages.map((stage) => {
-              const items = boardClients.filter((c) => c.stage_id === stage.id);
-              return (
-                <div
-                  key={stage.id}
-                  className="min-w-[280px] w-[280px] shrink-0 rounded-xl bg-secondary/40 border border-border/50 p-3"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ background: stage.color ?? "hsl(var(--muted))" }}
-                      />
-                      <h3 className="font-semibold text-sm">{stage.name}</h3>
-                    </div>
-                    <Badge variant="secondary" className="h-5 text-xs">
-                      {items.length}
-                    </Badge>
-                  </div>
-                  <div className="space-y-2 min-h-[60px]">
-                    {items.map((c) => {
-                      const reasons = alerts[c.id] ?? [];
-                      const isAlert = reasons.length > 0;
-                      const meta = parseClientNotesMeta(c.notes);
-
-                      // Setor Recepção: usa o novo card com checklist interno
-                      if (isReception) {
-                        return (
-                          <ReceptionTaskCard
-                            key={c.id}
-                            client={c}
-                            items={itemsByClient.get(c.id) ?? []}
-                            responsibleName={nameOf(c.assigned_to)}
-                            onClick={() => setDetailClient(c)}
-                          />
-                        );
-                      }
-
-                      return (
-                      <Card
-                        key={c.id}
-                        className={cn(
-                          "p-3 bg-card hover:border-primary/30 transition-smooth cursor-pointer",
-                          isAlert && "border-destructive bg-destructive/5 ring-1 ring-destructive/40",
-                        )}
-                        onClick={() => setDetailClient(c)}
-                        title={isAlert ? alertLabel(reasons) : undefined}
-                      >
-                        {meta.doctorName && (
-                          <div
-                            className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded mb-1.5"
-                            style={{
-                              background: (meta.doctorColor || "hsl(var(--muted))") + "33",
-                              color: meta.doctorColor || "hsl(var(--foreground))",
-                              border: `1px solid ${meta.doctorColor || "hsl(var(--border))"}55`,
-                            }}
-                          >
-                            <Stethoscope className="h-3 w-3" />
-                            {meta.doctorName}
-                          </div>
-                        )}
-                        {isAlert && (
-                          <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
-                            <AlertTriangle className="h-3 w-3" />
-                            {alertLabel(reasons)}
-                          </div>
-                        )}
-                        <div className="font-medium text-sm truncate">{c.name}</div>
-                        {c.phone && (
-                          <div className="text-xs text-muted-foreground flex items-center justify-between gap-1 mt-1">
-                            <span className="flex items-center gap-1 truncate">
-                              <Phone className="h-3 w-3 shrink-0" /> {c.phone}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openWhatsappWeb(c.phone);
-                              }}
-                              className="text-success hover:underline text-[10px] uppercase tracking-wider font-semibold"
-                              title="Abrir WhatsApp Web"
-                            >
-                              WhatsApp
-                            </button>
-                          </div>
-                        )}
-                        <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {nameOf(c.assigned_to)}
-                        </div>
-                        <div className="mt-2 pt-2 border-t border-border/50">
-                          <Select
-                            value={c.stage_id ?? ""}
-                            onValueChange={(v) => moveTo(c, v)}
-                          >
-                            <SelectTrigger
-                              className="h-7 text-xs"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SelectValue placeholder="Mover" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {stages.map((s) => (
-                                <SelectItem key={s.id} value={s.id}>
-                                  → {s.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </Card>
-                      );
-                    })}
-                    {items.length === 0 && (
-                      <div className="text-xs text-muted-foreground/50 text-center py-6">
-                        Vazio
+          <TabsContent value="kanban" className="mt-4">
+            <div className="flex gap-3 overflow-x-auto pb-4">
+              {stages.map((stage) => {
+                const items = boardClients.filter((c) => c.stage_id === stage.id);
+                return (
+                  <div
+                    key={stage.id}
+                    className="min-w-[280px] w-[280px] shrink-0 rounded-xl bg-secondary/40 border border-border/50 p-3"
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ background: stage.color ?? "hsl(var(--muted))" }}
+                        />
+                        <h3 className="font-semibold text-sm">{stage.name}</h3>
                       </div>
-                    )}
+                      <Badge variant="secondary" className="h-5 text-xs">
+                        {items.length}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2 min-h-[60px]">
+                      {items.map((c) => {
+                        const reasons = alerts[c.id] ?? [];
+                        const isAlert = reasons.length > 0;
+                        const meta = parseClientNotesMeta(c.notes);
+
+                        return (
+                          <Card
+                            key={c.id}
+                            className={cn(
+                              "p-3 bg-card hover:border-primary/30 transition-smooth cursor-pointer",
+                              isAlert && "border-destructive bg-destructive/5 ring-1 ring-destructive/40",
+                            )}
+                            onClick={() => setDetailClient(c)}
+                            title={isAlert ? alertLabel(reasons) : undefined}
+                          >
+                            {meta.doctorName && (
+                              <div
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded mb-1.5"
+                                style={{
+                                  background: (meta.doctorColor || "hsl(var(--muted))") + "33",
+                                  color: meta.doctorColor || "hsl(var(--foreground))",
+                                  border: `1px solid ${meta.doctorColor || "hsl(var(--border))"}55`,
+                                }}
+                              >
+                                <Stethoscope className="h-3 w-3" />
+                                {meta.doctorName}
+                              </div>
+                            )}
+                            {isAlert && (
+                              <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-destructive mb-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                {alertLabel(reasons)}
+                              </div>
+                            )}
+                            <div className="font-medium text-sm truncate">{c.name}</div>
+                            {c.phone && (
+                              <div className="text-xs text-muted-foreground flex items-center justify-between gap-1 mt-1">
+                                <span className="flex items-center gap-1 truncate">
+                                  <Phone className="h-3 w-3 shrink-0" /> {c.phone}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openWhatsappWeb(c.phone);
+                                  }}
+                                  className="text-success hover:underline text-[10px] uppercase tracking-wider font-semibold"
+                                  title="Abrir WhatsApp Web"
+                                >
+                                  WhatsApp
+                                </button>
+                              </div>
+                            )}
+                            <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {nameOf(c.assigned_to)}
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-border/50">
+                              <Select value={c.stage_id ?? ""} onValueChange={(v) => moveTo(c, v)}>
+                                <SelectTrigger className="h-7 text-xs" onClick={(e) => e.stopPropagation()}>
+                                  <SelectValue placeholder="Mover" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {stages.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                      → {s.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                      {items.length === 0 && (
+                        <div className="text-xs text-muted-foreground/50 text-center py-6">Vazio</div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            {stages.length === 0 && (
-              <Card className="p-8 text-center w-full">
-                <p className="text-muted-foreground">
-                  Nenhuma etapa configurada para este setor.
-                </p>
-              </Card>
-            )}
-          </div>
-        </TabsContent>
+                );
+              })}
+              {stages.length === 0 && (
+                <Card className="p-8 text-center w-full">
+                  <p className="text-muted-foreground">Nenhuma etapa configurada para este setor.</p>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
 
-        <TabsContent value="list" className="mt-4">
-          <TasksByDayView
-            clients={boardClients}
-            stages={stages}
-            profiles={profiles}
-            onOpenClient={(c) => setDetailClient(c)}
-          />
-        </TabsContent>
+          <TabsContent value="list" className="mt-4">
+            <TasksByDayView
+              clients={boardClients}
+              stages={stages}
+              profiles={profiles}
+              onOpenClient={(c) => setDetailClient(c)}
+            />
+          </TabsContent>
 
-        <TabsContent value="productivity" className="mt-4">
-          <ProductivityPanel />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="productivity" className="mt-4">
+            <ProductivityPanel />
+          </TabsContent>
+        </Tabs>
+      )}
 
       <ClientDetailDialog
         clientId={detailClient?.id ?? null}
