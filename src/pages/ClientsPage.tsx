@@ -163,13 +163,19 @@ export default function ClientsPage() {
   async function syncTasksToReception() {
     setSyncingWeek(true);
     try {
-      const { data, error } = await supabase.functions.invoke("clinic-tasks-to-reception", {
-        body: {},
-      });
-      if (error) throw error;
-      const d = data as { cards_created?: number; tasks?: number; skipped_existing?: number };
+      // 1) Sincroniza tarefas da Recepção (D-7..D-1, aniversário)
+      const t = await supabase.functions.invoke("clinic-tasks-to-reception", { body: {} });
+      if (t.error) throw t.error;
+      const td = t.data as { cards_created?: number; tasks?: number };
+
+      // 2) Sincroniza agenda da semana para Recepção + Sucesso + Auditoria
+      //    (cria as 6 colunas Seg-Sáb automaticamente em cada setor)
+      const w = await supabase.functions.invoke("clinic-week-to-clients", { body: {} });
+      if (w.error) throw w.error;
+      const wd = w.data as { cards_created?: number; appointments?: number; sectors?: number };
+
       toast.success(
-        `Tarefas → Recepção: ${d.cards_created ?? 0} novos · ${d.skipped_existing ?? 0} já existiam (de ${d.tasks ?? 0} tarefas)`,
+        `Recepção: ${td.cards_created ?? 0} tarefas (de ${td.tasks ?? 0}) · Agenda: ${wd.cards_created ?? 0} cards em ${wd.sectors ?? 0} setores`,
       );
       load();
     } catch (e) {
@@ -243,14 +249,14 @@ export default function ClientsPage() {
               variant="outline"
               onClick={syncTasksToReception}
               disabled={syncingWeek}
-              title="Regera os cards da Recepção (1 por paciente+dia) com as tarefas da Agenda Clínica"
+              title="Recepção: cria tarefas D-7..D-1/aniversário. Sucesso e Auditoria: cria 6 colunas Seg-Sáb e duplica os pacientes da agenda."
             >
               {syncingWeek ? (
                 <Loader2 className="h-4 w-4 mr-1 animate-spin" />
               ) : (
                 <CalendarSync className="h-4 w-4 mr-1" />
               )}
-              Sincronizar tarefas da semana
+              Sincronizar agendas da semana
             </Button>
           )}
           <Dialog open={open} onOpenChange={setOpen}>
