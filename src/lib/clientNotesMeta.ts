@@ -18,6 +18,7 @@ export type ClientNotesMeta = {
 const DOCTOR_RE = /\[doctor:([^|\]]+)\|([^\]]*)\]/;
 const TASK_DATE_RE = /\[task_date:(\d{4}-\d{2}-\d{2})\]/;
 const TASKS_RE = /\[tasks:([^\]]+)\]/;
+const APPT_RE = /\[appt:([^\]]+)\]/;
 
 export function parseClientNotesMeta(notes: string | null | undefined): ClientNotesMeta {
   const meta: ClientNotesMeta = {
@@ -52,8 +53,16 @@ export function stripMetaTags(notes: string | null | undefined): string {
     .replace(DOCTOR_RE, "")
     .replace(TASK_DATE_RE, "")
     .replace(TASKS_RE, "")
+    .replace(APPT_RE, "")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** Extrai o ISO do agendamento gravado em [appt:...]. */
+export function extractApptIso(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+  const m = notes.match(APPT_RE);
+  return m ? m[1].trim() : null;
 }
 
 /** Rótulo do dia da semana (pt-BR) com base em YYYY-MM-DD, fuso SP. */
