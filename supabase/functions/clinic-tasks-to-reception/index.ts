@@ -122,12 +122,12 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
     const tomorrowKey = new Date(nowSp.getTime() + 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10);
 
-    // 2) Tarefas da semana
+    // 2) Tarefas APENAS de hoje e amanhã (não joga dias futuros em "Fazer hoje")
+    //    O cron diário das 6am recria tudo, então cada dia é redistribuído na hora certa.
     const { data: tasksRaw, error: tErr } = await supabase
       .from("clinic_daily_tasks")
       .select("id, task_type, task_date, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, notes")
-      .gte("task_date", monday)
-      .lte("task_date", saturday)
+      .in("task_date", [todayKey, tomorrowKey])
       .order("task_date", { ascending: true });
     if (tErr) throw tErr;
     const tasks = (tasksRaw ?? []) as Task[];
