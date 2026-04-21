@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import {
   Phone,
   Stethoscope,
@@ -127,29 +127,42 @@ export default function ReceptionTaskCard({
             {items.map((item) => {
               const isDone = item.status === "done";
               return (
-                <div
+                <button
                   key={item.id}
+                  type="button"
+                  disabled={isDone}
+                  onClick={() => {
+                    if (!isDone) setChecking(item);
+                  }}
                   className={cn(
-                    "flex items-start gap-2 text-xs rounded px-1.5 py-1",
-                    isDone && "opacity-60 line-through",
-                    !isDone && "hover:bg-secondary/50",
+                    "w-full flex items-start gap-2 text-xs rounded px-1.5 py-1 text-left transition-colors",
+                    isDone && "opacity-60 line-through cursor-default",
+                    !isDone &&
+                      "hover:bg-primary/10 hover:ring-1 hover:ring-primary/40 cursor-pointer",
                   )}
+                  title={isDone ? "Concluída" : "Clique para concluir esta tarefa"}
                 >
-                  <Checkbox
-                    checked={isDone}
-                    disabled={isDone}
-                    onCheckedChange={() => {
-                      if (!isDone) setChecking(item);
-                    }}
-                    className="mt-0.5 shrink-0"
-                  />
+                  <span
+                    className={cn(
+                      "mt-0.5 shrink-0 inline-flex h-4 w-4 items-center justify-center rounded-full border-2",
+                      isDone
+                        ? "bg-success border-success text-success-foreground"
+                        : overdue
+                          ? "border-destructive bg-destructive/10 animate-pulse"
+                          : "border-primary bg-primary/10",
+                    )}
+                  >
+                    {isDone ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : (
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                    )}
+                  </span>
                   <span className="flex-1 leading-tight">{item.task_label}</span>
-                  {isDone ? (
-                    <CheckCircle2 className="h-3 w-3 text-success shrink-0 mt-0.5" />
-                  ) : overdue ? (
+                  {!isDone && overdue && (
                     <Clock className="h-3 w-3 text-destructive shrink-0 mt-0.5" />
-                  ) : null}
-                </div>
+                  )}
+                </button>
               );
             })}
           </div>
