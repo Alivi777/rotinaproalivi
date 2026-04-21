@@ -482,26 +482,20 @@ function minutesAgo(iso: string): number {
   return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
 }
 
-function EmptyHint({ text }: { text: string }) {
-  return (
-    <div className="text-xs text-muted-foreground/60 text-center py-8 border border-dashed border-border/40 rounded-lg">
-      {text}
-    </div>
-  );
-}
+const EmptyHint = React.forwardRef<HTMLDivElement, { text: string }>(
+  function EmptyHint({ text }, ref) {
+    return (
+      <div
+        ref={ref}
+        className="text-xs text-muted-foreground/60 text-center py-8 border border-dashed border-border/40 rounded-lg"
+      >
+        {text}
+      </div>
+    );
+  },
+);
 
-function FunnelColumn({
-  title,
-  subtitle,
-  icon,
-  accent,
-  count,
-  children,
-  highlight,
-  onDragOver,
-  onDragLeave,
-  onDrop,
-}: {
+type FunnelColumnProps = {
   title: string;
   subtitle: string;
   icon: React.ReactNode;
@@ -512,37 +506,45 @@ function FunnelColumn({
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent) => void;
-}) {
-  const accentRing =
-    accent === "destructive"
-      ? "ring-destructive/40"
-      : accent === "success"
-        ? "ring-success/40"
-        : "ring-primary/40";
+};
 
-  return (
-    <section
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      className={cn(
-        "rounded-xl bg-secondary/30 border border-border/50 p-3 min-h-[200px] transition-all",
-        highlight && `bg-secondary/60 ring-2 ${accentRing}`,
-      )}
-    >
-      <header className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {icon}
-          <div>
-            <h3 className="font-semibold text-sm leading-none">{title}</h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
+const FunnelColumn = React.forwardRef<HTMLElement, FunnelColumnProps>(
+  function FunnelColumn(
+    { title, subtitle, icon, accent, count, children, highlight, onDragOver, onDragLeave, onDrop },
+    ref,
+  ) {
+    const accentRing =
+      accent === "destructive"
+        ? "ring-destructive/40"
+        : accent === "success"
+          ? "ring-success/40"
+          : "ring-primary/40";
+
+    return (
+      <section
+        ref={ref}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className={cn(
+          "rounded-xl bg-secondary/30 border border-border/50 p-3 min-h-[200px] transition-all",
+          highlight && `bg-secondary/60 ring-2 ${accentRing}`,
+        )}
+      >
+        <header className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {icon}
+            <div>
+              <h3 className="font-semibold text-sm leading-none">{title}</h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{subtitle}</p>
+            </div>
           </div>
-        </div>
-        <Badge variant="secondary" className="h-5 text-xs">
-          {count}
-        </Badge>
-      </header>
-      <div className="space-y-2">{children}</div>
-    </section>
-  );
-}
+          <Badge variant="secondary" className="h-5 text-xs">
+            {count}
+          </Badge>
+        </header>
+        <div className="space-y-2">{children}</div>
+      </section>
+    );
+  },
+);
