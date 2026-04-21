@@ -279,23 +279,32 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        week: { monday, saturday },
-        tasks: tasks.length,
-        cards_created: cardsCreated,
-        items_created: itemsCreated,
-        skipped_existing: 0,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("clinic-tasks-to-reception error:", msg);
-    return new Response(JSON.stringify({ success: false, error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  console.log(`[tasks-to-reception:bg] DONE week=${monday}..${saturday}`);
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  // Run the heavy sync in background; respond immediately to avoid the
+  // edge-function 150s idle-timeout. Client should poll/reload after ~10-15s.
+  const job = runSync(supabase).catch((e) => {
+    console.error("[tasks-to-reception:bg] FAIL:", e instanceof Error ? e.message : String(e));
+  });
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+    EdgeRuntime.waitUntil(job);
   }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      queued: true,
+      message: "Sincronização iniciada em segundo plano. Aguarde ~15s e recarregue.",
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 });
