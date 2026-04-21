@@ -311,13 +311,16 @@ export default function ClientsPage() {
         </div>
       </header>
 
-      <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list")} className="mb-4">
+      <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list" | "productivity")} className="mb-4">
         <TabsList>
           <TabsTrigger value="kanban">
             <LayoutGrid className="h-4 w-4 mr-1" /> Kanban
           </TabsTrigger>
           <TabsTrigger value="list">
             <List className="h-4 w-4 mr-1" /> Lista
+          </TabsTrigger>
+          <TabsTrigger value="productivity">
+            <Trophy className="h-4 w-4 mr-1" /> Produtividade
           </TabsTrigger>
         </TabsList>
 
@@ -347,6 +350,20 @@ export default function ClientsPage() {
                       const reasons = alerts[c.id] ?? [];
                       const isAlert = reasons.length > 0;
                       const meta = parseClientNotesMeta(c.notes);
+
+                      // Setor Recepção: usa o novo card com checklist interno
+                      if (isReception) {
+                        return (
+                          <ReceptionTaskCard
+                            key={c.id}
+                            client={c}
+                            items={itemsByClient.get(c.id) ?? []}
+                            responsibleName={nameOf(c.assigned_to)}
+                            onClick={() => setDetailClient(c)}
+                          />
+                        );
+                      }
+
                       return (
                       <Card
                         key={c.id}
