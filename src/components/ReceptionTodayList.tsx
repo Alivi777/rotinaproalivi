@@ -124,7 +124,7 @@ export default function ReceptionTodayList({ clients, profiles, taskItemsByClien
         </div>
 
         <ul className="divide-y divide-border/50">
-          {rows.map(({ item, client, meta }) => {
+          {rows.map(({ item, client, meta, apptTime }) => {
             const isDone = item.status === "done";
             const responsibleName = client.assigned_to
               ? profileById.get(client.assigned_to)?.display_name || "Sem responsável"
@@ -148,6 +148,12 @@ export default function ReceptionTodayList({ clients, profiles, taskItemsByClien
                 />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
+                    {apptTime && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold tabular-nums px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                        <Clock className="h-3 w-3" />
+                        {apptTime}
+                      </span>
+                    )}
                     <span
                       className={cn(
                         "font-medium",
