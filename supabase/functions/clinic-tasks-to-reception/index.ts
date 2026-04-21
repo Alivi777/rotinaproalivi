@@ -94,9 +94,8 @@ type Doctor = { id: string; name: string; color: string | null; assigned_user_id
 declare const EdgeRuntime: any;
 
 async function runSync(supabase: ReturnType<typeof createClient>) {
-
-  try {
-    const { monday, saturday } = getWeekRangeSP();
+  const { monday, saturday } = getWeekRangeSP();
+  console.log(`[tasks-to-reception:bg] start week=${monday}..${saturday}`);
 
     // 1) Setor Recepção + colunas
     const { data: sector, error: secErr } = await supabase
