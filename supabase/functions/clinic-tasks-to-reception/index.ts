@@ -102,11 +102,27 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       .from("sectors").select("id").eq("slug", "recepcao").single();
     if (secErr || !sector) throw new Error("Setor recepcao não encontrado");
 
+    // Mapeia task_type → slug da coluna específica
+    const TASK_TYPE_STAGE_SLUG: Record<string, string> = {
+      birthday: "task-birthday",
+      confirm_d7: "task-confirm-d7",
+      confirm_d6: "task-confirm-d6",
+      confirm_d5: "task-confirm-d5",
+      confirm_d4: "task-confirm-d4",
+      protocol_d3: "task-protocol-d3",
+      urgency_d2: "task-urgency-d2",
+      unbook_confirm_d1: "task-unbook-d1",
+    };
+
+    const wantedSlugs = [
+      "reception-todo", "reception-new-urgent", "task-done",
+      ...Object.values(TASK_TYPE_STAGE_SLUG),
+    ];
     const { data: stages } = await supabase
       .from("kanban_stages")
       .select("id, slug")
       .eq("sector_id", sector.id)
-      .in("slug", ["reception-todo", "reception-new-urgent", "task-done"]);
+      .in("slug", wantedSlugs);
     const stageBySlug = new Map((stages ?? []).map((s) => [s.slug, s.id]));
     const todoStageId = stageBySlug.get("reception-todo");
     const doneStageId = stageBySlug.get("task-done");
