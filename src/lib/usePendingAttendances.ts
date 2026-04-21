@@ -62,7 +62,7 @@ export function usePendingAttendances() {
     load();
     if (!user?.id) return;
     const ch = supabase
-      .channel("wpa-mine")
+      .channel(`wpa-mine-${user.id}-${Math.random().toString(36).slice(2, 8)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "whatsapp_pending_attendances" },
