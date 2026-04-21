@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import ReceptionTaskCard from "@/components/ReceptionTaskCard";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
+import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 
 type Client = {
@@ -66,6 +67,7 @@ export default function ReceptionTodayCards({
 }: Props) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [doctorFilter, setDoctorFilter] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAttendance[]>([]);
   const [overCol, setOverCol] = useState<ColumnKey | null>(null);
 
@@ -101,6 +103,34 @@ export default function ReceptionTodayCards({
     };
   }, []);
 
+  // ---- Mapa de doutor por cliente (a partir de notes meta) ----
+  const doctorByClient = useMemo(() => {
+    const map = new Map<string, { name: string; color: string | null }>();
+    for (const c of clients) {
+      const meta = parseClientNotesMeta(c.notes);
+      if (meta.doctorName) {
+        map.set(c.id, { name: meta.doctorName, color: meta.doctorColor ?? null });
+      }
+    }
+    return map;
+  }, [clients]);
+
+  // Lista de doutores com tarefas de hoje (para chips)
+  const doctorChips = useMemo(() => {
+    const seen = new Map<string, { name: string; color: string | null; count: number }>();
+    for (const c of clients) {
+      const all = taskItemsByClient.get(c.id) ?? [];
+      const hasToday = all.some((i) => i.task_date === today);
+      if (!hasToday) continue;
+      const d = doctorByClient.get(c.id);
+      if (!d) continue;
+      const cur = seen.get(d.name);
+      if (cur) cur.count += 1;
+      else seen.set(d.name, { name: d.name, color: d.color, count: 1 });
+    }
+    return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [clients, taskItemsByClient, today, doctorByClient]);
+
   // ---- Mapeia pacientes com tarefas de HOJE ----
   const cardsToday = useMemo(() => {
     const list: { client: Client; items: ClientTaskItem[]; allDone: boolean }[] = [];
@@ -111,18 +141,23 @@ export default function ReceptionTodayCards({
         .sort((a, b) => a.sort_order - b.sort_order);
       if (todayItems.length === 0) continue;
       if (search && !client.name.toLowerCase().includes(search.toLowerCase())) continue;
+      if (doctorFilter) {
+        const d = doctorByClient.get(client.id);
+        if (!d || d.name !== doctorFilter) continue;
+      }
       const allDone = todayItems.every((i) => i.status === "done");
       list.push({ client, items: todayItems, allDone });
     }
     list.sort((a, b) => a.client.name.localeCompare(b.client.name));
     return list;
-  }, [clients, taskItemsByClient, today, search]);
+  }, [clients, taskItemsByClient, today, search, doctorFilter, doctorByClient]);
 
   const programadas = cardsToday.filter((c) => !c.allDone);
   const concluidos = cardsToday.filter((c) => c.allDone);
 
-  // Filtra novos atendimentos por busca
+  // Filtra novos atendimentos por busca (chip de doutor oculta a coluna)
   const novosFiltrados = useMemo(() => {
+    if (doctorFilter) return [] as PendingAttendance[];
     if (!search) return pending;
     const q = search.toLowerCase();
     return pending.filter(
@@ -130,7 +165,7 @@ export default function ReceptionTodayCards({
         (p.from_name ?? "").toLowerCase().includes(q) ||
         (p.from_phone ?? "").includes(q),
     );
-  }, [pending, search]);
+  }, [pending, search, doctorFilter]);
 
   // ---- Drag handlers ----
   function onDragStart(e: React.DragEvent, clientId: string) {
@@ -221,6 +256,7 @@ export default function ReceptionTodayCards({
           <h2 className="text-lg font-semibold">Funil da Recepção</h2>
           <p className="text-xs text-muted-foreground">
             {pending.length} novos · {pendingCount} programados · {doneCount} concluídos
+            {doctorFilter && ` · filtrando: ${doctorFilter}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -229,12 +265,75 @@ export default function ReceptionTodayCards({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar paciente..."
-              className="pl-7 h-8 w-52 text-xs"
+              placeholder="Buscar paciente por nome ou telefone..."
+              className="pl-7 h-8 w-64 text-xs"
             />
           </div>
+          {search && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs"
+              onClick={() => setSearch("")}
+            >
+              Limpar
+            </Button>
+          )}
         </div>
       </div>
+
+      {doctorChips.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1">
+            Doutor:
+          </span>
+          <button
+            type="button"
+            onClick={() => setDoctorFilter(null)}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs border transition-colors",
+              doctorFilter === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-secondary/50 border-border hover:bg-secondary",
+            )}
+          >
+            Todos
+          </button>
+          {doctorChips.map((d) => {
+            const active = doctorFilter === d.name;
+            return (
+              <button
+                key={d.name}
+                type="button"
+                onClick={() => setDoctorFilter(active ? null : d.name)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs border transition-colors",
+                  active
+                    ? "text-primary-foreground border-transparent"
+                    : "bg-secondary/50 border-border hover:bg-secondary",
+                )}
+                style={
+                  active
+                    ? {
+                        background: d.color || "hsl(var(--primary))",
+                        borderColor: d.color || "hsl(var(--primary))",
+                      }
+                    : undefined
+                }
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: d.color || "hsl(var(--muted-foreground))" }}
+                />
+                {d.name}
+                <Badge variant="secondary" className="h-4 text-[10px] px-1">
+                  {d.count}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* COL 1 — Novo Atendimento */}
