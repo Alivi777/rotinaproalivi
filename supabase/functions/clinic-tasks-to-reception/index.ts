@@ -90,16 +90,12 @@ type Task = {
 
 type Doctor = { id: string; name: string; color: string | null; assigned_user_id: string | null };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+// deno-lint-ignore no-explicit-any
+declare const EdgeRuntime: any;
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-
-  try {
-    const { monday, saturday } = getWeekRangeSP();
+async function runSync(supabase: ReturnType<typeof createClient>) {
+  const { monday, saturday } = getWeekRangeSP();
+  console.log(`[tasks-to-reception:bg] start week=${monday}..${saturday}`);
 
     // 1) Setor Recepção + colunas
     const { data: sector, error: secErr } = await supabase
@@ -173,18 +169,25 @@ Deno.serve(async (req) => {
     console.log(`[tasks-to-reception] ${tasks.length} tasks → ${groups.size} cards`);
 
     // 5) Limpar cards anteriores gerados pela função (mantém manuais)
-    //    Critério: tem [tasks:...] no notes E está em 'Fazer hoje' ou nas
-    //    colunas antigas (task-*). Não mexe nos Concluídos.
+    //    Critério: tem [tasks:...] no notes E NÃO está em 'Concluído'.
+    //    Deleta em LOTES para não estourar o timeout do PostgREST.
     const { data: oldCards } = await supabase
       .from("clients")
-      .select("id, stage_id, notes")
+      .select("id")
       .eq("sector_id", sector.id)
       .like("notes", "%[tasks:%")
       .neq("stage_id", doneStageId ?? "00000000-0000-0000-0000-000000000000");
     const oldIds = (oldCards ?? []).map((c) => c.id);
-    if (oldIds.length > 0) {
-      await supabase.from("client_task_items").delete().in("client_id", oldIds);
-      await supabase.from("clients").delete().in("id", oldIds);
+    console.log(`[tasks-to-reception] cleaning ${oldIds.length} old cards`);
+    const DEL_BATCH = 100;
+    for (let i = 0; i < oldIds.length; i += DEL_BATCH) {
+      const chunk = oldIds.slice(i, i + DEL_BATCH);
+      const { error: delItemsErr } = await supabase
+        .from("client_task_items").delete().in("client_id", chunk);
+      if (delItemsErr) console.error("del items err:", delItemsErr.message);
+      const { error: delCardsErr } = await supabase
+        .from("clients").delete().in("id", chunk);
+      if (delCardsErr) console.error("del cards err:", delCardsErr.message);
     }
 
     // 6) Inserir cards + items em LOTE (evita timeout/502 com muitos roundtrips)
@@ -276,23 +279,32 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        week: { monday, saturday },
-        tasks: tasks.length,
-        cards_created: cardsCreated,
-        items_created: itemsCreated,
-        skipped_existing: 0,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("clinic-tasks-to-reception error:", msg);
-    return new Response(JSON.stringify({ success: false, error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  console.log(`[tasks-to-reception:bg] DONE week=${monday}..${saturday}`);
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  // Run the heavy sync in background; respond immediately to avoid the
+  // edge-function 150s idle-timeout. Client should poll/reload after ~10-15s.
+  const job = runSync(supabase).catch((e) => {
+    console.error("[tasks-to-reception:bg] FAIL:", e instanceof Error ? e.message : String(e));
+  });
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+    EdgeRuntime.waitUntil(job);
   }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      queued: true,
+      message: "Sincronização iniciada em segundo plano. Aguarde ~15s e recarregue.",
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
 });
