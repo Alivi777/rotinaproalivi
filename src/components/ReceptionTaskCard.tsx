@@ -10,8 +10,9 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
+import { parseClientNotesMeta, extractApptIso } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
+import { spToday } from "@/lib/spTime";
 import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 
@@ -31,12 +32,19 @@ type Props = {
   onClick: () => void;
 };
 
-function isOverdue(taskDate: string): boolean {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const [y, m, d] = taskDate.split("-").map(Number);
-  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
-  return dt.getTime() < today.getTime();
+/** Comparação de "atrasado" usando data SP (YYYY-MM-DD strings comparáveis). */
+function isOverdueSP(taskDate: string): boolean {
+  return taskDate < spToday();
+}
+
+/** HH:mm em SP a partir de ISO. */
+function fmtTimeSP(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
 }
 
 export default function ReceptionTaskCard({
@@ -48,11 +56,13 @@ export default function ReceptionTaskCard({
   const [checking, setChecking] = useState<ClientTaskItem | null>(null);
 
   const meta = useMemo(() => parseClientNotesMeta(client.notes), [client.notes]);
+  const apptIso = useMemo(() => extractApptIso(client.notes), [client.notes]);
+  const apptTime = useMemo(() => fmtTimeSP(apptIso), [apptIso]);
   const pending = items.filter((i) => i.status === "pending");
   const done = items.filter((i) => i.status === "done");
   const nextPending = pending[0] ?? null;
   const taskDate = items[0]?.task_date;
-  const overdue = taskDate ? isOverdue(taskDate) && pending.length > 0 : false;
+  const overdue = taskDate ? isOverdueSP(taskDate) && pending.length > 0 : false;
   const allDone = items.length > 0 && pending.length === 0;
 
   return (
