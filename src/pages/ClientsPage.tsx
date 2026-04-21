@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare, AlertTriangle, CalendarSync, Loader2 } from "lucide-react";
+import { Plus, Phone, Trash2, User, LayoutGrid, List, Clock, MessageSquare, AlertTriangle, CalendarSync, Loader2, Stethoscope, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import NewSaleDialog from "@/components/NewSaleDialog";
 import ClientDetailDialog from "@/components/ClientDetailDialog";
@@ -33,6 +33,8 @@ import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { cn } from "@/lib/utils";
 import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
+import { parseClientNotesMeta, relativeDayLabel } from "@/lib/clientNotesMeta";
+import { openWhatsappWeb } from "@/lib/whatsapp";
 
 type Client = {
   id: string;
