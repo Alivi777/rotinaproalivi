@@ -56,20 +56,27 @@ export function stripMetaTags(notes: string | null | undefined): string {
     .trim();
 }
 
-/** Rótulo do dia da semana (pt-BR) com base em YYYY-MM-DD. */
+/** Rótulo do dia da semana (pt-BR) com base em YYYY-MM-DD, fuso SP. */
 export function weekdayLabelFromDate(dateStr: string): string {
-  // Trata como local (sem fuso) para evitar shift
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
-  return dt.toLocaleDateString("pt-BR", { weekday: "long" });
+  // Trata como meia-noite SP (UTC-3) para evitar shift de fuso
+  const dt = new Date(`${dateStr}T12:00:00-03:00`);
+  return dt.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    timeZone: "America/Sao_Paulo",
+  });
 }
 
-/** "Hoje", "Amanhã", "Segunda 21/04" etc. — relativo a hoje (timezone local). */
+/** "Hoje", "Amanhã", "Segunda 21/04" etc. — relativo a hoje no fuso SP. */
 export function relativeDayLabel(dateStr: string): string {
-  const today = new Date();
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-  const tomorrow = new Date(today.getTime() + 86400000);
-  const tomorrowKey = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+  // import dinâmico evita ciclo
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const todayKey = fmt.format(new Date());
+  const tomorrowKey = fmt.format(new Date(Date.now() + 86400000));
   if (dateStr === todayKey) return "Hoje";
   if (dateStr === tomorrowKey) return "Amanhã";
   const wd = weekdayLabelFromDate(dateStr);
