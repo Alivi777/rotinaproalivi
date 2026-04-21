@@ -209,10 +209,16 @@ Deno.serve(async (req) => {
 
       const time = fmtTime(g.appointment_at);
       const taskIds = g.tasks.map((t) => t.id);
+      const doc = g.doctor_id ? doctorById.get(g.doctor_id) : undefined;
+      const docColor = doc?.color ?? "";
+      const docName = g.doctor_name ?? doc?.name ?? "";
+      const assignedTo = doc?.assigned_user_id ?? null;
 
       const lines: string[] = [];
+      // Tag estruturada para o front renderizar o badge do doutor
+      if (docName) lines.push(`[doctor:${docName}|${docColor}]`);
       lines.push(`📅 ${fmtDate(g.task_date)}${time ? ` • Consulta às ${time}` : ""}`);
-      if (g.doctor_name) lines.push(`👨‍⚕️ Dr(a). ${g.doctor_name}`);
+      if (docName) lines.push(`👨‍⚕️ Dr(a). ${docName}`);
       if (g.patient_phone) lines.push(`📱 ${g.patient_phone}`);
       lines.push("");
       lines.push("📋 TAREFAS DO DIA:");
@@ -224,6 +230,7 @@ Deno.serve(async (req) => {
         if (t.notes) lines.push(`   📝 ${t.notes}`);
       }
       lines.push("");
+      lines.push(`[task_date:${g.task_date}]`);
       lines.push(`[tasks:${taskIds.join(",")}]`);
 
       rows.push({
@@ -232,6 +239,7 @@ Deno.serve(async (req) => {
         notes: lines.join("\n"),
         sector_id: sector.id,
         stage_id: stageId,
+        assigned_to: assignedTo,
         board_position: 0,
       });
     }
