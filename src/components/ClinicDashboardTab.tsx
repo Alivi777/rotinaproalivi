@@ -8,7 +8,7 @@ import {
   ClipboardList,
   TrendingUp,
   Activity,
-  Users,
+  ListChecks,
 } from "lucide-react";
 
 type DoctorRow = { id: string; name: string; color: string | null; active: boolean };
@@ -292,7 +292,7 @@ export default function ClinicDashboardTab() {
           <div className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
             <div>
-              <h2 className="text-lg font-semibold">Tarefas concluídas pela equipe</h2>
+              <h2 className="text-lg font-semibold">Tarefas da Recepção</h2>
               <p className="text-xs text-muted-foreground">
                 Filtre por período e veja totais e desempenho individual.
               </p>
