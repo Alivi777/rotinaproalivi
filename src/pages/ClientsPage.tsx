@@ -185,6 +185,24 @@ export default function ClientsPage() {
     [clients, boardSectorId]
   );
 
+  const isReception = useMemo(
+    () => sectors.find((s) => s.id === boardSectorId)?.slug === "recepcao",
+    [sectors, boardSectorId],
+  );
+
+  // Itens de checklist (só carrega se for setor Recepção pra evitar query extra)
+  const { items: taskItems } = useClientTaskItems(
+    useMemo(() => (isReception ? boardClients.map((c) => c.id) : []), [isReception, boardClients]),
+  );
+  const itemsByClient = useMemo(() => {
+    const m = new Map<string, typeof taskItems>();
+    for (const it of taskItems) {
+      if (!m.has(it.client_id)) m.set(it.client_id, []);
+      m.get(it.client_id)!.push(it);
+    }
+    return m;
+  }, [taskItems]);
+
   const nameOf = (uid: string | null) =>
     uid ? profiles.find((p) => p.user_id === uid)?.display_name || "—" : "—";
 
