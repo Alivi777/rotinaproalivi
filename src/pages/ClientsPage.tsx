@@ -166,20 +166,19 @@ export default function ClientsPage() {
   async function syncTasksToReception() {
     setSyncingWeek(true);
     try {
-      // 1) Sincroniza tarefas da Recepção (D-7..D-1, aniversário)
+      // Sincroniza apenas a Recepção: tarefas D-7..D-1 / aniversário da semana.
+      // Sucesso do Cliente e Auditoria & Experiência ficam fora — serão integradas depois.
       const t = await supabase.functions.invoke("clinic-tasks-to-reception", { body: {} });
       if (t.error) throw t.error;
-      const td = t.data as { cards_created?: number; tasks?: number };
+      const td = t.data as { status?: string; cards_created?: number; tasks?: number };
 
-      // 2) Sincroniza agenda da semana para Recepção + Sucesso + Auditoria
-      //    (cria as 6 colunas Seg-Sáb automaticamente em cada setor)
-      const w = await supabase.functions.invoke("clinic-week-to-clients", { body: {} });
-      if (w.error) throw w.error;
-      const wd = w.data as { cards_created?: number; appointments?: number; sectors?: number };
-
-      toast.success(
-        `Recepção: ${td.cards_created ?? 0} tarefas (de ${td.tasks ?? 0}) · Agenda: ${wd.cards_created ?? 0} cards em ${wd.sectors ?? 0} setores`,
-      );
+      if (td.status === "queued") {
+        toast.success("Sincronização da Recepção iniciada em segundo plano. Recarregue em ~15s.");
+      } else {
+        toast.success(
+          `Recepção sincronizada: ${td.cards_created ?? 0} cards de ${td.tasks ?? 0} tarefas.`,
+        );
+      }
       load();
     } catch (e) {
       toast.error((e as Error).message);
