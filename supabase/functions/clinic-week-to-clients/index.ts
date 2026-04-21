@@ -15,27 +15,62 @@ const TARGET_SECTOR_SLUGS = ["recepcao", "auditoria", "sucesso"];
 const DAY_LABELS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const DAY_SHORT = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
 
-// SP timezone: get current "Monday 00:00" → "Saturday 23:59" range
+const SP_TZ = "America/Sao_Paulo";
+const spDatePartsFormatter = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: SP_TZ,
+  weekday: "long",
+  day: "2-digit",
+  month: "2-digit",
+});
+const spTimeFormatter = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: SP_TZ,
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+// SP timezone: get current Monday 00:00 → Saturday 23:59 range
 function getWeekRangeSP(): { monday: Date; saturday: Date } {
   const now = new Date();
-  // Approximate SP offset (UTC-3, no DST). Good enough for date bucketing.
-  const sp = new Date(now.getTime() - 3 * 60 * 60 * 1000);
-  const dow = sp.getUTCDay(); // 0..6
-  const diffToMon = dow === 0 ? -6 : 1 - dow;
-  const monday = new Date(Date.UTC(sp.getUTCFullYear(), sp.getUTCMonth(), sp.getUTCDate() + diffToMon, 0, 0, 0));
-  const saturday = new Date(Date.UTC(sp.getUTCFullYear(), sp.getUTCMonth(), sp.getUTCDate() + diffToMon + 5, 23, 59, 59));
-  // Convert SP-local back to UTC for querying timestamptz column
-  return {
-    monday: new Date(monday.getTime() + 3 * 60 * 60 * 1000),
-    saturday: new Date(saturday.getTime() + 3 * 60 * 60 * 1000),
-  };
+  const weekday = Number(new Intl.DateTimeFormat("en-US", { timeZone: SP_TZ, weekday: "numeric" }).format(now));
+  const diffToMon = weekday === 1 ? -6 : 2 - weekday;
+  const spToday = new Intl.DateTimeFormat("en-CA", {
+    timeZone: SP_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  const monday = new Date(`${spToday}T00:00:00-03:00`);
+  monday.setUTCDate(monday.getUTCDate() + diffToMon);
+  const saturday = new Date(monday);
+  saturday.setUTCDate(monday.getUTCDate() + 5);
+  saturday.setUTCHours(23, 59, 59, 999);
+  return { monday, saturday };
 }
 
 function spDateParts(iso: string): { dow: number; label: string; ddmm: string } {
-  const d = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
-  const dow = d.getUTCDay();
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const parts = spDatePartsFormatter.formatToParts(new Date(iso));
+  const weekday = parts.find((p) => p.type === "weekday")?.value ?? "";
+  const dd = parts.find((p) => p.type === "day")?.value ?? "";
+  const mm = parts.find((p) => p.type === "month")?.value ?? "";
+  const dowMap: Record<string, number> = {
+    domingo: 0,
+    segunda: 1,
+    "segunda-feira": 1,
+    terça: 2,
+    "terça-feira": 2,
+    terca: 2,
+    "terca-feira": 2,
+    quarta: 3,
+    "quarta-feira": 3,
+    quinta: 4,
+    "quinta-feira": 4,
+    sexta: 5,
+    "sexta-feira": 5,
+    sábado: 6,
+    sabado: 6,
+  };
+  const normalizedWeekday = weekday.toLowerCase();
+  const dow = dowMap[normalizedWeekday] ?? 0;
   return { dow, label: DAY_LABELS[dow], ddmm: `${dd}/${mm}` };
 }
 
@@ -124,8 +159,7 @@ Deno.serve(async (req) => {
         skipped++;
         continue; // skip Sundays
       }
-      const time = new Date(new Date(a.appointment_at as string).getTime() - 3 * 60 * 60 * 1000)
-        .toISOString().slice(11, 16);
+      const time = spTimeFormatter.format(new Date(a.appointment_at as string));
       const noteLines = [
         `📅 ${parts.label} ${parts.ddmm} • ${time}`,
         a.doctor_name ? `👨‍⚕️ Dr(a). ${a.doctor_name}` : null,

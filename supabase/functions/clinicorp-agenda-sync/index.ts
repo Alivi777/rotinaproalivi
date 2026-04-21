@@ -111,24 +111,58 @@ function extractList(res: unknown): Record<string, unknown>[] {
   return [];
 }
 
+const SP_TZ = "America/Sao_Paulo";
+const spDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: SP_TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function normalizeDateInput(value: string): string | null {
+  const trimmed = value.trim();
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+
+  const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+  if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return spDateFormatter.format(parsed);
+}
+
+function normalizeTimeInput(value?: string): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return null;
+  const hh = match[1].padStart(2, "0");
+  const mm = match[2];
+  const ss = match[3] ?? "00";
+  return `${hh}:${mm}:${ss}`;
+}
+
 function toIsoDate(a: Appointment): string | null {
-  const baseDate = (a.date || a.start_date || a.appointment_at || a.appointment_date || a.schedule_date || a.data || a.data_agendamento) as string | undefined;
-  const time = (a.fromTime || a.start_time || a.time || a.appointment_time || a.schedule_time || a.hour || a.hora) as string | undefined;
+  const rawDate = (a.date || a.start_date || a.appointment_at || a.appointment_date || a.schedule_date || a.data || a.data_agendamento) as string | undefined;
+  const rawTime = (a.fromTime || a.start_time || a.time || a.appointment_time || a.schedule_time || a.hour || a.hora) as string | undefined;
 
-  if (!baseDate) return null;
+  if (!rawDate) return null;
 
-  const parsedBase = new Date(baseDate);
-  if (isNaN(parsedBase.getTime())) return null;
+  const datePart = normalizeDateInput(rawDate);
+  if (!datePart) return null;
 
-  if (!time) {
-    return parsedBase.toISOString();
+  const timePart = normalizeTimeInput(rawTime);
+  if (timePart) {
+    return new Date(`${datePart}T${timePart}-03:00`).toISOString();
   }
 
-  const [hours, minutes] = time.split(":").map((part) => Number(part));
-  if (Number.isNaN(hours) || Number.isNaN(minutes)) return parsedBase.toISOString();
+  if (rawDate.includes("T")) {
+    const parsed = new Date(rawDate);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+  }
 
-  parsedBase.setUTCHours(hours, minutes, 0, 0);
-  return parsedBase.toISOString();
+  return new Date(`${datePart}T00:00:00-03:00`).toISOString();
 }
 
 function pickPatientName(a: Appointment): string {
@@ -162,7 +196,7 @@ const TASK_RULE: { offset: number; type: string }[] = [
 ];
 
 function dateOnly(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return spDateFormatter.format(d);
 }
 
 Deno.serve(async (req) => {
