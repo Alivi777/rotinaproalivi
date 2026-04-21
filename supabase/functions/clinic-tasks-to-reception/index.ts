@@ -90,13 +90,10 @@ type Task = {
 
 type Doctor = { id: string; name: string; color: string | null; assigned_user_id: string | null };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+// deno-lint-ignore no-explicit-any
+declare const EdgeRuntime: any;
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
+async function runSync(supabase: ReturnType<typeof createClient>) {
 
   try {
     const { monday, saturday } = getWeekRangeSP();
