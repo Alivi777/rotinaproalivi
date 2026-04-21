@@ -8,7 +8,7 @@ import {
   ClipboardList,
   TrendingUp,
   Activity,
-  ListChecks,
+  Users,
 } from "lucide-react";
 
 type DoctorRow = { id: string; name: string; color: string | null; active: boolean };
