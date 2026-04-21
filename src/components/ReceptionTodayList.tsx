@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarDays, Phone, Stethoscope, User, AlertTriangle, MessageCircle } from "lucide-react";
+import { CalendarDays, Phone, Stethoscope, User, MessageCircle, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
+import { spToday } from "@/lib/spTime";
 import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import type { ClientTaskItem } from "@/lib/useClientTaskItems";
 
@@ -25,9 +26,21 @@ type Props = {
   taskItemsByClient: Map<string, ClientTaskItem[]>;
 };
 
-function todayKey(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+/** HH:mm no fuso de São Paulo a partir de um ISO. */
+function fmtApptTime(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
+}
+
+/** Extrai appointment_at da tag [appt:...] gravada nas notes pelo edge function. */
+function extractApptIso(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+  const m = notes.match(/\[appt:([^\]]+)\]/);
+  return m ? m[1].trim() : null;
 }
 
 /**
