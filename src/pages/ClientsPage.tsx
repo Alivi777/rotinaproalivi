@@ -102,8 +102,10 @@ export default function ClientsPage() {
   }, [profile, user, boardSectorId, newAssignee, newSectorId]);
 
   async function load() {
+    let q = supabase.from("clients").select("*").order("board_position").limit(5000);
+    if (boardSectorId) q = q.eq("sector_id", boardSectorId);
     const [c, p] = await Promise.all([
-      supabase.from("clients").select("*").order("board_position"),
+      q,
       supabase.from("profiles").select("user_id, display_name, sector_id").eq("is_active", true),
     ]);
     if (c.data) setClients(c.data as Client[]);
@@ -112,7 +114,8 @@ export default function ClientsPage() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardSectorId]);
 
   async function add() {
     if (!name.trim()) return;
