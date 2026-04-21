@@ -80,17 +80,19 @@ export default function DoctorsAdminPanel() {
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <Stethoscope className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold">Doutores e responsáveis</h3>
+          <h3 className="font-semibold">Delegação de doutores aos responsáveis</h3>
         </div>
         <p className="text-sm text-muted-foreground mb-2">
-          Renomeie cada profissional <strong>exatamente como está na agenda do Clinicorp</strong>,
-          atribua o responsável (ex: Rafaely para Davi/Mariane/Natasha; Layene para Wanessa/Allan)
-          e <strong>marque como ativo apenas os que aparecerão na agenda clínica</strong>.
+          Atribua o <strong>usuário responsável</strong> por cada doutor. Todos os
+          cards e tarefas da Recepção gerados a partir da agenda desse profissional
+          serão automaticamente delegados para o usuário escolhido (round-robin
+          desativado para esses cards). A cor escolhida aparece como{" "}
+          <strong>badge no topo de cada card</strong> do paciente.
         </p>
         <p className="text-xs text-muted-foreground mb-4">
-          A coluna <strong>consultas</strong> mostra quantos agendamentos cada ID tem nos próximos
-          30 dias — use isso pra identificar quem é quem (o de maior volume costuma ser a Agenda
-          Geral ou a profissional mais cheia).
+          Renomeie cada profissional <strong>exatamente como está na agenda do Clinicorp</strong>{" "}
+          e marque como ativo apenas os que aparecerão na agenda clínica. A coluna{" "}
+          <strong>consultas</strong> ajuda a identificar quem é quem (próximos 30 dias).
         </p>
 
         <div className="flex gap-2 mb-4">
