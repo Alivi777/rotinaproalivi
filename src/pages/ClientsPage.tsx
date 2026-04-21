@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Phone, Trash2, User, LayoutGrid, List, AlertTriangle, CalendarSync, Loader2, Stethoscope } from "lucide-react";
+import { Plus, Phone, Trash2, User, LayoutGrid, List, AlertTriangle, CalendarSync, Loader2, Stethoscope, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import NewSaleDialog from "@/components/NewSaleDialog";
 import ClientDetailDialog from "@/components/ClientDetailDialog";
@@ -36,6 +36,9 @@ import { useClientAlerts, alertLabel } from "@/lib/useClientAlerts";
 import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import TasksByDayView from "@/components/TasksByDayView";
+import ReceptionTaskCard from "@/components/ReceptionTaskCard";
+import ProductivityPanel from "@/components/ProductivityPanel";
+import { useClientTaskItems } from "@/lib/useClientTaskItems";
 
 type Client = {
   id: string;
@@ -57,7 +60,7 @@ export default function ClientsPage() {
   const { sectors } = useSectors();
   const [clients, setClients] = useState<Client[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [view, setView] = useState<"kanban" | "list">("kanban");
+  const [view, setView] = useState<"kanban" | "list" | "productivity">("kanban");
   const [boardSectorId, setBoardSectorId] = useState<string>("");
   const [syncingWeek, setSyncingWeek] = useState(false);
   const { stages } = useKanbanStages(boardSectorId || profile?.sector_id);
@@ -182,6 +185,24 @@ export default function ClientsPage() {
     [clients, boardSectorId]
   );
 
+  const isReception = useMemo(
+    () => sectors.find((s) => s.id === boardSectorId)?.slug === "recepcao",
+    [sectors, boardSectorId],
+  );
+
+  // Itens de checklist (só carrega se for setor Recepção pra evitar query extra)
+  const { items: taskItems } = useClientTaskItems(
+    useMemo(() => (isReception ? boardClients.map((c) => c.id) : []), [isReception, boardClients]),
+  );
+  const itemsByClient = useMemo(() => {
+    const m = new Map<string, typeof taskItems>();
+    for (const it of taskItems) {
+      if (!m.has(it.client_id)) m.set(it.client_id, []);
+      m.get(it.client_id)!.push(it);
+    }
+    return m;
+  }, [taskItems]);
+
   const nameOf = (uid: string | null) =>
     uid ? profiles.find((p) => p.user_id === uid)?.display_name || "—" : "—";
 
@@ -290,13 +311,16 @@ export default function ClientsPage() {
         </div>
       </header>
 
-      <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list")} className="mb-4">
+      <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "list" | "productivity")} className="mb-4">
         <TabsList>
           <TabsTrigger value="kanban">
             <LayoutGrid className="h-4 w-4 mr-1" /> Kanban
           </TabsTrigger>
           <TabsTrigger value="list">
             <List className="h-4 w-4 mr-1" /> Lista
+          </TabsTrigger>
+          <TabsTrigger value="productivity">
+            <Trophy className="h-4 w-4 mr-1" /> Produtividade
           </TabsTrigger>
         </TabsList>
 
@@ -326,6 +350,20 @@ export default function ClientsPage() {
                       const reasons = alerts[c.id] ?? [];
                       const isAlert = reasons.length > 0;
                       const meta = parseClientNotesMeta(c.notes);
+
+                      // Setor Recepção: usa o novo card com checklist interno
+                      if (isReception) {
+                        return (
+                          <ReceptionTaskCard
+                            key={c.id}
+                            client={c}
+                            items={itemsByClient.get(c.id) ?? []}
+                            responsibleName={nameOf(c.assigned_to)}
+                            onClick={() => setDetailClient(c)}
+                          />
+                        );
+                      }
+
                       return (
                       <Card
                         key={c.id}
@@ -427,6 +465,10 @@ export default function ClientsPage() {
             profiles={profiles}
             onOpenClient={(c) => setDetailClient(c)}
           />
+        </TabsContent>
+
+        <TabsContent value="productivity" className="mt-4">
+          <ProductivityPanel />
         </TabsContent>
       </Tabs>
 

@@ -46,6 +46,75 @@ export type Database = {
           },
         ]
       }
+      client_task_items: {
+        Row: {
+          client_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          daily_task_id: string | null
+          id: string
+          message_copy: string | null
+          note: string | null
+          sort_order: number
+          status: string
+          task_date: string
+          task_howto: string | null
+          task_label: string
+          task_type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          daily_task_id?: string | null
+          id?: string
+          message_copy?: string | null
+          note?: string | null
+          sort_order?: number
+          status?: string
+          task_date: string
+          task_howto?: string | null
+          task_label: string
+          task_type: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          daily_task_id?: string | null
+          id?: string
+          message_copy?: string | null
+          note?: string | null
+          sort_order?: number
+          status?: string
+          task_date?: string
+          task_howto?: string | null
+          task_label?: string
+          task_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_task_items_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_task_items_daily_task_id_fkey"
+            columns: ["daily_task_id"]
+            isOneToOne: false
+            referencedRelation: "clinic_daily_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_tasks: {
         Row: {
           assigned_to: string
