@@ -331,22 +331,41 @@ export default function ClientCloseDialog({
             </>
           )}
 
-          <div>
-            <Label>Observação *</Label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={
-                mode === "won"
-                  ? "Resumo do fechamento, condições combinadas…"
-                  : mode === "lost"
-                    ? "Motivo da perda, aprendizados…"
-                    : "O que avançou nessa etapa? Próximos passos…"
-              }
-              rows={3}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Registrada com data e hora automaticamente no histórico.
+          <div className="rounded-lg border border-border/60 bg-secondary/30 p-3 space-y-3">
+            <div className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
+              Comprovação obrigatória — preencha pelo menos um *
+            </div>
+
+            <div>
+              <Label>✍️ O que foi feito (observação)</Label>
+              <Textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={
+                  mode === "won"
+                    ? "Resumo do fechamento, condições combinadas…"
+                    : mode === "lost"
+                      ? "Motivo da perda, aprendizados…"
+                      : "O que avançou nessa etapa? Próximos passos…"
+                }
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <Label>📋 Cópia da mensagem enviada</Label>
+              <Textarea
+                value={messageCopy}
+                onChange={(e) => setMessageCopy(e.target.value)}
+                placeholder="Cole aqui o conteúdo da mensagem que enviou ao cliente (WhatsApp, ligação, etc.)"
+                rows={3}
+              />
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Para arrastar/concluir é obrigatório registrar pelo menos um dos dois
+              (observação OU cópia da mensagem). Os dois ficam no histórico com
+              data e hora.
             </p>
           </div>
 
