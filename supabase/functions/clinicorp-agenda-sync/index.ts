@@ -241,29 +241,56 @@ Deno.serve(async (req) => {
       if (dr.extId) seenDoctorIds.add(dr.extId);
     }
 
-    // 2c) Auto-cadastrar/atualizar TODOS os doutores que apareceram (ativos por padrão)
+    // 2c) Recarregar doutores atuais para respeitar nomes travados manualmente
+    const { data: doctorsBeforeUpsert } = await supabase
+      .from("clinic_doctors")
+      .select("id, external_id, name, assigned_user_id, active, name_locked");
+
+    const existingDoctorMap = new Map<string, {
+      id: string;
+      assigned_user_id: string | null;
+      name: string;
+      name_locked?: boolean | null;
+    }>();
+    for (const d of doctorsBeforeUpsert || []) {
+      if (d.external_id) {
+        existingDoctorMap.set(d.external_id, {
+          id: d.id,
+          assigned_user_id: d.assigned_user_id,
+          name: d.name || "",
+          name_locked: (d as { name_locked?: boolean | null }).name_locked,
+        });
+      }
+    }
+
+    // 2d) Auto-cadastrar/atualizar TODOS os doutores que apareceram (ativos por padrão)
     if (seenDoctorIds.size) {
-      const upsertDoctors = [...seenDoctorIds].map((extId) => ({
-        external_id: extId,
-        name: dentistNames.get(extId) || `Profissional #${extId}`,
-        active: true,
-      }));
+      const upsertDoctors = [...seenDoctorIds].map((extId) => {
+        const existing = existingDoctorMap.get(extId);
+        const syncedName = dentistNames.get(extId) || `Profissional #${extId}`;
+        return {
+          external_id: extId,
+          name: existing?.name_locked ? existing.name : syncedName,
+          active: true,
+        };
+      });
       const { error: drErr } = await supabase
         .from("clinic_doctors")
         .upsert(upsertDoctors, { onConflict: "external_id", ignoreDuplicates: false });
       if (drErr) console.error("[clinicorp] doctor upsert err:", drErr.message);
 
-      // Atualizar nomes só pra quem ainda está como placeholder
+      // Atualizar nomes só de agendas não travadas e ainda placeholders
       for (const [extId, realName] of dentistNames) {
         await supabase
           .from("clinic_doctors")
           .update({ name: realName })
           .eq("external_id", extId)
+          .eq("name_locked", false)
           .like("name", "Profissional #%");
       }
     }
 
-    // 2d) Recarregar mapa completo de doutores
+    // 2e) Recarregar mapa completo de doutores
     const { data: existingDoctors } = await supabase
       .from("clinic_doctors")
       .select("id, external_id, name, assigned_user_id, active");

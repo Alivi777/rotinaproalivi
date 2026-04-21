@@ -371,6 +371,7 @@ export type Database = {
           external_id: string | null
           id: string
           name: string
+          name_locked: boolean
           updated_at: string
         }
         Insert: {
@@ -381,6 +382,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           name: string
+          name_locked?: boolean
           updated_at?: string
         }
         Update: {
@@ -391,6 +393,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           name?: string
+          name_locked?: boolean
           updated_at?: string
         }
         Relationships: []

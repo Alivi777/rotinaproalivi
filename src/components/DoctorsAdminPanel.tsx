@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Save, Plus, Stethoscope } from "lucide-react";
+import { Plus, Stethoscope } from "lucide-react";
 
 type Doctor = {
   id: string;
@@ -15,6 +15,7 @@ type Doctor = {
   assigned_user_id: string | null;
   color: string | null;
   active: boolean;
+  name_locked?: boolean;
 };
 
 type Profile = { user_id: string; display_name: string | null };
@@ -66,7 +67,7 @@ export default function DoctorsAdminPanel() {
 
   async function addDoctor() {
     if (!newName.trim()) return;
-    const { error } = await supabase.from("clinic_doctors").insert({ name: newName.trim() });
+    const { error } = await supabase.from("clinic_doctors").insert({ name: newName.trim(), name_locked: true });
     if (error) toast.error(error.message);
     else {
       toast.success("Doutor criado");
@@ -78,24 +79,18 @@ export default function DoctorsAdminPanel() {
   return (
     <div className="space-y-4">
       <Card className="p-4">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="mb-3 flex items-center gap-2">
           <Stethoscope className="h-5 w-5 text-primary" />
           <h3 className="font-semibold">Delegação de doutores aos responsáveis</h3>
         </div>
-        <p className="text-sm text-muted-foreground mb-2">
-          Atribua o <strong>usuário responsável</strong> por cada doutor. Todos os
-          cards e tarefas da Recepção gerados a partir da agenda desse profissional
-          serão automaticamente delegados para o usuário escolhido (round-robin
-          desativado para esses cards). A cor escolhida aparece como{" "}
-          <strong>badge no topo de cada card</strong> do paciente.
+        <p className="mb-2 text-sm text-muted-foreground">
+          Atribua o <strong>usuário responsável</strong> por cada doutor. Todos os cards e tarefas da Recepção gerados a partir da agenda desse profissional serão automaticamente delegados para o usuário escolhido.
         </p>
-        <p className="text-xs text-muted-foreground mb-4">
-          Renomeie cada profissional <strong>exatamente como está na agenda do Clinicorp</strong>{" "}
-          e marque como ativo apenas os que aparecerão na agenda clínica. A coluna{" "}
-          <strong>consultas</strong> ajuda a identificar quem é quem (próximos 30 dias).
+        <p className="mb-4 text-xs text-muted-foreground">
+          Ao renomear uma agenda, o sistema passa a <strong>travar esse nome</strong> para a sincronização não resetar depois. Você também pode ligar ou desligar o bloqueio manualmente.
         </p>
 
-        <div className="flex gap-2 mb-4">
+        <div className="mb-4 flex gap-2">
           <Input
             placeholder="Nome do doutor (ex: Dra. Carla)"
             value={newName}
@@ -103,7 +98,7 @@ export default function DoctorsAdminPanel() {
             onKeyDown={(e) => e.key === "Enter" && addDoctor()}
           />
           <Button onClick={addDoctor}>
-            <Plus className="h-4 w-4 mr-1" /> Adicionar
+            <Plus className="mr-1 h-4 w-4" /> Adicionar
           </Button>
         </div>
 
@@ -112,15 +107,16 @@ export default function DoctorsAdminPanel() {
         ) : (
           <div className="space-y-2">
             {doctors.map((d) => (
-              <Card key={d.id} className="p-3 flex flex-wrap items-center gap-3">
+              <Card key={d.id} className="flex flex-wrap items-center gap-3 p-3">
                 <Input
                   value={d.name}
                   onChange={(e) =>
                     setDoctors((arr) => arr.map((x) => (x.id === d.id ? { ...x, name: e.target.value } : x)))
                   }
-                  onBlur={(e) => e.target.value !== d.name && update(d.id, { name: e.target.value })}
-                  className="flex-1 min-w-[150px]"
+                  onBlur={(e) => e.target.value !== d.name && update(d.id, { name: e.target.value, name_locked: true })}
+                  className="min-w-[150px] flex-1"
                 />
+
                 <Select
                   value={d.assigned_user_id ?? "none"}
                   onValueChange={(v) => update(d.id, { assigned_user_id: v === "none" ? null : v })}
@@ -137,27 +133,30 @@ export default function DoctorsAdminPanel() {
                     ))}
                   </SelectContent>
                 </Select>
+
                 <Input
                   type="color"
                   value={d.color ?? "#888888"}
                   onChange={(e) => update(d.id, { color: e.target.value })}
-                  className="w-14 h-9 p-1"
+                  className="h-9 w-14 p-1"
                 />
+
                 <div className="flex items-center gap-2">
-                  <Switch
-                    checked={d.active}
-                    onCheckedChange={(v) => update(d.id, { active: v })}
-                  />
+                  <Switch checked={d.active} onCheckedChange={(v) => update(d.id, { active: v })} />
                   <span className="text-xs text-muted-foreground">Ativo</span>
                 </div>
+
+                <div className="flex items-center gap-2">
+                  <Switch checked={!!d.name_locked} onCheckedChange={(v) => update(d.id, { name_locked: v })} />
+                  <span className="text-xs text-muted-foreground">Nome travado</span>
+                </div>
+
                 {d.external_id && (
                   <div className="flex flex-col items-end gap-0.5">
                     <span className="text-xs font-semibold text-primary">
                       {counts.get(d.external_id) || 0} consultas (30d)
                     </span>
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      ID: {d.external_id}
-                    </span>
+                    <span className="font-mono text-[10px] text-muted-foreground">ID: {d.external_id}</span>
                   </div>
                 )}
               </Card>
