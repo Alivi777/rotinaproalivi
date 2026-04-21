@@ -256,6 +256,7 @@ export default function ReceptionTodayCards({
           <h2 className="text-lg font-semibold">Funil da Recepção</h2>
           <p className="text-xs text-muted-foreground">
             {pending.length} novos · {pendingCount} programados · {doneCount} concluídos
+            {doctorFilter && ` · filtrando: ${doctorFilter}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -264,12 +265,75 @@ export default function ReceptionTodayCards({
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar paciente..."
-              className="pl-7 h-8 w-52 text-xs"
+              placeholder="Buscar paciente por nome ou telefone..."
+              className="pl-7 h-8 w-64 text-xs"
             />
           </div>
+          {search && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2 text-xs"
+              onClick={() => setSearch("")}
+            >
+              Limpar
+            </Button>
+          )}
         </div>
       </div>
+
+      {doctorChips.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1">
+            Doutor:
+          </span>
+          <button
+            type="button"
+            onClick={() => setDoctorFilter(null)}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs border transition-colors",
+              doctorFilter === null
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-secondary/50 border-border hover:bg-secondary",
+            )}
+          >
+            Todos
+          </button>
+          {doctorChips.map((d) => {
+            const active = doctorFilter === d.name;
+            return (
+              <button
+                key={d.name}
+                type="button"
+                onClick={() => setDoctorFilter(active ? null : d.name)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs border transition-colors",
+                  active
+                    ? "text-primary-foreground border-transparent"
+                    : "bg-secondary/50 border-border hover:bg-secondary",
+                )}
+                style={
+                  active
+                    ? {
+                        background: d.color || "hsl(var(--primary))",
+                        borderColor: d.color || "hsl(var(--primary))",
+                      }
+                    : undefined
+                }
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: d.color || "hsl(var(--muted-foreground))" }}
+                />
+                {d.name}
+                <Badge variant="secondary" className="h-4 text-[10px] px-1">
+                  {d.count}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* COL 1 — Novo Atendimento */}
