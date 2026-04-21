@@ -67,6 +67,7 @@ export default function ReceptionTodayCards({
 }: Props) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
+  const [doctorFilter, setDoctorFilter] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAttendance[]>([]);
   const [overCol, setOverCol] = useState<ColumnKey | null>(null);
 
