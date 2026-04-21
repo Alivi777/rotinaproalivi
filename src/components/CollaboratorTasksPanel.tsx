@@ -220,7 +220,7 @@ export default function CollaboratorTasksPanel() {
               </div>
 
               <ul className="divide-y divide-border/40 rounded-lg border border-border/40 bg-card/40">
-                {g.rows.map(({ item, client }) => {
+                {g.rows.map(({ item, client, apptTime }) => {
                   const isDone = item.status === "done";
                   const overdue = !isDone && item.task_date < today;
                   const meta = parseClientNotesMeta(client.notes);
@@ -239,6 +239,12 @@ export default function CollaboratorTasksPanel() {
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
+                          {apptTime && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold tabular-nums px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                              <Clock className="h-2.5 w-2.5" />
+                              {apptTime}
+                            </span>
+                          )}
                           <span className={cn("font-medium text-sm", isDone && "line-through text-muted-foreground")}>
                             {item.task_label}
                           </span>
@@ -269,7 +275,7 @@ export default function CollaboratorTasksPanel() {
                             </span>
                           )}
                           <span className="text-[10px] uppercase tracking-wider">
-                            {item.task_date}
+                            {relativeDayLabel(item.task_date)}
                           </span>
                         </div>
                       </div>
