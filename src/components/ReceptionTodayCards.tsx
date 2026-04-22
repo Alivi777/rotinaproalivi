@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import ReceptionTaskCard from "@/components/ReceptionTaskCard";
+import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
@@ -70,6 +71,7 @@ export default function ReceptionTodayCards({
   const [doctorFilter, setDoctorFilter] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAttendance[]>([]);
   const [overCol, setOverCol] = useState<ColumnKey | null>(null);
+  const [checking, setChecking] = useState<{ item: ClientTaskItem; clientName: string } | null>(null);
 
   const profileById = useMemo(
     () => new Map(profiles.map((p) => [p.user_id, p])),
@@ -185,27 +187,9 @@ export default function ReceptionTodayCards({
     if (target === "concluidos") {
       const next = todayItems.find((i) => i.status === "pending");
       if (!next) return; // já tudo feito
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("client_task_items")
-        .update({
-          status: "done",
-          completed_at: now,
-          completed_by: user?.id ?? null,
-        })
-        .eq("id", next.id);
-      if (error) return toast.error(error.message);
-      if (next.daily_task_id) {
-        await supabase
-          .from("clinic_daily_tasks")
-          .update({
-            status: "done",
-            completed_at: now,
-            completed_by: user?.id ?? null,
-          })
-          .eq("id", next.daily_task_id);
-      }
-      toast.success(`Tarefa "${next.task_label}" concluída`);
+      const client = clients.find((c) => c.id === clientId);
+      // Abre o dialog que exige comentário OU cópia da mensagem
+      setChecking({ item: next, clientName: client?.name ?? "" });
     } else if (target === "programadas") {
       // Reabrir a última concluída
       const lastDone = [...todayItems].reverse().find((i) => i.status === "done");
@@ -474,6 +458,13 @@ export default function ReceptionTodayCards({
           Nenhuma tarefa para hoje. Use “Sincronizar agendas da semana”.
         </Card>
       )}
+
+      <TaskItemCheckDialog
+        open={!!checking}
+        onOpenChange={(v) => !v && setChecking(null)}
+        item={checking?.item ?? null}
+        clientName={checking?.clientName ?? ""}
+      />
     </div>
   );
 }
