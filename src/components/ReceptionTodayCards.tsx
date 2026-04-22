@@ -187,27 +187,9 @@ export default function ReceptionTodayCards({
     if (target === "concluidos") {
       const next = todayItems.find((i) => i.status === "pending");
       if (!next) return; // já tudo feito
-      const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("client_task_items")
-        .update({
-          status: "done",
-          completed_at: now,
-          completed_by: user?.id ?? null,
-        })
-        .eq("id", next.id);
-      if (error) return toast.error(error.message);
-      if (next.daily_task_id) {
-        await supabase
-          .from("clinic_daily_tasks")
-          .update({
-            status: "done",
-            completed_at: now,
-            completed_by: user?.id ?? null,
-          })
-          .eq("id", next.daily_task_id);
-      }
-      toast.success(`Tarefa "${next.task_label}" concluída`);
+      const client = clients.find((c) => c.id === clientId);
+      // Abre o dialog que exige comentário OU cópia da mensagem
+      setChecking({ item: next, clientName: client?.name ?? "" });
     } else if (target === "programadas") {
       // Reabrir a última concluída
       const lastDone = [...todayItems].reverse().find((i) => i.status === "done");
