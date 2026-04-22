@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 import ReceptionTaskCard from "@/components/ReceptionTaskCard";
+import TaskItemCheckDialog from "@/components/TaskItemCheckDialog";
 import { openWhatsappWeb } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { parseClientNotesMeta } from "@/lib/clientNotesMeta";
