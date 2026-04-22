@@ -458,6 +458,13 @@ export default function ReceptionTodayCards({
           Nenhuma tarefa para hoje. Use “Sincronizar agendas da semana”.
         </Card>
       )}
+
+      <TaskItemCheckDialog
+        open={!!checking}
+        onOpenChange={(v) => !v && setChecking(null)}
+        item={checking?.item ?? null}
+        clientName={checking?.clientName ?? ""}
+      />
     </div>
   );
 }
