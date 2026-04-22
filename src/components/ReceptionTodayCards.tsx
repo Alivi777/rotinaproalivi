@@ -71,6 +71,7 @@ export default function ReceptionTodayCards({
   const [doctorFilter, setDoctorFilter] = useState<string | null>(null);
   const [pending, setPending] = useState<PendingAttendance[]>([]);
   const [overCol, setOverCol] = useState<ColumnKey | null>(null);
+  const [checking, setChecking] = useState<{ item: ClientTaskItem; clientName: string } | null>(null);
 
   const profileById = useMemo(
     () => new Map(profiles.map((p) => [p.user_id, p])),
