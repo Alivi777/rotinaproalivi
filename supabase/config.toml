@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.google-calendar-events]
 verify_jwt = false
+
+[functions.waseller-webhook]
+verify_jwt = false
