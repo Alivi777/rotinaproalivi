@@ -298,20 +298,30 @@ export default function ClientDetailDialog({
                   Nenhuma observação ainda.
                 </li>
               )}
-              {notes.map((n) => (
-                <li
-                  key={n.id}
-                  className="p-3 rounded-lg border border-border/50 bg-card"
-                >
-                  <div className="text-xs text-muted-foreground mb-1">
-                    {format(new Date(n.created_at), "dd/MM/yyyy HH:mm", {
-                      locale: ptBR,
-                    })}{" "}
-                    · {nameOf(n.author_id)}
-                  </div>
-                  <p className="text-sm whitespace-pre-wrap">{n.body}</p>
-                </li>
-              ))}
+              {notes.map((n) => {
+                const isGptMaker = (n as any).source === "gptmaker";
+                return (
+                  <li
+                    key={n.id}
+                    className={`p-3 rounded-lg border bg-card ${
+                      isGptMaker ? "border-primary/40" : "border-border/50"
+                    }`}
+                  >
+                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2 flex-wrap">
+                      <span>
+                        {format(new Date(n.created_at), "dd/MM/yyyy HH:mm", {
+                          locale: ptBR,
+                        })}
+                      </span>
+                      <span>·</span>
+                      <span>
+                        {isGptMaker ? "🤖 GPT Maker" : nameOf(n.author_id)}
+                      </span>
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{n.body}</p>
+                  </li>
+                );
+              })}
             </ul>
           </TabsContent>
         </Tabs>
