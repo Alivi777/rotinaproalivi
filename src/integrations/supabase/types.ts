@@ -20,21 +20,27 @@ export type Database = {
           body: string
           client_id: string
           created_at: string
+          external_id: string | null
           id: string
+          source: string
         }
         Insert: {
           author_id: string
           body: string
           client_id: string
           created_at?: string
+          external_id?: string | null
           id?: string
+          source?: string
         }
         Update: {
           author_id?: string
           body?: string
           client_id?: string
           created_at?: string
+          external_id?: string | null
           id?: string
+          source?: string
         }
         Relationships: [
           {
