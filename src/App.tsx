@@ -117,6 +117,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/gestor-ia"
+            element={
+              <ProtectedRoute>
+                <GestorIAPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
