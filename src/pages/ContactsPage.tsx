@@ -67,7 +67,7 @@ export default function ContactsPage() {
     search,
     sectorId,
     page,
-    pageSize: 25,
+    pageSize: 50,
   });
 
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
