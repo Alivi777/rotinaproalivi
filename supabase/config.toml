@@ -11,3 +11,7 @@ verify_jwt = false
 
 [functions.gptmaker-webhook]
 verify_jwt = false
+
+[functions.tactical-ai-chat]
+verify_jwt = false
+
