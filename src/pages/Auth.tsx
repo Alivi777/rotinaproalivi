@@ -76,12 +76,14 @@ export default function Auth() {
         <Card className="p-8 bg-gradient-card border-border/50 shadow-elev">
           <div className="mb-6">
             <h2 className="text-xl font-semibold">
-              {mode === "login" ? "Entrar no painel" : "Criar conta"}
+              {mode === "login" && "Entrar no painel"}
+              {mode === "signup" && "Criar conta"}
+              {mode === "forgot" && "Redefinir senha"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {mode === "login"
-                ? "Acesse sua rotina diária"
-                : "Comece a organizar sua operação"}
+              {mode === "login" && "Acesse sua rotina diária"}
+              {mode === "signup" && "Comece a organizar sua operação"}
+              {mode === "forgot" && "Informe seu e-mail e enviaremos um link para criar uma nova senha."}
             </p>
           </div>
 
@@ -109,34 +111,61 @@ export default function Auth() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                minLength={6}
-                required
-              />
-            </div>
+            {mode !== "forgot" && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Senha</Label>
+                  {mode === "login" && (
+                    <button
+                      type="button"
+                      onClick={() => setMode("forgot")}
+                      className="text-xs text-primary hover:text-primary-glow font-medium transition-smooth"
+                    >
+                      Esqueci minha senha
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  minLength={6}
+                  required
+                />
+              </div>
+            )}
 
             <Button type="submit" className="w-full" size="lg" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mode === "login" ? "Entrar" : "Criar conta"}
+              {mode === "login" && "Entrar"}
+              {mode === "signup" && "Criar conta"}
+              {mode === "forgot" && "Enviar link de redefinição"}
             </Button>
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            {mode === "login" ? "Novo por aqui?" : "Já tem conta?"}{" "}
-            <button
-              type="button"
-              onClick={() => setMode(mode === "login" ? "signup" : "login")}
-              className="text-primary hover:text-primary-glow font-medium transition-smooth"
-            >
-              {mode === "login" ? "Criar conta" : "Entrar"}
-            </button>
+            {mode === "forgot" ? (
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className="text-primary hover:text-primary-glow font-medium transition-smooth"
+              >
+                Voltar para o login
+              </button>
+            ) : (
+              <>
+                {mode === "login" ? "Novo por aqui?" : "Já tem conta?"}{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                  className="text-primary hover:text-primary-glow font-medium transition-smooth"
+                >
+                  {mode === "login" ? "Criar conta" : "Entrar"}
+                </button>
+              </>
+            )}
           </div>
         </Card>
       </div>
