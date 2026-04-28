@@ -14,6 +14,7 @@ import {
   ClipboardList,
   Contact as ContactIcon,
   CalendarRange,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -24,9 +25,11 @@ import { usePendingPriorities } from "@/lib/usePendingPriorities";
 import { cn } from "@/lib/utils";
 import SectorPickerDialog from "./SectorPickerDialog";
 import { usePendingAttendances } from "@/lib/usePendingAttendances";
+import FloatingAIButton from "./FloatingAIButton";
 
 const baseNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/gestor-ia", label: "Gestor IA", icon: Sparkles },
   { to: "/rotina", label: "Rotina", icon: ListChecks },
   { to: "/prioridades", label: "Prioridades", icon: Crosshair },
   { to: "/feedbacks", label: "Feedbacks", icon: MessageCircle },
@@ -175,6 +178,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <SectorPickerDialog />
+      <FloatingAIButton />
     </div>
   );
 }
