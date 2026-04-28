@@ -20,25 +20,23 @@ export function normalizeWhatsappPhone(phone: string | null | undefined): string
 }
 
 /**
- * Gera link oficial do WhatsApp Web para uso no desktop.
- * Usa `web.whatsapp.com/send` diretamente para evitar o redirecionamento bloqueado.
+ * Gera link oficial do WhatsApp (wa.me) — funciona tanto no desktop
+ * (abrindo WhatsApp Web/Desktop) quanto no mobile, sem bloqueios.
  */
 export function whatsappWebLink(phone: string | null | undefined, text?: string): string | null {
   const num = normalizeWhatsappPhone(phone);
   if (!num) return null;
 
-  const params = new URLSearchParams({
-    phone: num,
-    type: "phone_number",
-    app_absent: "0",
-  });
+  let url = `https://wa.me/${num}`;
 
   if (text) {
     const parsed = whatsappTextSchema.safeParse(text);
-    if (parsed.success && parsed.data) params.set("text", parsed.data);
+    if (parsed.success && parsed.data) {
+      url += `?text=${encodeURIComponent(parsed.data)}`;
+    }
   }
 
-  return `https://web.whatsapp.com/send/?${params.toString()}`;
+  return url;
 }
 
 /** Abre o WhatsApp Web em nova aba. */
