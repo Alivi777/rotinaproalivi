@@ -29,7 +29,6 @@ import FloatingAIButton from "./FloatingAIButton";
 
 const baseNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/gestor-ia", label: "Gestor IA", icon: Sparkles },
   { to: "/rotina", label: "Rotina", icon: ListChecks },
   { to: "/prioridades", label: "Prioridades", icon: Crosshair },
   { to: "/feedbacks", label: "Feedbacks", icon: MessageCircle },
@@ -52,6 +51,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         ...baseNav,
         { to: "/planejamento", label: "Planejamento", icon: ClipboardList, end: false },
         { to: "/admin", label: "Admin", icon: ShieldCheck, end: false },
+        { to: "/gestor-ia", label: "Gestor de Dados e Direcionamento", icon: Sparkles, end: false },
       ]
     : baseNav;
 
