@@ -16,6 +16,7 @@ import ContactsPage from "./pages/ContactsPage";
 import AgendaClinicaPage from "./pages/AgendaClinicaPage";
 import GestorIAPage from "./pages/GestorIAPage";
 import Auth from "./pages/Auth";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -29,6 +30,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/"
             element={
