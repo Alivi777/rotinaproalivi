@@ -199,14 +199,37 @@ export default function PriorityAlert() {
       )}
 
       <div className="space-y-2.5 mb-4">
-        <PriorityRow label="Missão principal" text={priority.mission_main} primary />
+        <PriorityRow
+          label="Missão principal"
+          text={priority.mission_main}
+          primary
+          checkable={isOwner && acknowledged}
+          done={priority.mission_main_done}
+          onToggle={() => toggleDone("mission_main")}
+        />
         {priority.secondary_1 && (
-          <PriorityRow label="Secundária 1" text={priority.secondary_1} />
+          <PriorityRow
+            label="Secundária 1"
+            text={priority.secondary_1}
+            checkable={isOwner && acknowledged}
+            done={priority.secondary_1_done}
+            onToggle={() => toggleDone("secondary_1")}
+          />
         )}
         {priority.secondary_2 && (
-          <PriorityRow label="Secundária 2" text={priority.secondary_2} />
+          <PriorityRow
+            label="Secundária 2"
+            text={priority.secondary_2}
+            checkable={isOwner && acknowledged}
+            done={priority.secondary_2_done}
+            onToggle={() => toggleDone("secondary_2")}
+          />
         )}
       </div>
+
+      {isOwner && acknowledged && (
+        <CompletionPanel priority={priority} />
+      )}
 
       {isOwner && !acknowledged && (
         <div className="flex flex-wrap gap-2">
