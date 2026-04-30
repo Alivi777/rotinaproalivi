@@ -124,6 +124,21 @@ export default function PriorityAlert() {
     toast.success("Prioridades confirmadas. Bom trabalho!");
   }
 
+  async function toggleDone(field: "mission_main" | "secondary_1" | "secondary_2") {
+    const doneKey = `${field}_done` as const;
+    const atKey = `${field}_done_at` as const;
+    const isDone = (priority as any)[doneKey] as boolean;
+    const patch: Record<string, any> = {
+      [doneKey]: !isDone,
+      [atKey]: !isDone ? new Date().toISOString() : null,
+    };
+    const { error } = await supabase
+      .from("daily_priorities")
+      .update(patch)
+      .eq("id", priority!.id);
+    if (error) return toast.error(error.message);
+  }
+
   async function sendQuestion() {
     if (!reply.trim() || !user) return;
     const { error: e1 } = await supabase.from("priority_messages").insert({
