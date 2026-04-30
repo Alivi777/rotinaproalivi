@@ -318,29 +318,163 @@ function PriorityRow({
   label,
   text,
   primary,
+  checkable,
+  done,
+  onToggle,
 }: {
   label: string;
   text: string;
   primary?: boolean;
+  checkable?: boolean;
+  done?: boolean;
+  onToggle?: () => void;
 }) {
   return (
     <div
       className={cn(
-        "flex items-start gap-3 p-3 rounded-lg border",
-        primary
+        "flex items-start gap-3 p-3 rounded-lg border transition-all",
+        done
+          ? "border-success/40 bg-success/5"
+          : primary
           ? "border-destructive/40 bg-destructive/5"
           : "border-border/50 bg-background/60"
       )}
     >
-      <Crosshair
-        className={cn("h-4 w-4 mt-0.5 shrink-0", primary ? "text-destructive" : "text-muted-foreground")}
-      />
-      <div className="min-w-0">
+      {checkable ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className={cn(
+            "h-5 w-5 mt-0.5 shrink-0 rounded border-2 flex items-center justify-center transition-all",
+            done
+              ? "bg-success border-success text-success-foreground"
+              : primary
+              ? "border-destructive hover:bg-destructive/10"
+              : "border-muted-foreground/40 hover:bg-muted"
+          )}
+          aria-label={done ? "Desmarcar" : "Marcar como concluída"}
+        >
+          {done && <CheckCircle2 className="h-3.5 w-3.5" />}
+        </button>
+      ) : (
+        <Crosshair
+          className={cn(
+            "h-4 w-4 mt-0.5 shrink-0",
+            primary ? "text-destructive" : "text-muted-foreground"
+          )}
+        />
+      )}
+      <div className="min-w-0 flex-1">
         <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
           {label}
         </div>
-        <div className={cn("text-sm", primary && "font-semibold")}>{text}</div>
+        <div
+          className={cn(
+            "text-sm",
+            primary && "font-semibold",
+            done && "line-through text-muted-foreground"
+          )}
+        >
+          {text}
+        </div>
       </div>
     </div>
   );
 }
+
+function CompletionPanel({ priority }: { priority: DailyPriority }) {
+  const [note, setNote] = useState(priority.completion_note ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const total =
+    1 + (priority.secondary_1 ? 1 : 0) + (priority.secondary_2 ? 1 : 0);
+  const done =
+    (priority.mission_main_done ? 1 : 0) +
+    (priority.secondary_1 && priority.secondary_1_done ? 1 : 0) +
+    (priority.secondary_2 && priority.secondary_2_done ? 1 : 0);
+  const pct = Math.round((done / total) * 100);
+  const allDone = done === total;
+  const closed = !!priority.completed_at;
+
+  async function finalize() {
+    if (!allDone) return toast.warning("Conclua todas as prioridades primeiro.");
+    setSaving(true);
+    const { error } = await (supabase as any)
+      .from("daily_priorities")
+      .update({
+        completed_at: new Date().toISOString(),
+        completion_note: note.trim() || null,
+      })
+      .eq("id", priority.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("🎯 Dia concluído! Bom trabalho.");
+  }
+
+  async function reopen() {
+    const { error } = await (supabase as any)
+      .from("daily_priorities")
+      .update({ completed_at: null })
+      .eq("id", priority.id);
+    if (error) return toast.error(error.message);
+    toast.message("Reaberto para edição.");
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Badge variant={allDone ? "default" : "secondary"} className="text-xs">
+            {done}/{total} concluídas · {pct}%
+          </Badge>
+          {closed && (
+            <Badge variant="default" className="text-xs bg-success text-success-foreground">
+              ✅ Dia fechado
+            </Badge>
+          )}
+        </div>
+      </div>
+      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+        <div
+          className={cn(
+            "h-full transition-all",
+            allDone ? "bg-success" : "bg-primary"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {!closed && (
+        <Textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Observações finais do dia (opcional)…"
+          rows={2}
+          className="text-sm"
+          disabled={!allDone}
+        />
+      )}
+      {closed ? (
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {priority.completion_note && (
+            <p className="text-xs text-muted-foreground italic flex-1">
+              "{priority.completion_note}"
+            </p>
+          )}
+          <Button size="sm" variant="outline" onClick={reopen}>
+            Reabrir dia
+          </Button>
+        </div>
+      ) : (
+        <Button
+          onClick={finalize}
+          disabled={!allDone || saving}
+          className="gap-2 w-full sm:w-auto"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          {allDone ? "Concluir prioridades do dia" : `Faltam ${total - done}`}
+        </Button>
+      )}
+    </div>
+  );
+}
+
