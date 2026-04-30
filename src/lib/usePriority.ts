@@ -13,6 +13,14 @@ export type DailyPriority = {
   manager_id: string;
   status: "pending" | "acknowledged" | "questioned";
   acknowledged_at: string | null;
+  mission_main_done: boolean;
+  mission_main_done_at: string | null;
+  secondary_1_done: boolean;
+  secondary_1_done_at: string | null;
+  secondary_2_done: boolean;
+  secondary_2_done_at: string | null;
+  completed_at: string | null;
+  completion_note: string | null;
   created_at: string;
   updated_at: string;
 };
