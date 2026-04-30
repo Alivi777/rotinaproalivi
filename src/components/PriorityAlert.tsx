@@ -132,7 +132,7 @@ export default function PriorityAlert() {
       [doneKey]: !isDone,
       [atKey]: !isDone ? new Date().toISOString() : null,
     };
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("daily_priorities")
       .update(patch)
       .eq("id", priority!.id);
