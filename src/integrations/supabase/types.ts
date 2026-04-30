@@ -661,13 +661,21 @@ export type Database = {
       daily_priorities: {
         Row: {
           acknowledged_at: string | null
+          completed_at: string | null
+          completion_note: string | null
           created_at: string
           id: string
           manager_id: string
           mission_main: string
+          mission_main_done: boolean
+          mission_main_done_at: string | null
           priority_date: string
           secondary_1: string | null
+          secondary_1_done: boolean
+          secondary_1_done_at: string | null
           secondary_2: string | null
+          secondary_2_done: boolean
+          secondary_2_done_at: string | null
           status: string
           updated_at: string
           user_id: string
@@ -675,13 +683,21 @@ export type Database = {
         }
         Insert: {
           acknowledged_at?: string | null
+          completed_at?: string | null
+          completion_note?: string | null
           created_at?: string
           id?: string
           manager_id: string
           mission_main: string
+          mission_main_done?: boolean
+          mission_main_done_at?: string | null
           priority_date?: string
           secondary_1?: string | null
+          secondary_1_done?: boolean
+          secondary_1_done_at?: string | null
           secondary_2?: string | null
+          secondary_2_done?: boolean
+          secondary_2_done_at?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -689,13 +705,21 @@ export type Database = {
         }
         Update: {
           acknowledged_at?: string | null
+          completed_at?: string | null
+          completion_note?: string | null
           created_at?: string
           id?: string
           manager_id?: string
           mission_main?: string
+          mission_main_done?: boolean
+          mission_main_done_at?: string | null
           priority_date?: string
           secondary_1?: string | null
+          secondary_1_done?: boolean
+          secondary_1_done_at?: string | null
           secondary_2?: string | null
+          secondary_2_done?: boolean
+          secondary_2_done_at?: string | null
           status?: string
           updated_at?: string
           user_id?: string
