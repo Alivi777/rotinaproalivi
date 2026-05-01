@@ -141,9 +141,16 @@ export default function DashboardPage() {
     };
   });
 
+  const rangeLabel: Record<RangeKey, string> = {
+    today: "Hoje",
+    week: "Esta semana",
+    month: "Este mês",
+    custom: "Personalizado",
+  };
+
   return (
     <AppShell>
-      <header className="mb-8">
+      <header className="mb-6">
         <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground mb-2">
           <Calendar className="h-3.5 w-3.5" />
           {new Date().toLocaleDateString("pt-BR", {
@@ -155,9 +162,57 @@ export default function DashboardPage() {
         </div>
         <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
-          Visão consolidada do dia em todos os setores.
+          Visão consolidada — período: <span className="text-foreground font-medium">{rangeLabel[rangeKey]}</span>
+          {" "}({start} → {end})
         </p>
       </header>
+
+      {/* Filtro global de período */}
+      <Card className="p-4 mb-6 bg-card border-border/50">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Filtrar período</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
+              {(["today", "week", "month", "custom"] as RangeKey[]).map((r) => (
+                <Button
+                  key={r}
+                  variant={rangeKey === r ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setRangeKey(r)}
+                  className="h-8 px-3 text-xs"
+                >
+                  {rangeLabel[r]}
+                </Button>
+              ))}
+            </div>
+            {rangeKey === "custom" && (
+              <div className="flex items-end gap-2">
+                <div>
+                  <Label className="text-xs">De</Label>
+                  <Input
+                    type="date"
+                    value={custom.start}
+                    onChange={(e) => setCustom({ ...custom, start: e.target.value })}
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Até</Label>
+                  <Input
+                    type="date"
+                    value={custom.end}
+                    onChange={(e) => setCustom({ ...custom, end: e.target.value })}
+                    className="h-8"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
 
       <PriorityAlert />
 
@@ -185,14 +240,14 @@ export default function DashboardPage() {
             <KpiCard
               icon={<MessageSquareText className="h-4 w-4 text-primary" />}
               label="Atendimentos WhatsApp"
-              value={String(waToday)}
+              value={String(waCount)}
               hint={`${uniqueClients} contatos únicos`}
             />
             <KpiCard
               icon={<UserPlus className="h-4 w-4 text-primary" />}
               label="Novos clientes"
               value={String(newClients)}
-              hint="cadastrados hoje"
+              hint={`no período (${rangeLabel[rangeKey].toLowerCase()})`}
             />
             <KpiCard
               icon={<Activity className="h-4 w-4 text-primary" />}
