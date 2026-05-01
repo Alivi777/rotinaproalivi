@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AppShell from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useSectors } from "@/lib/useProfile";
 import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
 import PriorityAlert from "@/components/PriorityAlert";
@@ -10,6 +13,7 @@ import ClinicDashboardTab from "@/components/ClinicDashboardTab";
 import ProductivityPanel from "@/components/ProductivityPanel";
 import CollaboratorTasksPanel from "@/components/CollaboratorTasksPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { spToday, spWeekStart, spMonthStart } from "@/lib/spTime";
 import {
   CheckCircle2,
   MessageSquareText,
@@ -19,15 +23,25 @@ import {
   Activity,
   LayoutDashboard,
   Stethoscope,
+  Filter,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const startOfDay = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-};
+type RangeKey = "today" | "week" | "month" | "custom";
+
+function resolveRange(r: RangeKey, custom: { start: string; end: string }) {
+  const today = spToday();
+  switch (r) {
+    case "today":
+      return { start: today, end: today };
+    case "week":
+      return { start: spWeekStart(), end: today };
+    case "month":
+      return { start: spMonthStart(), end: today };
+    case "custom":
+      return { start: custom.start || today, end: custom.end || today };
+  }
+}
 
 type SectorAgg = {
   id: string;
