@@ -55,34 +55,49 @@ export default function DashboardPage() {
   const { sectors } = useSectors();
   const [tasks, setTasks] = useState<{ id: string; sector_id: string | null }[]>([]);
   const [completions, setCompletions] = useState<{ task_id: string; user_id: string }[]>([]);
-  const [waToday, setWaToday] = useState(0);
+  const [waCount, setWaCount] = useState(0);
   const [uniqueClients, setUniqueClients] = useState(0);
   const [newClients, setNewClients] = useState(0);
   const [activeMembers, setActiveMembers] = useState(0);
-  const today = todayStr();
+
+  // Filtro de período — padrão "week" para alimentar dados da semana
+  const [rangeKey, setRangeKey] = useState<RangeKey>("week");
+  const [custom, setCustom] = useState({ start: spWeekStart(), end: spToday() });
+  const { start, end } = useMemo(
+    () => resolveRange(rangeKey, custom),
+    [rangeKey, custom.start, custom.end]
+  );
 
   async function load() {
-    const dayStart = startOfDay();
+    const startISO = `${start}T00:00:00-03:00`;
+    const endISO = `${end}T23:59:59-03:00`;
     const [t, c, wa, nc, am] = await Promise.all([
       supabase.from("routine_tasks").select("id, sector_id").eq("active", true),
-      supabase.from("task_completions").select("task_id, user_id").eq("completion_date", today),
+      supabase
+        .from("task_completions")
+        .select("task_id, user_id")
+        .gte("completion_date", start)
+        .lte("completion_date", end),
       supabase
         .from("whatsapp_messages")
         .select("from_phone, client_id", { count: "exact" })
-        .gte("received_at", dayStart),
+        .gte("received_at", startISO)
+        .lte("received_at", endISO),
       supabase
         .from("clients")
         .select("id", { count: "exact", head: true })
-        .gte("created_at", dayStart),
+        .gte("created_at", startISO)
+        .lte("created_at", endISO),
       supabase
         .from("task_completions")
         .select("user_id")
-        .eq("completion_date", today),
+        .gte("completion_date", start)
+        .lte("completion_date", end),
     ]);
     if (t.data) setTasks(t.data);
     if (c.data) setCompletions(c.data);
     if (wa.data) {
-      setWaToday(wa.count ?? wa.data.length);
+      setWaCount(wa.count ?? wa.data.length);
       const uniq = new Set(wa.data.map((m) => m.from_phone));
       setUniqueClients(uniq.size);
     }
@@ -102,7 +117,7 @@ export default function DashboardPage() {
       supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [start, end]);
 
   const totalTasks = tasks.length;
   const totalDoneRecords = completions.length;
