@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AppShell from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useSectors } from "@/lib/useProfile";
 import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
 import PriorityAlert from "@/components/PriorityAlert";
@@ -10,6 +13,7 @@ import ClinicDashboardTab from "@/components/ClinicDashboardTab";
 import ProductivityPanel from "@/components/ProductivityPanel";
 import CollaboratorTasksPanel from "@/components/CollaboratorTasksPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { spToday, spWeekStart, spMonthStart } from "@/lib/spTime";
 import {
   CheckCircle2,
   MessageSquareText,
@@ -19,15 +23,25 @@ import {
   Activity,
   LayoutDashboard,
   Stethoscope,
+  Filter,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
-const startOfDay = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-};
+type RangeKey = "today" | "week" | "month" | "custom";
+
+function resolveRange(r: RangeKey, custom: { start: string; end: string }) {
+  const today = spToday();
+  switch (r) {
+    case "today":
+      return { start: today, end: today };
+    case "week":
+      return { start: spWeekStart(), end: today };
+    case "month":
+      return { start: spMonthStart(), end: today };
+    case "custom":
+      return { start: custom.start || today, end: custom.end || today };
+  }
+}
 
 type SectorAgg = {
   id: string;
@@ -41,34 +55,49 @@ export default function DashboardPage() {
   const { sectors } = useSectors();
   const [tasks, setTasks] = useState<{ id: string; sector_id: string | null }[]>([]);
   const [completions, setCompletions] = useState<{ task_id: string; user_id: string }[]>([]);
-  const [waToday, setWaToday] = useState(0);
+  const [waCount, setWaCount] = useState(0);
   const [uniqueClients, setUniqueClients] = useState(0);
   const [newClients, setNewClients] = useState(0);
   const [activeMembers, setActiveMembers] = useState(0);
-  const today = todayStr();
+
+  // Filtro de período — padrão "week" para alimentar dados da semana
+  const [rangeKey, setRangeKey] = useState<RangeKey>("week");
+  const [custom, setCustom] = useState({ start: spWeekStart(), end: spToday() });
+  const { start, end } = useMemo(
+    () => resolveRange(rangeKey, custom),
+    [rangeKey, custom.start, custom.end]
+  );
 
   async function load() {
-    const dayStart = startOfDay();
+    const startISO = `${start}T00:00:00-03:00`;
+    const endISO = `${end}T23:59:59-03:00`;
     const [t, c, wa, nc, am] = await Promise.all([
       supabase.from("routine_tasks").select("id, sector_id").eq("active", true),
-      supabase.from("task_completions").select("task_id, user_id").eq("completion_date", today),
+      supabase
+        .from("task_completions")
+        .select("task_id, user_id")
+        .gte("completion_date", start)
+        .lte("completion_date", end),
       supabase
         .from("whatsapp_messages")
         .select("from_phone, client_id", { count: "exact" })
-        .gte("received_at", dayStart),
+        .gte("received_at", startISO)
+        .lte("received_at", endISO),
       supabase
         .from("clients")
         .select("id", { count: "exact", head: true })
-        .gte("created_at", dayStart),
+        .gte("created_at", startISO)
+        .lte("created_at", endISO),
       supabase
         .from("task_completions")
         .select("user_id")
-        .eq("completion_date", today),
+        .gte("completion_date", start)
+        .lte("completion_date", end),
     ]);
     if (t.data) setTasks(t.data);
     if (c.data) setCompletions(c.data);
     if (wa.data) {
-      setWaToday(wa.count ?? wa.data.length);
+      setWaCount(wa.count ?? wa.data.length);
       const uniq = new Set(wa.data.map((m) => m.from_phone));
       setUniqueClients(uniq.size);
     }
@@ -88,7 +117,7 @@ export default function DashboardPage() {
       supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [start, end]);
 
   const totalTasks = tasks.length;
   const totalDoneRecords = completions.length;
@@ -112,9 +141,16 @@ export default function DashboardPage() {
     };
   });
 
+  const rangeLabel: Record<RangeKey, string> = {
+    today: "Hoje",
+    week: "Esta semana",
+    month: "Este mês",
+    custom: "Personalizado",
+  };
+
   return (
     <AppShell>
-      <header className="mb-8">
+      <header className="mb-6">
         <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-muted-foreground mb-2">
           <Calendar className="h-3.5 w-3.5" />
           {new Date().toLocaleDateString("pt-BR", {
@@ -126,9 +162,57 @@ export default function DashboardPage() {
         </div>
         <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
-          Visão consolidada do dia em todos os setores.
+          Visão consolidada — período: <span className="text-foreground font-medium">{rangeLabel[rangeKey]}</span>
+          {" "}({start} → {end})
         </p>
       </header>
+
+      {/* Filtro global de período */}
+      <Card className="p-4 mb-6 bg-card border-border/50">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Filtrar período</span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
+              {(["today", "week", "month", "custom"] as RangeKey[]).map((r) => (
+                <Button
+                  key={r}
+                  variant={rangeKey === r ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setRangeKey(r)}
+                  className="h-8 px-3 text-xs"
+                >
+                  {rangeLabel[r]}
+                </Button>
+              ))}
+            </div>
+            {rangeKey === "custom" && (
+              <div className="flex items-end gap-2">
+                <div>
+                  <Label className="text-xs">De</Label>
+                  <Input
+                    type="date"
+                    value={custom.start}
+                    onChange={(e) => setCustom({ ...custom, start: e.target.value })}
+                    className="h-8"
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Até</Label>
+                  <Input
+                    type="date"
+                    value={custom.end}
+                    onChange={(e) => setCustom({ ...custom, end: e.target.value })}
+                    className="h-8"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
 
       <PriorityAlert />
 
@@ -156,14 +240,14 @@ export default function DashboardPage() {
             <KpiCard
               icon={<MessageSquareText className="h-4 w-4 text-primary" />}
               label="Atendimentos WhatsApp"
-              value={String(waToday)}
+              value={String(waCount)}
               hint={`${uniqueClients} contatos únicos`}
             />
             <KpiCard
               icon={<UserPlus className="h-4 w-4 text-primary" />}
               label="Novos clientes"
               value={String(newClients)}
-              hint="cadastrados hoje"
+              hint={`no período (${rangeLabel[rangeKey].toLowerCase()})`}
             />
             <KpiCard
               icon={<Activity className="h-4 w-4 text-primary" />}
