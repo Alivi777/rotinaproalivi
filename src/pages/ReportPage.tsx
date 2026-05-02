@@ -15,8 +15,10 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useSectors } from "@/lib/useProfile";
-import { FileText, Save, Download, CheckCircle2, MessageSquareText, UserPlus } from "lucide-react";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import { FileText, Save, Download, CheckCircle2, MessageSquareText, UserPlus, History } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const startOfDay = () => {
