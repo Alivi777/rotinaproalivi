@@ -340,3 +340,136 @@ function SummaryCard({
     </Card>
   );
 }
+
+type ReportRow = {
+  id: string;
+  user_id: string;
+  sector_id: string;
+  report_date: string;
+  notes: string | null;
+  data: Record<string, unknown> | null;
+  submitted_at: string | null;
+};
+
+function AdminReportsHistory({ sectors }: { sectors: { id: string; name: string }[] }) {
+  const [profiles, setProfiles] = useState<{ user_id: string; display_name: string | null }[]>([]);
+  const [items, setItems] = useState<ReportRow[]>([]);
+  const [filterUser, setFilterUser] = useState<string>("all");
+  const [filterSector, setFilterSector] = useState<string>("all");
+  const [from, setFrom] = useState<string>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().slice(0, 10);
+  });
+  const [to, setTo] = useState<string>(() => new Date().toISOString().slice(0, 10));
+
+  useEffect(() => {
+    supabase
+      .from("profiles")
+      .select("user_id, display_name")
+      .eq("is_active", true)
+      .order("display_name")
+      .then(({ data }) => setProfiles(data ?? []));
+  }, []);
+
+  useEffect(() => {
+    let q = supabase
+      .from("daily_reports")
+      .select("id, user_id, sector_id, report_date, notes, data, submitted_at")
+      .gte("report_date", from)
+      .lte("report_date", to)
+      .order("report_date", { ascending: false });
+    if (filterUser !== "all") q = q.eq("user_id", filterUser);
+    if (filterSector !== "all") q = q.eq("sector_id", filterSector);
+    q.then(({ data }) => setItems((data as ReportRow[]) ?? []));
+  }, [filterUser, filterSector, from, to]);
+
+  const nameOf = (uid: string) =>
+    profiles.find((p) => p.user_id === uid)?.display_name || "—";
+  const sectorOf = (sid: string) => sectors.find((s) => s.id === sid)?.name || "—";
+
+  return (
+    <Card className="mt-6 p-6 bg-card border-border/50">
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2">
+          <History className="h-4 w-4 text-muted-foreground" />
+          <h2 className="text-lg font-semibold">Histórico geral (admin)</h2>
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <Label className="text-[10px] uppercase tracking-widest">De</Label>
+            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8 w-36" />
+          </div>
+          <div>
+            <Label className="text-[10px] uppercase tracking-widest">Até</Label>
+            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-8 w-36" />
+          </div>
+          <div>
+            <Label className="text-[10px] uppercase tracking-widest">Colaborador</Label>
+            <Select value={filterUser} onValueChange={setFilterUser}>
+              <SelectTrigger className="h-8 w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {profiles.map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.display_name || "Sem nome"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-[10px] uppercase tracking-widest">Setor</Label>
+            <Select value={filterSector} onValueChange={setFilterSector}>
+              <SelectTrigger className="h-8 w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {sectors.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhum relatório no período.</p>
+      ) : (
+        <ul className="divide-y divide-border/50">
+          {items.map((r) => {
+            const d = (r.data ?? {}) as { highlights?: string; issues?: string; nextSteps?: string };
+            return (
+              <li key={r.id} className="py-3">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground w-24">
+                    {new Date(r.report_date + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                  </span>
+                  <span className="text-sm font-semibold">{nameOf(r.user_id)}</span>
+                  <span className="text-xs text-muted-foreground">· {sectorOf(r.sector_id)}</span>
+                  <Badge variant={r.submitted_at ? "default" : "secondary"} className="text-[10px] uppercase">
+                    {r.submitted_at ? "Enviado" : "Rascunho"}
+                  </Badge>
+                </div>
+                <div className="grid md:grid-cols-3 gap-2 text-xs">
+                  {d.highlights && <Snippet label="Destaques" text={d.highlights} />}
+                  {d.issues && <Snippet label="Ocorrências" text={d.issues} />}
+                  {d.nextSteps && <Snippet label="Próximos passos" text={d.nextSteps} />}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function Snippet({ label, text }: { label: string; text: string }) {
+  return (
+    <div className="p-2 rounded-md bg-background/40 border border-border/40">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">{label}</div>
+      <p className="line-clamp-3 text-foreground/90">{text}</p>
+    </div>
+  );
+}
