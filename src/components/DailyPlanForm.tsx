@@ -65,6 +65,44 @@ export default function DailyPlanForm() {
   const [assignments, setAssignments] = useState<Partial<Assignment>[]>([]);
   const [deliverables, setDeliverables] = useState<Partial<Deliverable>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<
+    Array<{ id: string; plan_date: string; main_mission: string | null; total: number; done: number }>
+  >([]);
+
+  async function loadHistory() {
+    if (!user) return;
+    const { data: plans } = await supabase
+      .from("manager_daily_plans")
+      .select("id, plan_date, main_mission")
+      .eq("manager_id", user.id)
+      .order("plan_date", { ascending: false })
+      .limit(15);
+    if (!plans?.length) {
+      setHistory([]);
+      return;
+    }
+    const ids = plans.map((p) => p.id);
+    const { data: delivs } = await supabase
+      .from("daily_plan_deliverables")
+      .select("daily_plan_id, done")
+      .in("daily_plan_id", ids);
+    const counts: Record<string, { total: number; done: number }> = {};
+    (delivs ?? []).forEach((d: any) => {
+      const c = counts[d.daily_plan_id] ?? { total: 0, done: 0 };
+      c.total += 1;
+      if (d.done) c.done += 1;
+      counts[d.daily_plan_id] = c;
+    });
+    setHistory(
+      plans.map((p) => ({
+        id: p.id,
+        plan_date: p.plan_date,
+        main_mission: p.main_mission,
+        total: counts[p.id]?.total ?? 0,
+        done: counts[p.id]?.done ?? 0,
+      }))
+    );
+  }
 
   async function load() {
     const [{ data: p }, { data: prof }] = await Promise.all([
