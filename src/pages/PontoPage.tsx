@@ -167,9 +167,10 @@ function PunchCard({ userId }: { userId: string }) {
       setEntry(data as Entry);
     } else {
       if ((entry as any)[field]) return toast.error("Esse ponto já foi registrado.");
+      const upd: any = {}; upd[field] = ts;
       const { data, error } = await supabase
         .from("time_clock_entries")
-        .update({ [field]: ts })
+        .update(upd)
         .eq("id", entry.id)
         .select("*")
         .single();
