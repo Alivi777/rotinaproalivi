@@ -1894,6 +1894,10 @@ export type Database = {
         Args: { _attendance_id: string; _note?: string; _to_user: string }
         Returns: undefined
       }
+      user_owns_doctor: {
+        Args: { _doctor_id: string; _user_id: string }
+        Returns: boolean
+      }
       whatsapp_user_minutes: {
         Args: { _end_date: string; _start_date: string }
         Returns: {
