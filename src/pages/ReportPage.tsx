@@ -312,6 +312,8 @@ export default function ReportPage() {
           </Button>
         </div>
       </Card>
+
+      {isAdmin && <AdminReportsHistory sectors={sectors} />}
     </AppShell>
   );
 }
