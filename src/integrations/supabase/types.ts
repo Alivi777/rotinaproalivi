@@ -1524,6 +1524,141 @@ export type Database = {
         }
         Relationships: []
       }
+      time_clock_correction_requests: {
+        Row: {
+          created_at: string
+          entry_date: string
+          entry_id: string | null
+          id: string
+          reason: string
+          requested_clock_in: string | null
+          requested_clock_out: string | null
+          requested_lunch_end: string | null
+          requested_lunch_start: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_date: string
+          entry_id?: string | null
+          id?: string
+          reason: string
+          requested_clock_in?: string | null
+          requested_clock_out?: string | null
+          requested_lunch_end?: string | null
+          requested_lunch_start?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_date?: string
+          entry_id?: string | null
+          id?: string
+          reason?: string
+          requested_clock_in?: string | null
+          requested_clock_out?: string | null
+          requested_lunch_end?: string | null
+          requested_lunch_start?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      time_clock_edit_log: {
+        Row: {
+          created_at: string
+          edited_by: string
+          entry_id: string
+          field_name: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          edited_by: string
+          entry_id: string
+          field_name: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          edited_by?: string
+          entry_id?: string
+          field_name?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      time_clock_entries: {
+        Row: {
+          clock_in: string | null
+          clock_out: string | null
+          created_at: string
+          edit_reason: string | null
+          edited_at: string | null
+          edited_by: string | null
+          entry_date: string
+          id: string
+          lunch_end: string | null
+          lunch_start: string | null
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          edit_reason?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          entry_date?: string
+          id?: string
+          lunch_end?: string | null
+          lunch_start?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clock_in?: string | null
+          clock_out?: string | null
+          created_at?: string
+          edit_reason?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          entry_date?: string
+          id?: string
+          lunch_end?: string | null
+          lunch_start?: string | null
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
