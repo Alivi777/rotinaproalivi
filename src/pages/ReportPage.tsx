@@ -40,6 +40,7 @@ export default function ReportPage() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { sectors } = useSectors();
+  const { isAdmin } = useIsAdmin();
   const [sectorId, setSectorId] = useState<string>("");
   const [highlights, setHighlights] = useState("");
   const [issues, setIssues] = useState("");
