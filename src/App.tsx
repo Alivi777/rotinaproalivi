@@ -14,6 +14,7 @@ import FeedbacksPage from "./pages/FeedbacksPage";
 import PlanningPage from "./pages/PlanningPage";
 import ContactsPage from "./pages/ContactsPage";
 import AgendaClinicaPage from "./pages/AgendaClinicaPage";
+import PontoPage from "./pages/PontoPage";
 import GestorIAPage from "./pages/GestorIAPage";
 import Auth from "./pages/Auth";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -116,6 +117,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <AgendaClinicaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ponto"
+            element={
+              <ProtectedRoute>
+                <PontoPage />
               </ProtectedRoute>
             }
           />

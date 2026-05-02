@@ -15,6 +15,7 @@ import {
   Contact as ContactIcon,
   CalendarRange,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ const baseNav = [
   { to: "/contatos", label: "Contatos", icon: ContactIcon },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
   { to: "/relatorio", label: "Relatório", icon: FileText },
+  { to: "/ponto", label: "Ponto", icon: Clock },
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
