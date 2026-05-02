@@ -38,6 +38,7 @@ const baseNav = [
   { to: "/contatos", label: "Contatos", icon: ContactIcon },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
   { to: "/relatorio", label: "Relatório", icon: FileText },
+  { to: "/ponto", label: "Ponto", icon: Clock },
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
