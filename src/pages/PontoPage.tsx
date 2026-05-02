@@ -156,9 +156,11 @@ function PunchCard({ userId }: { userId: string }) {
     if (!userId) return;
     const ts = new Date().toISOString();
     if (!entry) {
+      const payload: any = { user_id: userId, entry_date: today };
+      payload[field] = ts;
       const { data, error } = await supabase
         .from("time_clock_entries")
-        .insert({ user_id: userId, entry_date: today, [field]: ts } as any)
+        .insert(payload)
         .select("*")
         .single();
       if (error) return toast.error(error.message);
