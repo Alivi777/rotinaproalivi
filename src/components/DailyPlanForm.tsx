@@ -588,11 +588,36 @@ export default function DailyPlanForm() {
         )}
         <div className="space-y-2">
           {deliverables.map((d, i) => (
-            <div key={i} className="grid grid-cols-[1fr_180px_140px_140px_40px] gap-2">
+            <div key={i} className="grid grid-cols-[28px_1fr_180px_140px_140px_40px] gap-2 items-center">
+              <Checkbox
+                checked={!!d.done}
+                onCheckedChange={async (v) => {
+                  const checked = !!v;
+                  updateDeliverable(i, {
+                    done: checked,
+                    done_at: checked ? new Date().toISOString() : null,
+                    done_by: checked ? user?.id ?? null : null,
+                    status: checked ? "done" : d.status === "done" ? "pending" : d.status,
+                  });
+                  if (d.id) {
+                    await supabase
+                      .from("daily_plan_deliverables")
+                      .update({
+                        done: checked,
+                        done_at: checked ? new Date().toISOString() : null,
+                        done_by: checked ? user?.id ?? null : null,
+                        status: checked ? "done" : d.status === "done" ? "pending" : d.status,
+                      })
+                      .eq("id", d.id);
+                  }
+                }}
+                title="Marcar concluído"
+              />
               <Input
                 placeholder="Entrega"
                 value={d.title ?? ""}
                 onChange={(e) => updateDeliverable(i, { title: e.target.value })}
+                className={d.done ? "line-through text-muted-foreground" : ""}
               />
               <Input
                 placeholder="Responsável"
