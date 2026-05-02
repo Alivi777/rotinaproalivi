@@ -282,6 +282,7 @@ export default function DailyPlanForm() {
     setSaving(false);
     toast.success("Plano salvo");
     load();
+    loadHistory();
   }
 
   function addAssignment() {
