@@ -96,13 +96,16 @@ export default function PrioritiesPage() {
     field: "mission_main_done" | "secondary_1_done" | "secondary_2_done",
     checked: boolean
   ) {
-    const stamp = field.replace("_done", "_done_at");
+    const nowIso = checked ? new Date().toISOString() : null;
+    const patch =
+      field === "mission_main_done"
+        ? { mission_main_done: checked, mission_main_done_at: nowIso }
+        : field === "secondary_1_done"
+        ? { secondary_1_done: checked, secondary_1_done_at: nowIso }
+        : { secondary_2_done: checked, secondary_2_done_at: nowIso };
     const { error } = await supabase
       .from("daily_priorities")
-      .update({
-        [field]: checked,
-        [stamp]: checked ? new Date().toISOString() : null,
-      })
+      .update(patch)
       .eq("id", item.id);
     if (error) return toast.error(error.message);
     load();
