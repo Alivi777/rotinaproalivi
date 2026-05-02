@@ -65,6 +65,44 @@ export default function DailyPlanForm() {
   const [assignments, setAssignments] = useState<Partial<Assignment>[]>([]);
   const [deliverables, setDeliverables] = useState<Partial<Deliverable>[]>([]);
   const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<
+    Array<{ id: string; plan_date: string; main_mission: string | null; total: number; done: number }>
+  >([]);
+
+  async function loadHistory() {
+    if (!user) return;
+    const { data: plans } = await supabase
+      .from("manager_daily_plans")
+      .select("id, plan_date, main_mission")
+      .eq("manager_id", user.id)
+      .order("plan_date", { ascending: false })
+      .limit(15);
+    if (!plans?.length) {
+      setHistory([]);
+      return;
+    }
+    const ids = plans.map((p) => p.id);
+    const { data: delivs } = await supabase
+      .from("daily_plan_deliverables")
+      .select("daily_plan_id, done")
+      .in("daily_plan_id", ids);
+    const counts: Record<string, { total: number; done: number }> = {};
+    (delivs ?? []).forEach((d: any) => {
+      const c = counts[d.daily_plan_id] ?? { total: 0, done: 0 };
+      c.total += 1;
+      if (d.done) c.done += 1;
+      counts[d.daily_plan_id] = c;
+    });
+    setHistory(
+      plans.map((p) => ({
+        id: p.id,
+        plan_date: p.plan_date,
+        main_mission: p.main_mission,
+        total: counts[p.id]?.total ?? 0,
+        done: counts[p.id]?.done ?? 0,
+      }))
+    );
+  }
 
   async function load() {
     const [{ data: p }, { data: prof }] = await Promise.all([
@@ -101,7 +139,10 @@ export default function DailyPlanForm() {
   }
 
   useEffect(() => {
-    if (user) load();
+    if (user) {
+      load();
+      loadHistory();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, user?.id]);
 
@@ -241,6 +282,7 @@ export default function DailyPlanForm() {
     setSaving(false);
     toast.success("Plano salvo");
     load();
+    loadHistory();
   }
 
   function addAssignment() {
@@ -271,6 +313,72 @@ export default function DailyPlanForm() {
 
   return (
     <div className="space-y-6">
+      {history.length > 0 && (
+        <Card className="p-4 bg-card border-border/50">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4 text-primary" />
+              Planos já feitos (últimos 15)
+            </h3>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const d = new Date(date + "T00:00:00");
+                  d.setDate(d.getDate() - 1);
+                  setDate(d.toISOString().slice(0, 10));
+                }}
+              >
+                ← Dia anterior
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setDate(todayStr())}>
+                Hoje
+              </Button>
+            </div>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {history.map((h) => {
+              const isCurrent = h.plan_date === date;
+              const pct = h.total > 0 ? Math.round((h.done / h.total) * 100) : 0;
+              return (
+                <button
+                  key={h.id}
+                  onClick={() => setDate(h.plan_date)}
+                  className={
+                    "text-left p-2 rounded border transition-colors " +
+                    (isCurrent
+                      ? "border-primary bg-primary/10"
+                      : "border-border/50 hover:border-primary/50 hover:bg-primary/5")
+                  }
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold">
+                      {new Date(h.plan_date + "T00:00:00").toLocaleDateString("pt-BR", {
+                        weekday: "short",
+                        day: "2-digit",
+                        month: "short",
+                      })}
+                    </span>
+                    {h.total > 0 && (
+                      <Badge variant={pct === 100 ? "default" : "outline"} className="text-[10px]">
+                        {h.done}/{h.total} {pct === 100 ? "✓" : ""}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {h.main_mission || "Sem missão definida"}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-2">
+            Clique em qualquer dia para abrir o plano e marcar entregas como concluídas.
+          </p>
+        </Card>
+      )}
+
       <Card className="p-5 bg-card border-border/50">
         <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
           <div className="flex items-center gap-3 flex-wrap">
