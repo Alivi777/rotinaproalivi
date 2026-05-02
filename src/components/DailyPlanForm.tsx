@@ -139,7 +139,10 @@ export default function DailyPlanForm() {
   }
 
   useEffect(() => {
-    if (user) load();
+    if (user) {
+      load();
+      loadHistory();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, user?.id]);
 
