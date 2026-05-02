@@ -3,23 +3,45 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Stethoscope,
   CalendarDays,
   ClipboardList,
   TrendingUp,
   Activity,
   Users,
+  UserCheck,
 } from "lucide-react";
 
-type DoctorRow = { id: string; name: string; color: string | null; active: boolean };
+type DoctorRow = {
+  id: string;
+  name: string;
+  color: string | null;
+  active: boolean;
+  assigned_user_id: string | null;
+};
 type ApptRow = { id: string; doctor_id: string | null; appointment_at: string };
-type TaskRow = { id: string; doctor_id: string | null; status: string; task_date: string };
+type TaskRow = {
+  id: string;
+  doctor_id: string | null;
+  status: string;
+  task_date: string;
+  assigned_to: string | null;
+  completed_by: string | null;
+};
 type ItemRow = {
   id: string;
   status: string;
   task_date: string;
   completed_by: string | null;
   completed_at: string | null;
+  daily_task_id: string | null;
 };
 type ProfileRow = { user_id: string; display_name: string | null };
 
@@ -81,6 +103,7 @@ export default function ClinicDashboardTab() {
   const [items, setItems] = useState<ItemRow[]>([]);
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [period, setPeriod] = useState<Period>("month");
+  const [collaboratorFilter, setCollaboratorFilter] = useState<string>("all");
 
   async function load() {
     const { start, end } = monthRange();
@@ -90,7 +113,11 @@ export default function ClinicDashboardTab() {
     const endDate = end.toISOString().slice(0, 10);
 
     const [d, a, t, i, p] = await Promise.all([
-      supabase.from("clinic_doctors").select("id, name, color, active").eq("active", true).order("name"),
+      supabase
+        .from("clinic_doctors")
+        .select("id, name, color, active, assigned_user_id")
+        .eq("active", true)
+        .order("name"),
       supabase
         .from("clinic_appointments")
         .select("id, doctor_id, appointment_at")
@@ -98,12 +125,12 @@ export default function ClinicDashboardTab() {
         .lte("appointment_at", endISO),
       supabase
         .from("clinic_daily_tasks")
-        .select("id, doctor_id, status, task_date")
+        .select("id, doctor_id, status, task_date, assigned_to, completed_by")
         .gte("task_date", startDate)
         .lte("task_date", endDate),
       supabase
         .from("client_task_items")
-        .select("id, status, task_date, completed_by, completed_at")
+        .select("id, status, task_date, completed_by, completed_at, daily_task_id")
         .gte("task_date", startDate)
         .lte("task_date", endDate),
       supabase.from("profiles").select("user_id, display_name").eq("is_active", true),
@@ -132,6 +159,38 @@ export default function ClinicDashboardTab() {
   const totalBusinessDays = businessDaysInMonth();
   const elapsed = elapsedBusinessDays();
 
+  // Mapas auxiliares
+  const profileName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of profiles) m.set(p.user_id, p.display_name || "Sem nome");
+    return m;
+  }, [profiles]);
+
+  // doctor_id -> assigned_user_id (responsável padrão pelo doutor)
+  const doctorOwner = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const d of doctors) m.set(d.id, d.assigned_user_id);
+    return m;
+  }, [doctors]);
+
+  // daily_task_id -> resolved owner (assigned_to da task, ou owner do doutor)
+  const taskOwner = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const t of tasks) {
+      const owner = t.assigned_to || (t.doctor_id ? doctorOwner.get(t.doctor_id) ?? null : null);
+      m.set(t.id, owner);
+    }
+    return m;
+  }, [tasks, doctorOwner]);
+
+  // Resolve "colaborador responsável" de um item: completed_by se houver,
+  // senão herda da daily_task (assigned_to ou owner do doutor).
+  function itemOwner(it: ItemRow): string | null {
+    if (it.completed_by) return it.completed_by;
+    if (it.daily_task_id) return taskOwner.get(it.daily_task_id) ?? null;
+    return null;
+  }
+
   const perDoctor = doctors
     .map((doc) => {
       const docAppts = appts.filter((a) => a.doctor_id === doc.id);
@@ -146,6 +205,7 @@ export default function ClinicDashboardTab() {
         projection,
         tasks: docTasks.length,
         doneTasks,
+        ownerName: doc.assigned_user_id ? profileName.get(doc.assigned_user_id) : null,
       };
     })
     .sort((a, b) => b.total - a.total);
@@ -154,24 +214,75 @@ export default function ClinicDashboardTab() {
   const overallDailyAvg = totalAppts / Math.max(elapsed, 1);
   const projectionTotal = overallDailyAvg * totalBusinessDays;
 
-  // ====== Recepção: contagem de tarefas (filtrável) ======
+  // ====== Recepção: contagem de tarefas (filtrável por período + colaborador) ======
   const today = spDateOnly();
   const weekStart = spWeekStart();
 
   const filteredItems = useMemo(() => {
     return items.filter((it) => {
-      if (period === "today") return it.task_date === today;
-      if (period === "week") return it.task_date >= weekStart && it.task_date <= today;
-      return true; // month
+      // período
+      if (period === "today" && it.task_date !== today) return false;
+      if (period === "week" && !(it.task_date >= weekStart && it.task_date <= today)) return false;
+
+      // colaborador
+      if (collaboratorFilter !== "all") {
+        const owner = itemOwner(it);
+        if (collaboratorFilter === "none") {
+          if (owner) return false;
+        } else if (owner !== collaboratorFilter) {
+          return false;
+        }
+      }
+      return true;
     });
-  }, [items, period, today, weekStart]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, period, today, weekStart, collaboratorFilter, taskOwner]);
 
   const totalItems = filteredItems.length;
   const doneItems = filteredItems.filter((i) => i.status === "done").length;
   const pendingItems = totalItems - doneItems;
   const completionRate = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
 
-  // (ranking removido a pedido — só contagens totais permanecem)
+  // Colaboradores que aparecem como responsáveis (para popular o filtro)
+  const collaboratorOptions = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of tasks) {
+      const o = t.assigned_to || (t.doctor_id ? doctorOwner.get(t.doctor_id) ?? null : null);
+      if (o) ids.add(o);
+    }
+    for (const it of items) {
+      const o = itemOwner(it);
+      if (o) ids.add(o);
+    }
+    return Array.from(ids)
+      .map((id) => ({ id, name: profileName.get(id) || "Sem nome" }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, items, doctorOwner, profileName, taskOwner]);
+
+  // Ranking mensal por colaborador (sempre o mês todo, independente do período)
+  const perCollaboratorMonth = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string | "none"; name: string; total: number; done: number; pending: number }
+    >();
+    for (const it of items) {
+      const owner = itemOwner(it);
+      const key = owner ?? "none";
+      const name = owner ? profileName.get(owner) || "Sem nome" : "Sem responsável";
+      const cur = map.get(key) || { id: key, name, total: 0, done: 0, pending: 0 };
+      cur.total++;
+      if (it.status === "done") cur.done++;
+      else cur.pending++;
+      map.set(key, cur);
+    }
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, profileName, taskOwner]);
+
+  const monthDoneTotal = items.filter((i) => i.status === "done").length;
+  const monthPendingTotal = items.filter((i) => i.status === "pending").length;
+  const monthAllTotal = items.length;
 
   const periodLabel: Record<Period, string> = {
     today: "Hoje",
@@ -198,14 +309,14 @@ export default function ClinicDashboardTab() {
         <KpiCard
           icon={<ClipboardList className="h-4 w-4 text-primary" />}
           label="Tarefas concluídas (mês)"
-          value={String(items.filter((i) => i.status === "done").length)}
-          hint={`de ${items.length} totais`}
+          value={String(monthDoneTotal)}
+          hint={`de ${monthAllTotal} totais`}
         />
         <KpiCard
           icon={<Activity className="h-4 w-4 text-primary" />}
           label="Pendentes (mês)"
-          value={String(items.filter((i) => i.status === "pending").length)}
-          hint={`${Math.round((items.filter((i) => i.status === "done").length / Math.max(items.length, 1)) * 100)}% concluídas`}
+          value={String(monthPendingTotal)}
+          hint={`${Math.round((monthDoneTotal / Math.max(monthAllTotal, 1)) * 100)}% concluídas`}
         />
       </div>
 
@@ -231,6 +342,7 @@ export default function ClinicDashboardTab() {
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border/50">
                   <th className="py-2 pr-4">Profissional</th>
+                  <th className="py-2 px-2">Responsável</th>
                   <th className="py-2 px-2 text-right">Agendamentos</th>
                   <th className="py-2 px-2 text-right">Média/dia</th>
                   <th className="py-2 px-2 text-right">Projeção mês</th>
@@ -248,6 +360,9 @@ export default function ClinicDashboardTab() {
                         />
                         <span className="font-medium">{d.name}</span>
                       </div>
+                    </td>
+                    <td className="py-3 px-2 text-xs text-muted-foreground">
+                      {d.ownerName ?? <span className="italic">— não definido</span>}
                     </td>
                     <td className="py-3 px-2 text-right tabular-nums font-semibold">
                       {d.total}
@@ -267,6 +382,7 @@ export default function ClinicDashboardTab() {
                 ))}
                 <tr className="border-t-2 border-border bg-secondary/30">
                   <td className="py-3 pr-4 font-bold">Total</td>
+                  <td className="py-3 px-2"></td>
                   <td className="py-3 px-2 text-right tabular-nums font-bold">
                     {totalAppts}
                   </td>
@@ -294,22 +410,38 @@ export default function ClinicDashboardTab() {
             <div>
               <h2 className="text-lg font-semibold">Tarefas da Recepção</h2>
               <p className="text-xs text-muted-foreground">
-                Filtre por período e veja totais e desempenho individual.
+                Filtre por período e colaborador. O responsável é herdado do doutor quando a tarefa não foi concluída.
               </p>
             </div>
           </div>
-          <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
-            {(["today", "week", "month"] as Period[]).map((p) => (
-              <Button
-                key={p}
-                variant={period === p ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setPeriod(p)}
-                className="h-7 px-3 text-xs"
-              >
-                {periodLabel[p]}
-              </Button>
-            ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select value={collaboratorFilter} onValueChange={setCollaboratorFilter}>
+              <SelectTrigger className="w-52 h-8 text-xs">
+                <SelectValue placeholder="Colaborador" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os colaboradores</SelectItem>
+                <SelectItem value="none">Sem responsável</SelectItem>
+                {collaboratorOptions.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
+              {(["today", "week", "month"] as Period[]).map((p) => (
+                <Button
+                  key={p}
+                  variant={period === p ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setPeriod(p)}
+                  className="h-7 px-3 text-xs"
+                >
+                  {periodLabel[p]}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -327,7 +459,81 @@ export default function ClinicDashboardTab() {
             hint={pendingItems > 0 ? "Aguardando execução" : "Tudo em dia"}
           />
         </div>
+      </Card>
 
+      {/* Ranking mensal por colaborador (sempre todas as tarefas do mês) */}
+      <Card className="p-6 bg-gradient-card border-border/50">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5 text-primary" />
+            <div>
+              <h2 className="text-lg font-semibold">
+                Tarefas do mês por colaborador
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Todas as tarefas do mês atual, agrupadas pelo responsável (colaborador do doutor ou quem concluiu).
+              </p>
+            </div>
+          </div>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            Total mês: <span className="font-semibold text-foreground">{monthAllTotal}</span>
+          </span>
+        </div>
+
+        {perCollaboratorMonth.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">
+            Nenhuma tarefa registrada no mês.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground border-b border-border/50">
+                  <th className="py-2 pr-4">Colaborador</th>
+                  <th className="py-2 px-2 text-right">Total</th>
+                  <th className="py-2 px-2 text-right">Concluídas</th>
+                  <th className="py-2 px-2 text-right">Pendentes</th>
+                  <th className="py-2 px-2 text-right">% conclusão</th>
+                  <th className="py-2 pl-2 w-40">Progresso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {perCollaboratorMonth.map((c) => {
+                  const pct = c.total ? Math.round((c.done / c.total) * 100) : 0;
+                  return (
+                    <tr key={c.id} className="border-b border-border/30 last:border-0">
+                      <td className="py-3 pr-4 font-medium">
+                        {c.id === "none" ? (
+                          <span className="italic text-muted-foreground">{c.name}</span>
+                        ) : (
+                          c.name
+                        )}
+                      </td>
+                      <td className="py-3 px-2 text-right tabular-nums font-semibold">
+                        {c.total}
+                      </td>
+                      <td className="py-3 px-2 text-right tabular-nums text-primary">
+                        {c.done}
+                      </td>
+                      <td className="py-3 px-2 text-right tabular-nums text-muted-foreground">
+                        {c.pending}
+                      </td>
+                      <td className="py-3 px-2 text-right tabular-nums">{pct}%</td>
+                      <td className="py-3 pl-2">
+                        <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-primary transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );
