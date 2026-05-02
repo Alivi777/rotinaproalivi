@@ -378,7 +378,8 @@ export default function FeedbacksPage() {
               </div>
             </Card>
           );
-        })}
+        });
+        })()}
       </div>
 
       {isAdmin && (
