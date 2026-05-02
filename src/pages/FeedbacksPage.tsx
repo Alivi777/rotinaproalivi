@@ -41,6 +41,9 @@ export default function FeedbacksPage() {
   const [editing, setEditing] = useState<Row | null>(null);
   const [signing, setSigning] = useState<Row | null>(null);
   const [signResponse, setSignResponse] = useState("");
+  const [filterUser, setFilterUser] = useState<string>("all");
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
 
   async function load() {
     const [p, f] = await Promise.all([
