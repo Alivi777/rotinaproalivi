@@ -618,6 +618,9 @@ export type Database = {
         Row: {
           created_at: string
           daily_plan_id: string
+          done: boolean
+          done_at: string | null
+          done_by: string | null
           due_date: string | null
           id: string
           responsible: string | null
@@ -629,6 +632,9 @@ export type Database = {
         Insert: {
           created_at?: string
           daily_plan_id: string
+          done?: boolean
+          done_at?: string | null
+          done_by?: string | null
           due_date?: string | null
           id?: string
           responsible?: string | null
@@ -640,6 +646,9 @@ export type Database = {
         Update: {
           created_at?: string
           daily_plan_id?: string
+          done?: boolean
+          done_at?: string | null
+          done_by?: string | null
           due_date?: string | null
           id?: string
           responsible?: string | null
