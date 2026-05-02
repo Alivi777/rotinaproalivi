@@ -150,19 +150,71 @@ export default function FeedbacksPage() {
         )}
       </header>
 
-      <div className="space-y-3">
-        {items.length === 0 && (
-          <Card className="p-8 text-center bg-card border-border/50">
-            <FileSignature className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              {isAdmin
-                ? "Crie o primeiro contrato de expectativa do mês para começar."
-                : "Você ainda não recebeu feedbacks. Aguarde o gestor."}
-            </p>
-          </Card>
-        )}
+      {isAdmin && (
+        <Card className="p-3 mb-4 bg-card border-border/50 flex flex-wrap items-end gap-2">
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground block">
+              Colaborador
+            </label>
+            <select
+              value={filterUser}
+              onChange={(e) => setFilterUser(e.target.value)}
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm w-48"
+            >
+              <option value="all">Todos</option>
+              {profiles.map((p) => (
+                <option key={p.user_id} value={p.user_id}>
+                  {p.display_name || "Sem nome"}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground block">
+              De
+            </label>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm w-36"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground block">
+              Até
+            </label>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm w-36"
+            />
+          </div>
+        </Card>
+      )}
 
-        {items.map((fb) => {
+      <div className="space-y-3">
+        {(() => {
+          const filtered = items.filter((it) => {
+            if (filterUser !== "all" && it.user_id !== filterUser) return false;
+            if (fromDate && it.reference_date < fromDate) return false;
+            if (toDate && it.reference_date > toDate) return false;
+            return true;
+          });
+          if (filtered.length === 0) {
+            return (
+              <Card className="p-8 text-center bg-card border-border/50">
+                <FileSignature className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  {isAdmin
+                    ? "Nenhum feedback no filtro selecionado."
+                    : "Você ainda não recebeu feedbacks. Aguarde o gestor."}
+                </p>
+              </Card>
+            );
+          }
+          return filtered.map((fb) => {
           const isContract = fb.feedback_type === "contract";
           const mineToSign = fb.user_id === user?.id && !fb.collaborator_signed_at;
           return (
