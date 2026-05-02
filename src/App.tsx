@@ -121,6 +121,14 @@ const App = () => (
             }
           />
           <Route
+            path="/ponto"
+            element={
+              <ProtectedRoute>
+                <PontoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/gestor-ia"
             element={
               <ProtectedRoute>
