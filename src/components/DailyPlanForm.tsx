@@ -74,7 +74,6 @@ export default function DailyPlanForm() {
     const { data: plans } = await supabase
       .from("manager_daily_plans")
       .select("id, plan_date, main_mission")
-      .eq("manager_id", user.id)
       .order("plan_date", { ascending: false })
       .limit(15);
     if (!plans?.length) {
