@@ -84,6 +84,9 @@ export type Deliverable = {
   due_date: string | null;
   status: string;
   sort_order: number;
+  done: boolean;
+  done_at: string | null;
+  done_by: string | null;
 };
 
 export const todayStr = () => new Date().toISOString().slice(0, 10);

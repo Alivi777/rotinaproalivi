@@ -200,22 +200,42 @@ export default function DailyPlanForm() {
       if (error) toast.error("Atribuições: " + error.message);
     }
 
-    // Save deliverables
-    await supabase.from("daily_plan_deliverables").delete().eq("daily_plan_id", currentId);
+    // Save deliverables (preservando done/done_at/done_by quando o item já existe)
     const validDeliv = deliverables.filter((d) => d.title?.trim());
-    if (validDeliv.length) {
-      const { error } = await supabase.from("daily_plan_deliverables").insert(
-        validDeliv.map((d, idx) => ({
-          daily_plan_id: currentId!,
-          title: d.title!,
-          responsible: d.responsible || null,
-          responsible_user_id: d.responsible_user_id || null,
-          due_date: d.due_date || null,
-          status: d.status || "pending",
-          sort_order: idx,
-        }))
-      );
-      if (error) toast.error("Entregas: " + error.message);
+    const existingIds = validDeliv.map((d) => d.id).filter(Boolean) as string[];
+    // Apaga apenas itens removidos pelo admin
+    if (existingIds.length) {
+      await supabase
+        .from("daily_plan_deliverables")
+        .delete()
+        .eq("daily_plan_id", currentId)
+        .not("id", "in", `(${existingIds.map((i) => `"${i}"`).join(",")})`);
+    } else {
+      await supabase.from("daily_plan_deliverables").delete().eq("daily_plan_id", currentId);
+    }
+    for (let idx = 0; idx < validDeliv.length; idx++) {
+      const d = validDeliv[idx];
+      const payload = {
+        daily_plan_id: currentId!,
+        title: d.title!,
+        responsible: d.responsible || null,
+        responsible_user_id: d.responsible_user_id || null,
+        due_date: d.due_date || null,
+        status: d.status || "pending",
+        sort_order: idx,
+      };
+      if (d.id) {
+        const { error } = await supabase
+          .from("daily_plan_deliverables")
+          .update(payload)
+          .eq("id", d.id);
+        if (error) toast.error("Entregas: " + error.message);
+      } else {
+        const { error } = await supabase
+          .from("daily_plan_deliverables")
+          .insert(payload);
+        if (error) toast.error("Entregas: " + error.message);
+      }
     }
 
     setSaving(false);
@@ -568,11 +588,36 @@ export default function DailyPlanForm() {
         )}
         <div className="space-y-2">
           {deliverables.map((d, i) => (
-            <div key={i} className="grid grid-cols-[1fr_180px_140px_140px_40px] gap-2">
+            <div key={i} className="grid grid-cols-[28px_1fr_180px_140px_140px_40px] gap-2 items-center">
+              <Checkbox
+                checked={!!d.done}
+                onCheckedChange={async (v) => {
+                  const checked = !!v;
+                  updateDeliverable(i, {
+                    done: checked,
+                    done_at: checked ? new Date().toISOString() : null,
+                    done_by: checked ? user?.id ?? null : null,
+                    status: checked ? "done" : d.status === "done" ? "pending" : d.status,
+                  });
+                  if (d.id) {
+                    await supabase
+                      .from("daily_plan_deliverables")
+                      .update({
+                        done: checked,
+                        done_at: checked ? new Date().toISOString() : null,
+                        done_by: checked ? user?.id ?? null : null,
+                        status: checked ? "done" : d.status === "done" ? "pending" : d.status,
+                      })
+                      .eq("id", d.id);
+                  }
+                }}
+                title="Marcar concluído"
+              />
               <Input
                 placeholder="Entrega"
                 value={d.title ?? ""}
                 onChange={(e) => updateDeliverable(i, { title: e.target.value })}
+                className={d.done ? "line-through text-muted-foreground" : ""}
               />
               <Input
                 placeholder="Responsável"
