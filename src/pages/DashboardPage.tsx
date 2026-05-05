@@ -159,8 +159,8 @@ export default function DashboardPage() {
   const sectorAdherence = useMemo(() => {
     return sectors.map((s) => {
       const sTasks = tasks.filter((t) => t.sector_id === s.id);
-      // total esperado para a semana = tarefas × dias decorridos
-      const totalExpected = sTasks.length * daysInWeek.length;
+      // total esperado = tarefas × 5 dias úteis (semana cheia)
+      const totalExpected = sTasks.length * expectedWeekdays;
       // marcações no período para essas tarefas (filtradas por scope)
       const sectorTaskIds = new Set(sTasks.map((t) => t.id));
       const weekdaySet = new Set(daysInWeek);
