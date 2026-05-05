@@ -15,3 +15,4 @@ verify_jwt = false
 [functions.tactical-ai-chat]
 verify_jwt = false
 
+
