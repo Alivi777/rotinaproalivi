@@ -442,11 +442,11 @@ export default function ReceptionTodayCards({
           {concluidos.length === 0 ? (
             <EmptyHint text="Arraste cards prontos para cá." />
           ) : (
-            concluidos.map(({ client, items }) => (
+            concluidos.map(({ client, items, key }) => (
               <div
-                key={client.id}
+                key={key}
                 draggable
-                onDragStart={(e) => onDragStart(e, client.id)}
+                onDragStart={(e) => onDragStart(e, items[0].id)}
                 className="cursor-grab active:cursor-grabbing"
               >
                 <ReceptionTaskCard
