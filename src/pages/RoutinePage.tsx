@@ -102,10 +102,20 @@ export default function RoutinePage() {
   useEffect(() => {
     load();
     const channel = supabase
-      .channel("completions-live")
+      .channel("routine-live")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "task_completions" },
+        () => load()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "client_tasks" },
+        () => load()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "routine_tasks" },
         () => load()
       )
       .subscribe();
@@ -113,7 +123,7 @@ export default function RoutinePage() {
       supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.id]);
 
   const myCompletions = useMemo(
     () => new Set(completions.filter((c) => c.user_id === user?.id).map((c) => c.task_id)),
