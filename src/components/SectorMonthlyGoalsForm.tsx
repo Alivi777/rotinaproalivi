@@ -29,21 +29,43 @@ const AUTO_SOURCES = [
 
 export default function SectorMonthlyGoalsForm() {
   const { sectors } = useSectors();
-  const [sectorId, setSectorId] = useState<string>("");
+  const [sectorId, setSectorId] = useState<string>(GENERAL_SECTOR);
   const [period, setPeriod] = useState<string>(monthStartStr().slice(0, 7));
   const periodMonth = `${period}-01`;
+  const isGeneral = sectorId === GENERAL_SECTOR;
+  const dbSectorId = isGeneral ? null : sectorId;
   const { metrics, reload } = useSectorMetrics(sectorId, periodMonth);
+  const [history, setHistory] = useState<Array<{ period_month: string; count: number }>>([]);
 
   const [drafts, setDrafts] = useState<Record<string, any>>({});
   const [newRow, setNewRow] = useState({ label: "", target_text: "", unit: "", auto_source: "" });
 
+  // load month history (last 12 months) for this sector
   useEffect(() => {
-    if (!sectorId && sectors.length) setSectorId(sectors[0].id);
-  }, [sectors, sectorId]);
+    (async () => {
+      let q = supabase
+        .from("sector_monthly_metrics")
+        .select("period_month")
+        .order("period_month", { ascending: false });
+      if (isGeneral) q = q.is("sector_id", null);
+      else q = q.eq("sector_id", sectorId);
+      const { data } = await q;
+      if (!data) return;
+      const grouped = new Map<string, number>();
+      for (const r of data as any[]) grouped.set(r.period_month, (grouped.get(r.period_month) || 0) + 1);
+      setHistory(Array.from(grouped.entries()).map(([period_month, count]) => ({ period_month, count })).slice(0, 12));
+    })();
+  }, [sectorId, periodMonth, isGeneral]);
 
   useEffect(() => {
     setDrafts({});
   }, [sectorId, periodMonth]);
+
+  function shiftMonth(delta: number) {
+    const d = new Date(periodMonth + "T00:00:00");
+    d.setMonth(d.getMonth() + delta);
+    setPeriod(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
 
   function setField(id: string, field: string, value: any) {
     setDrafts((d) => ({ ...d, [id]: { ...d[id], [field]: value } }));
