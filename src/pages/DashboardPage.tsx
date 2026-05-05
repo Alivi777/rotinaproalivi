@@ -140,11 +140,14 @@ export default function DashboardPage() {
 
   // ─── Aderência de Rotina (por setor, semana) ─────────────────────────
   // Considera: total = tarefas ativas × dias úteis da semana até hoje (1 marcação por tarefa/dia/usuário)
+  // Apenas dias úteis (seg-sex) decorridos da semana atual até hoje
   const daysInWeek = useMemo(() => {
     const days: string[] = [];
     const start = new Date(`${weekStart}T00:00:00`);
     const endD = new Date(`${today}T00:00:00`);
     for (let d = new Date(start); d <= endD; d.setDate(d.getDate() + 1)) {
+      const dow = d.getDay(); // 0=dom, 6=sáb
+      if (dow === 0 || dow === 6) continue;
       days.push(d.toISOString().slice(0, 10));
     }
     return days;
@@ -157,8 +160,12 @@ export default function DashboardPage() {
       const totalExpected = sTasks.length * daysInWeek.length;
       // marcações no período para essas tarefas (filtradas por scope)
       const sectorTaskIds = new Set(sTasks.map((t) => t.id));
+      const weekdaySet = new Set(daysInWeek);
       const sCompletions = completions.filter(
-        (c) => sectorTaskIds.has(c.task_id) && inScopeUser(c.user_id),
+        (c) =>
+          sectorTaskIds.has(c.task_id) &&
+          weekdaySet.has(c.completion_date) &&
+          inScopeUser(c.user_id),
       );
       // distintas por (task_id + date) para evitar dupla contagem
       const distinct = new Set(sCompletions.map((c) => `${c.task_id}|${c.completion_date}`)).size;
