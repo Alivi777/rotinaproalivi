@@ -99,10 +99,10 @@ export default function SectorMonthlyGoalsForm() {
   }
 
   async function addRow() {
-    if (!sectorId || !newRow.label.trim()) return;
+    if (!newRow.label.trim()) return;
     const max = metrics.length ? Math.max(...metrics.map((m) => m.sort_order)) + 1 : 1;
     const { error } = await supabase.from("sector_monthly_metrics").insert({
-      sector_id: sectorId,
+      sector_id: dbSectorId,
       period_month: periodMonth,
       label: newRow.label.trim(),
       target_text: newRow.target_text || null,
@@ -116,22 +116,26 @@ export default function SectorMonthlyGoalsForm() {
     reload();
   }
 
-  async function copyFromPrevMonth() {
-    if (!sectorId) return;
-    const d = new Date(periodMonth + "T00:00:00");
-    d.setMonth(d.getMonth() - 1);
-    const prev = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-    const { data } = await supabase
+  async function copyFromMonth(prevPeriodMonth: string) {
+    let q = supabase
       .from("sector_monthly_metrics")
       .select("label, target_text, target_value, unit, auto_source, sort_order")
-      .eq("sector_id", sectorId)
-      .eq("period_month", prev);
-    if (!data?.length) return toast.info("Nenhum indicador no mês anterior.");
-    const rows = data.map((r) => ({ ...r, sector_id: sectorId, period_month: periodMonth }));
+      .eq("period_month", prevPeriodMonth);
+    if (isGeneral) q = q.is("sector_id", null);
+    else q = q.eq("sector_id", sectorId);
+    const { data } = await q;
+    if (!data?.length) return toast.info("Nenhum indicador nesse mês.");
+    const rows = data.map((r) => ({ ...r, sector_id: dbSectorId, period_month: periodMonth }));
     const { error } = await supabase.from("sector_monthly_metrics").insert(rows);
     if (error) return toast.error(error.message);
     toast.success(`${rows.length} indicadores copiados`);
     reload();
+  }
+
+  async function copyFromPrevMonth() {
+    const d = new Date(periodMonth + "T00:00:00");
+    d.setMonth(d.getMonth() - 1);
+    await copyFromMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
   }
 
   return (
