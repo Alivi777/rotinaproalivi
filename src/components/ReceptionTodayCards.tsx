@@ -404,11 +404,11 @@ export default function ReceptionTodayCards({
           {programadas.length === 0 ? (
             <EmptyHint text={search ? `Nada para "${search}".` : "Sem programadas hoje."} />
           ) : (
-            programadas.map(({ client, items }) => (
+            programadas.map(({ client, items, key }) => (
               <div
-                key={client.id}
+                key={key}
                 draggable
-                onDragStart={(e) => onDragStart(e, client.id)}
+                onDragStart={(e) => onDragStart(e, items[0].id)}
                 className="cursor-grab active:cursor-grabbing"
               >
                 <ReceptionTaskCard
