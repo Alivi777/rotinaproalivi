@@ -59,8 +59,15 @@ type Sale = {
 };
 
 const monthStartIso = () => {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+  // mês corrente no fuso de São Paulo (Brasil)
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const y = parts.find((p) => p.type === "year")!.value;
+  const m = parts.find((p) => p.type === "month")!.value;
+  return `${y}-${m}-01`;
 };
 const fmtMoney = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -182,9 +189,10 @@ export default function AdminPage() {
   const newPatientsCount = sales.filter((s) => s.is_new_patient).length;
   const margin = totalRevenue ? (totalProfit / totalRevenue) * 100 : 0;
 
-  const monthLabel = new Date(period).toLocaleDateString("pt-BR", {
+  const monthLabel = new Date(`${period}T12:00:00`).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
+    timeZone: "America/Sao_Paulo",
   });
 
   if (roleLoading) {
