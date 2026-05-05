@@ -25,23 +25,27 @@ export function monthEndStr(d = new Date()) {
   return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 }
 
+export const GENERAL_SECTOR = "_general";
+
 export function useSectorMetrics(sectorId: string | null | undefined, periodMonth: string) {
   const [metrics, setMetrics] = useState<SectorMetric[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
-    if (!sectorId) {
+    if (sectorId === undefined || sectorId === null || sectorId === "") {
       setMetrics([]);
       setLoading(false);
       return;
     }
     setLoading(true);
-    const { data } = await supabase
+    let q = supabase
       .from("sector_monthly_metrics")
       .select("*")
-      .eq("sector_id", sectorId)
       .eq("period_month", periodMonth)
       .order("sort_order");
+    if (sectorId === GENERAL_SECTOR) q = q.is("sector_id", null);
+    else q = q.eq("sector_id", sectorId);
+    const { data } = await q;
     setMetrics((data as SectorMetric[]) ?? []);
     setLoading(false);
   }, [sectorId, periodMonth]);

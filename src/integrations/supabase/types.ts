@@ -1358,7 +1358,7 @@ export type Database = {
           label: string
           notes: string | null
           period_month: string
-          sector_id: string
+          sector_id: string | null
           sort_order: number
           target_text: string | null
           target_value: number | null
@@ -1374,7 +1374,7 @@ export type Database = {
           label: string
           notes?: string | null
           period_month: string
-          sector_id: string
+          sector_id?: string | null
           sort_order?: number
           target_text?: string | null
           target_value?: number | null
@@ -1390,7 +1390,7 @@ export type Database = {
           label?: string
           notes?: string | null
           period_month?: string
-          sector_id?: string
+          sector_id?: string | null
           sort_order?: number
           target_text?: string | null
           target_value?: number | null

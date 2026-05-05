@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, TrendingUp } from "lucide-react";
 import { useSectors } from "@/lib/useProfile";
-import { useSectorMetrics, monthStartStr, computeAutoMetrics } from "@/lib/useSectorMetrics";
+import { useSectorMetrics, monthStartStr, computeAutoMetrics, GENERAL_SECTOR } from "@/lib/useSectorMetrics";
 
 type Props = {
   /** Setor padrão (ex: setor do colaborador). Se omitido, mostra abas de todos. */
@@ -59,6 +59,7 @@ export default function SectorResultsPanel({
         {showSectorTabs && sectors.length > 0 && (
           <Tabs value={activeSectorId} onValueChange={setActiveSectorId}>
             <TabsList className="h-8 flex-wrap">
+              <TabsTrigger value={GENERAL_SECTOR} className="h-7 text-xs px-2">🎯 Geral</TabsTrigger>
               {sectors.map((s) => (
                 <TabsTrigger key={s.id} value={s.id} className="h-7 text-xs px-2">
                   {s.name}

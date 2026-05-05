@@ -13,9 +13,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useSectors } from "@/lib/useProfile";
-import { useSectorMetrics, monthStartStr } from "@/lib/useSectorMetrics";
-import { Plus, Save, Trash2, Target } from "lucide-react";
+import { useSectorMetrics, monthStartStr, GENERAL_SECTOR } from "@/lib/useSectorMetrics";
+import { Plus, Save, Trash2, Target, ChevronLeft, ChevronRight, History } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AUTO_SOURCES = [
   { value: "", label: "Manual" },
@@ -28,21 +29,43 @@ const AUTO_SOURCES = [
 
 export default function SectorMonthlyGoalsForm() {
   const { sectors } = useSectors();
-  const [sectorId, setSectorId] = useState<string>("");
+  const [sectorId, setSectorId] = useState<string>(GENERAL_SECTOR);
   const [period, setPeriod] = useState<string>(monthStartStr().slice(0, 7));
   const periodMonth = `${period}-01`;
+  const isGeneral = sectorId === GENERAL_SECTOR;
+  const dbSectorId = isGeneral ? null : sectorId;
   const { metrics, reload } = useSectorMetrics(sectorId, periodMonth);
+  const [history, setHistory] = useState<Array<{ period_month: string; count: number }>>([]);
 
   const [drafts, setDrafts] = useState<Record<string, any>>({});
   const [newRow, setNewRow] = useState({ label: "", target_text: "", unit: "", auto_source: "" });
 
+  // load month history (last 12 months) for this sector
   useEffect(() => {
-    if (!sectorId && sectors.length) setSectorId(sectors[0].id);
-  }, [sectors, sectorId]);
+    (async () => {
+      let q = supabase
+        .from("sector_monthly_metrics")
+        .select("period_month")
+        .order("period_month", { ascending: false });
+      if (isGeneral) q = q.is("sector_id", null);
+      else q = q.eq("sector_id", sectorId);
+      const { data } = await q;
+      if (!data) return;
+      const grouped = new Map<string, number>();
+      for (const r of data as any[]) grouped.set(r.period_month, (grouped.get(r.period_month) || 0) + 1);
+      setHistory(Array.from(grouped.entries()).map(([period_month, count]) => ({ period_month, count })).slice(0, 12));
+    })();
+  }, [sectorId, periodMonth, isGeneral]);
 
   useEffect(() => {
     setDrafts({});
   }, [sectorId, periodMonth]);
+
+  function shiftMonth(delta: number) {
+    const d = new Date(periodMonth + "T00:00:00");
+    d.setMonth(d.getMonth() + delta);
+    setPeriod(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
 
   function setField(id: string, field: string, value: any) {
     setDrafts((d) => ({ ...d, [id]: { ...d[id], [field]: value } }));
@@ -76,10 +99,10 @@ export default function SectorMonthlyGoalsForm() {
   }
 
   async function addRow() {
-    if (!sectorId || !newRow.label.trim()) return;
+    if (!newRow.label.trim()) return;
     const max = metrics.length ? Math.max(...metrics.map((m) => m.sort_order)) + 1 : 1;
     const { error } = await supabase.from("sector_monthly_metrics").insert({
-      sector_id: sectorId,
+      sector_id: dbSectorId,
       period_month: periodMonth,
       label: newRow.label.trim(),
       target_text: newRow.target_text || null,
@@ -93,22 +116,26 @@ export default function SectorMonthlyGoalsForm() {
     reload();
   }
 
-  async function copyFromPrevMonth() {
-    if (!sectorId) return;
-    const d = new Date(periodMonth + "T00:00:00");
-    d.setMonth(d.getMonth() - 1);
-    const prev = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
-    const { data } = await supabase
+  async function copyFromMonth(prevPeriodMonth: string) {
+    let q = supabase
       .from("sector_monthly_metrics")
       .select("label, target_text, target_value, unit, auto_source, sort_order")
-      .eq("sector_id", sectorId)
-      .eq("period_month", prev);
-    if (!data?.length) return toast.info("Nenhum indicador no mês anterior.");
-    const rows = data.map((r) => ({ ...r, sector_id: sectorId, period_month: periodMonth }));
+      .eq("period_month", prevPeriodMonth);
+    if (isGeneral) q = q.is("sector_id", null);
+    else q = q.eq("sector_id", sectorId);
+    const { data } = await q;
+    if (!data?.length) return toast.info("Nenhum indicador nesse mês.");
+    const rows = data.map((r) => ({ ...r, sector_id: dbSectorId, period_month: periodMonth }));
     const { error } = await supabase.from("sector_monthly_metrics").insert(rows);
     if (error) return toast.error(error.message);
     toast.success(`${rows.length} indicadores copiados`);
     reload();
+  }
+
+  async function copyFromPrevMonth() {
+    const d = new Date(periodMonth + "T00:00:00");
+    d.setMonth(d.getMonth() - 1);
+    await copyFromMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
   }
 
   return (
@@ -118,12 +145,13 @@ export default function SectorMonthlyGoalsForm() {
         <h3 className="font-semibold">Metas mensais por setor</h3>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-3 mb-5">
+      <div className="grid sm:grid-cols-3 gap-3 mb-4">
         <div>
           <Label>Setor</Label>
           <Select value={sectorId} onValueChange={setSectorId}>
             <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
             <SelectContent>
+              <SelectItem value={GENERAL_SECTOR}>🎯 Geral (clínica)</SelectItem>
               {sectors.map((s) => (
                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
               ))}
@@ -132,7 +160,15 @@ export default function SectorMonthlyGoalsForm() {
         </div>
         <div>
           <Label>Mês</Label>
-          <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+          <div className="flex gap-1">
+            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => shiftMonth(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="flex-1" />
+            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => shiftMonth(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex items-end">
           <Button variant="outline" size="sm" onClick={copyFromPrevMonth} className="w-full">
@@ -140,6 +176,30 @@ export default function SectorMonthlyGoalsForm() {
           </Button>
         </div>
       </div>
+
+      {history.length > 0 && (
+        <div className="mb-5 p-2 rounded-lg bg-secondary/30 border border-border/40">
+          <div className="flex items-center gap-2 mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+            <History className="h-3 w-3" /> Histórico de meses com metas
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {history.map((h) => {
+              const active = h.period_month === periodMonth;
+              const label = new Date(h.period_month + "T00:00:00").toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+              return (
+                <button
+                  key={h.period_month}
+                  onClick={() => setPeriod(h.period_month.slice(0, 7))}
+                  className={`px-2 py-1 rounded-md text-xs border transition-colors ${active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-secondary border-border/50"}`}
+                  title={`${h.count} indicador(es)`}
+                >
+                  {label} <span className="opacity-60">· {h.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2 mb-4">
         {metrics.length === 0 && (
