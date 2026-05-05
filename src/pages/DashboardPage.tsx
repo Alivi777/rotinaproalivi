@@ -2,151 +2,224 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AppShell from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useSectors } from "@/lib/useProfile";
-import WeeklyAdherenceChart from "@/components/WeeklyAdherenceChart";
-import PriorityAlert from "@/components/PriorityAlert";
-import WhatsAppTimeDashboard from "@/components/WhatsAppTimeDashboard";
-import ClinicDashboardTab from "@/components/ClinicDashboardTab";
-import ProductivityPanel from "@/components/ProductivityPanel";
-import CollaboratorTasksPanel from "@/components/CollaboratorTasksPanel";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { spToday, spWeekStart, spMonthStart } from "@/lib/spTime";
 import {
-  CheckCircle2,
-  MessageSquareText,
-  UserPlus,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSectors, useProfile } from "@/lib/useProfile";
+import { useIsAdmin } from "@/lib/useIsAdmin";
+import { useAuth } from "@/lib/auth";
+import PriorityAlert from "@/components/PriorityAlert";
+import CollaboratorTasksPanel from "@/components/CollaboratorTasksPanel";
+import SectorResultsPanel from "@/components/SectorResultsPanel";
+import ClinicDashboardTab from "@/components/ClinicDashboardTab";
+import { spToday, spWeekStart, fmtMinutes } from "@/lib/spTime";
+import {
   Calendar,
   TrendingUp,
   Activity,
   LayoutDashboard,
   Stethoscope,
-  Filter,
+  ClipboardList,
+  Users,
+  Target,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
-type RangeKey = "today" | "week" | "month" | "custom";
-
-function resolveRange(r: RangeKey, custom: { start: string; end: string }) {
-  const today = spToday();
-  switch (r) {
-    case "today":
-      return { start: today, end: today };
-    case "week":
-      return { start: spWeekStart(), end: today };
-    case "month":
-      return { start: spMonthStart(), end: today };
-    case "custom":
-      return { start: custom.start || today, end: custom.end || today };
-  }
-}
-
-type SectorAgg = {
+type RoutineTask = { id: string; sector_id: string | null; title: string };
+type Completion = { task_id: string; user_id: string; completion_date: string };
+type ClientTaskItem = {
   id: string;
-  name: string;
-  done: number;
-  total: number;
-  pct: number;
+  client_id: string;
+  status: string;
+  task_date: string;
+  completed_by: string | null;
+};
+type Client = { id: string; assigned_to: string | null; sector_id: string | null };
+type Profile = { user_id: string; display_name: string | null; sector_id: string | null };
+type ClockEntry = {
+  user_id: string;
+  entry_date: string;
+  clock_in: string | null;
+  lunch_start: string | null;
+  lunch_end: string | null;
+  clock_out: string | null;
 };
 
-export default function DashboardPage() {
-  const { sectors } = useSectors();
-  const [tasks, setTasks] = useState<{ id: string; sector_id: string | null }[]>([]);
-  const [completions, setCompletions] = useState<{ task_id: string; user_id: string }[]>([]);
-  const [waCount, setWaCount] = useState(0);
-  const [uniqueClients, setUniqueClients] = useState(0);
-  const [newClients, setNewClients] = useState(0);
-  const [activeMembers, setActiveMembers] = useState(0);
+function minutesBetween(a: string | null, b: string | null) {
+  if (!a || !b) return 0;
+  return Math.max(0, (new Date(b).getTime() - new Date(a).getTime()) / 60000);
+}
+function entryMinutes(e: ClockEntry): number {
+  if (!e.clock_in) return 0;
+  const end = e.clock_out ?? new Date().toISOString();
+  let total = minutesBetween(e.clock_in, end);
+  total -= minutesBetween(e.lunch_start, e.lunch_end);
+  return Math.max(0, Math.round(total));
+}
 
-  // Filtro de período — padrão "week" para alimentar dados da semana
-  const [rangeKey, setRangeKey] = useState<RangeKey>("week");
-  const [custom, setCustom] = useState({ start: spWeekStart(), end: spToday() });
-  const { start, end } = useMemo(
-    () => resolveRange(rangeKey, custom),
-    [rangeKey, custom.start, custom.end]
-  );
+export default function DashboardPage() {
+  const { user } = useAuth();
+  const { isAdmin, loading: adminLoading } = useIsAdmin();
+  const { profile } = useProfile();
+  const { sectors } = useSectors();
+
+  const [scope, setScope] = useState<"me" | "all">("me");
+  useEffect(() => {
+    if (!adminLoading) setScope(isAdmin ? "all" : "me");
+  }, [isAdmin, adminLoading]);
+
+  const weekStart = spWeekStart();
+  const today = spToday();
+
+  const [tasks, setTasks] = useState<RoutineTask[]>([]);
+  const [completions, setCompletions] = useState<Completion[]>([]);
+  const [clientTasks, setClientTasks] = useState<ClientTaskItem[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [clockEntries, setClockEntries] = useState<ClockEntry[]>([]);
 
   async function load() {
-    const startISO = `${start}T00:00:00-03:00`;
-    const endISO = `${end}T23:59:59-03:00`;
-    const [t, c, wa, nc, am] = await Promise.all([
-      supabase.from("routine_tasks").select("id, sector_id").eq("active", true),
+    const [t, c, ct, cl, pr, ce] = await Promise.all([
+      supabase.from("routine_tasks").select("id, sector_id, title").eq("active", true),
       supabase
         .from("task_completions")
-        .select("task_id, user_id")
-        .gte("completion_date", start)
-        .lte("completion_date", end),
+        .select("task_id, user_id, completion_date")
+        .gte("completion_date", weekStart)
+        .lte("completion_date", today),
       supabase
-        .from("whatsapp_messages")
-        .select("from_phone, client_id", { count: "exact" })
-        .gte("received_at", startISO)
-        .lte("received_at", endISO),
+        .from("client_task_items")
+        .select("id, client_id, status, task_date, completed_by")
+        .gte("task_date", weekStart)
+        .lte("task_date", today),
+      supabase.from("clients").select("id, assigned_to, sector_id"),
+      supabase.from("profiles").select("user_id, display_name, sector_id").eq("is_active", true),
       supabase
-        .from("clients")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", startISO)
-        .lte("created_at", endISO),
-      supabase
-        .from("task_completions")
-        .select("user_id")
-        .gte("completion_date", start)
-        .lte("completion_date", end),
+        .from("time_clock_entries")
+        .select("user_id, entry_date, clock_in, lunch_start, lunch_end, clock_out")
+        .gte("entry_date", weekStart)
+        .lte("entry_date", today),
     ]);
-    if (t.data) setTasks(t.data);
-    if (c.data) setCompletions(c.data);
-    if (wa.data) {
-      setWaCount(wa.count ?? wa.data.length);
-      const uniq = new Set(wa.data.map((m) => m.from_phone));
-      setUniqueClients(uniq.size);
-    }
-    setNewClients(nc.count ?? 0);
-    if (am.data) setActiveMembers(new Set(am.data.map((c) => c.user_id)).size);
+    if (t.data) setTasks(t.data as RoutineTask[]);
+    if (c.data) setCompletions(c.data as Completion[]);
+    if (ct.data) setClientTasks(ct.data as ClientTaskItem[]);
+    if (cl.data) setClients(cl.data as Client[]);
+    if (pr.data) setProfiles(pr.data as Profile[]);
+    if (ce.data) setClockEntries(ce.data as ClockEntry[]);
   }
 
   useEffect(() => {
     load();
     const ch = supabase
-      .channel("dash-live")
+      .channel("dash-crm-live")
       .on("postgres_changes", { event: "*", schema: "public", table: "task_completions" }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_messages" }, load)
-      .on("postgres_changes", { event: "*", schema: "public", table: "clients" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "client_task_items" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "time_clock_entries" }, load)
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [start, end]);
+  }, [weekStart, today]);
 
-  const totalTasks = tasks.length;
-  const totalDoneRecords = completions.length;
-  // Distinct done tasks (any user marked) for org-wide progress
-  const distinctDone = new Set(completions.map((c) => c.task_id)).size;
-  const orgPct = totalTasks ? Math.round((distinctDone / totalTasks) * 100) : 0;
+  const profileBy = useMemo(() => new Map(profiles.map((p) => [p.user_id, p])), [profiles]);
+  const clientBy = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
 
-  const perSector: SectorAgg[] = sectors.map((s) => {
-    const sTasks = tasks.filter((t) => t.sector_id === s.id);
-    const sDone = new Set(
-      completions
-        .filter((c) => sTasks.some((t) => t.id === c.task_id))
-        .map((c) => c.task_id)
-    ).size;
-    return {
-      id: s.id,
-      name: s.name,
-      done: sDone,
-      total: sTasks.length,
-      pct: sTasks.length ? Math.round((sDone / sTasks.length) * 100) : 0,
-    };
-  });
+  // Filter scope
+  const myUid = user?.id;
+  const inScopeUser = (uid: string | null | undefined) =>
+    scope === "all" ? true : uid === myUid;
 
-  const rangeLabel: Record<RangeKey, string> = {
-    today: "Hoje",
-    week: "Esta semana",
-    month: "Este mês",
-    custom: "Personalizado",
-  };
+  // ─── Aderência de Rotina (por setor, semana) ─────────────────────────
+  // Considera: total = tarefas ativas × dias úteis da semana até hoje (1 marcação por tarefa/dia/usuário)
+  const daysInWeek = useMemo(() => {
+    const days: string[] = [];
+    const start = new Date(`${weekStart}T00:00:00`);
+    const endD = new Date(`${today}T00:00:00`);
+    for (let d = new Date(start); d <= endD; d.setDate(d.getDate() + 1)) {
+      days.push(d.toISOString().slice(0, 10));
+    }
+    return days;
+  }, [weekStart, today]);
+
+  const sectorAdherence = useMemo(() => {
+    return sectors.map((s) => {
+      const sTasks = tasks.filter((t) => t.sector_id === s.id);
+      // total esperado para a semana = tarefas × dias decorridos
+      const totalExpected = sTasks.length * daysInWeek.length;
+      // marcações no período para essas tarefas (filtradas por scope)
+      const sectorTaskIds = new Set(sTasks.map((t) => t.id));
+      const sCompletions = completions.filter(
+        (c) => sectorTaskIds.has(c.task_id) && inScopeUser(c.user_id),
+      );
+      // distintas por (task_id + date) para evitar dupla contagem
+      const distinct = new Set(sCompletions.map((c) => `${c.task_id}|${c.completion_date}`)).size;
+      const pct = totalExpected ? Math.round((distinct / totalExpected) * 100) : 0;
+      return {
+        id: s.id,
+        name: s.name,
+        tasksCount: sTasks.length,
+        expected: totalExpected,
+        done: distinct,
+        pct,
+      };
+    });
+  }, [sectors, tasks, completions, daysInWeek, scope, myUid]);
+
+  // ─── Aderência de Tarefas com Clientes (semana) ──────────────────────
+  const clientAdherence = useMemo(() => {
+    const filtered = clientTasks.filter((it) => {
+      if (scope === "all") return true;
+      const c = clientBy.get(it.client_id);
+      return (
+        c?.assigned_to === myUid ||
+        it.completed_by === myUid
+      );
+    });
+    const total = filtered.length;
+    const done = filtered.filter((i) => i.status === "done").length;
+    const overdue = filtered.filter((i) => i.status !== "done" && i.task_date < today).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    return { total, done, overdue, pct };
+  }, [clientTasks, clientBy, scope, myUid, today]);
+
+  // ─── Horas trabalhadas na semana (do ponto) ──────────────────────────
+  const hoursByUser = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of clockEntries) {
+      if (!inScopeUser(e.user_id)) continue;
+      map.set(e.user_id, (map.get(e.user_id) ?? 0) + entryMinutes(e));
+    }
+    return Array.from(map.entries())
+      .map(([uid, minutes]) => ({
+        uid,
+        name: profileBy.get(uid)?.display_name || "Sem nome",
+        minutes,
+      }))
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [clockEntries, profileBy, scope, myUid]);
+
+  const totalWeekMinutes = hoursByUser.reduce((acc, x) => acc + x.minutes, 0);
+
+  // KPIs gerais
+  const overallRoutinePct = useMemo(() => {
+    const exp = sectorAdherence.reduce((a, s) => a + s.expected, 0);
+    const dn = sectorAdherence.reduce((a, s) => a + s.done, 0);
+    return exp ? Math.round((dn / exp) * 100) : 0;
+  }, [sectorAdherence]);
+
+  const activeMembers = useMemo(() => {
+    const set = new Set(completions.filter((c) => inScopeUser(c.user_id)).map((c) => c.user_id));
+    return set.size;
+  }, [completions, scope, myUid]);
 
   return (
     <AppShell>
@@ -160,63 +233,40 @@ export default function DashboardPage() {
             year: "numeric",
           })}
         </div>
-        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          Visão consolidada — período: <span className="text-foreground font-medium">{rangeLabel[rangeKey]}</span>
-          {" "}({start} → {end})
-        </p>
-      </header>
-
-      {/* Filtro global de período */}
-      <Card className="p-4 mb-6 bg-card border-border/50">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Filtrar período</span>
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Dashboard CRM</h1>
+            <p className="text-muted-foreground mt-1">
+              Semana atual: <span className="text-foreground font-medium">{weekStart}</span> →{" "}
+              <span className="text-foreground font-medium">{today}</span>
+            </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          {isAdmin && (
             <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
-              {(["today", "week", "month", "custom"] as RangeKey[]).map((r) => (
-                <Button
-                  key={r}
-                  variant={rangeKey === r ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setRangeKey(r)}
-                  className="h-8 px-3 text-xs"
-                >
-                  {rangeLabel[r]}
-                </Button>
-              ))}
+              <Button
+                variant={scope === "all" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setScope("all")}
+                className="h-8 px-3 text-xs"
+              >
+                Visão geral
+              </Button>
+              <Button
+                variant={scope === "me" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setScope("me")}
+                className="h-8 px-3 text-xs"
+              >
+                Só eu
+              </Button>
             </div>
-            {rangeKey === "custom" && (
-              <div className="flex items-end gap-2">
-                <div>
-                  <Label className="text-xs">De</Label>
-                  <Input
-                    type="date"
-                    value={custom.start}
-                    onChange={(e) => setCustom({ ...custom, start: e.target.value })}
-                    className="h-8"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Até</Label>
-                  <Input
-                    type="date"
-                    value={custom.end}
-                    onChange={(e) => setCustom({ ...custom, end: e.target.value })}
-                    className="h-8"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
-      </Card>
+      </header>
 
       <PriorityAlert />
 
-      <Tabs defaultValue="geral" className="w-full">
+      <Tabs defaultValue="geral" className="w-full mt-4">
         <TabsList className="mb-6">
           <TabsTrigger value="geral" className="gap-2">
             <LayoutDashboard className="h-4 w-4" />
@@ -229,101 +279,170 @@ export default function DashboardPage() {
         </TabsList>
 
         <TabsContent value="geral" className="space-y-6 mt-0">
-          {/* KPI Grid */}
+          {/* KPI nível CRM */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KpiCard
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
-              label="Aderência geral"
-              value={`${orgPct}%`}
-              hint={`${distinctDone}/${totalTasks} tarefas`}
+              label="Aderência de rotina"
+              value={`${overallRoutinePct}%`}
+              hint={`semana — ${scope === "all" ? "todos" : "você"}`}
             />
             <KpiCard
-              icon={<MessageSquareText className="h-4 w-4 text-primary" />}
-              label="Atendimentos WhatsApp"
-              value={String(waCount)}
-              hint={`${uniqueClients} contatos únicos`}
+              icon={<ClipboardList className="h-4 w-4 text-primary" />}
+              label="Tarefas com clientes"
+              value={`${clientAdherence.pct}%`}
+              hint={`${clientAdherence.done}/${clientAdherence.total} feitas`}
             />
             <KpiCard
-              icon={<UserPlus className="h-4 w-4 text-primary" />}
-              label="Novos clientes"
-              value={String(newClients)}
-              hint={`no período (${rangeLabel[rangeKey].toLowerCase()})`}
+              icon={<Clock className="h-4 w-4 text-primary" />}
+              label="Horas na semana"
+              value={fmtMinutes(totalWeekMinutes)}
+              hint={`${hoursByUser.length} pessoa(s) batendo ponto`}
             />
             <KpiCard
               icon={<Activity className="h-4 w-4 text-primary" />}
               label="Membros ativos"
               value={String(activeMembers)}
-              hint={`${totalDoneRecords} marcações totais`}
+              hint="marcaram rotina nesta semana"
             />
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-4">
-            <Card className="p-6 bg-gradient-card border-border/50 lg:col-span-2">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Aderência por setor</h2>
-                <span className="text-xs text-muted-foreground">tempo real</span>
+          {/* Aderência de Rotina por setor — TABELA */}
+          <Card className="p-6 bg-gradient-card border-border/50">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold">Aderência de rotina</h2>
+                <Badge variant="outline" className="text-[10px]">
+                  semana ({daysInWeek.length} dia{daysInWeek.length === 1 ? "" : "s"})
+                </Badge>
               </div>
-              <div className="space-y-3">
-                {perSector.map((s) => (
-                  <div key={s.id}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium">{s.name}</span>
-                      <span className="text-muted-foreground tabular-nums">
-                        {s.done}/{s.total} · {s.pct}%
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-primary transition-all duration-500"
-                        style={{ width: `${s.pct}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <span className="text-xs text-muted-foreground">tempo real</span>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Setor</TableHead>
+                    <TableHead className="text-right">Tarefas</TableHead>
+                    <TableHead className="text-right">Esperado na semana</TableHead>
+                    <TableHead className="text-right">Concluídas</TableHead>
+                    <TableHead className="text-right">% Atingimento</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sectorAdherence.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell className="text-right tabular-nums">{s.tasksCount}</TableCell>
+                      <TableCell className="text-right tabular-nums">{s.expected}</TableCell>
+                      <TableCell className="text-right tabular-nums">{s.done}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-24 h-2 rounded-full bg-secondary overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-primary"
+                              style={{ width: `${Math.min(100, s.pct)}%` }}
+                            />
+                          </div>
+                          <span className="tabular-nums font-semibold w-10 text-right">
+                            {s.pct}%
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="border-t-2 border-border font-semibold">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {sectorAdherence.reduce((a, s) => a + s.tasksCount, 0)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {sectorAdherence.reduce((a, s) => a + s.expected, 0)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {sectorAdherence.reduce((a, s) => a + s.done, 0)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{overallRoutinePct}%</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+
+          {/* Aderência de tarefas com clientes + Horas trabalhadas */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            <Card className="p-6 bg-gradient-card border-border/50">
+              <div className="flex items-center gap-2 mb-4">
+                <Users className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold">Aderência de tarefas com clientes</h2>
+              </div>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Mini label="Total" value={clientAdherence.total} />
+                <Mini label="Feitas" value={clientAdherence.done} tone="success" />
+                <Mini label="Atrasadas" value={clientAdherence.overdue} tone="destructive" />
+              </div>
+              <div className="h-3 rounded-full bg-secondary overflow-hidden">
+                <div
+                  className="h-full bg-gradient-primary transition-all"
+                  style={{ width: `${clientAdherence.pct}%` }}
+                />
+              </div>
+              <div className="text-right text-sm font-semibold mt-2 tabular-nums">
+                {clientAdherence.pct}%
               </div>
             </Card>
 
             <Card className="p-6 bg-gradient-card border-border/50">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Agenda</h2>
-                <Calendar className="h-4 w-4 text-primary" />
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <h2 className="text-lg font-semibold">Horas trabalhadas na semana</h2>
+                </div>
+                <Badge variant="outline" className="text-[10px]">do ponto</Badge>
               </div>
-              <div className="text-center py-10">
-                <Calendar className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-sm text-muted-foreground">
-                  Conexão com Google Agenda
-                  <br />
-                  <span className="text-xs">disponível em breve</span>
+              {hoursByUser.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  Sem registros de ponto na semana.
                 </p>
-              </div>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-auto">
+                  {hoursByUser.map((u) => (
+                    <div
+                      key={u.uid}
+                      className="flex items-center justify-between rounded-md border border-border/40 px-3 py-2 bg-card/40"
+                    >
+                      <span className="text-sm font-medium truncate">
+                        {u.name}
+                        {u.uid === myUid && (
+                          <span className="ml-1.5 text-xs text-primary">(você)</span>
+                        )}
+                      </span>
+                      <span className="tabular-nums text-sm font-semibold">
+                        {fmtMinutes(u.minutes)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           </div>
 
-          <CollaboratorTasksPanel />
-          <ProductivityPanel compact />
-          <WeeklyAdherenceChart />
-          <WhatsAppTimeDashboard />
+          {/* Atingimento de resultados (metas do mês) */}
+          <Card className="p-1 bg-transparent border-0">
+            <div className="flex items-center gap-2 mb-3 px-1">
+              <Target className="h-4 w-4 text-primary" />
+              <h2 className="text-lg font-semibold">Atingimento de resultados</h2>
+            </div>
+            <SectorResultsPanel
+              defaultSectorId={profile?.sector_id ?? null}
+              showSectorTabs={isAdmin && scope === "all"}
+              title="Metas do mês"
+            />
+          </Card>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            <QuickLink
-              to="/rotina"
-              icon={<CheckCircle2 className="h-5 w-5" />}
-              title="Marcar rotina"
-              desc="Acessar checklist do seu setor"
-            />
-            <QuickLink
-              to="/whatsapp"
-              icon={<MessageSquareText className="h-5 w-5" />}
-              title="Entradas WhatsApp"
-              desc="Ver mensagens recebidas hoje"
-            />
-            <QuickLink
-              to="/relatorio"
-              icon={<TrendingUp className="h-5 w-5" />}
-              title="Relatório do dia"
-              desc="Gerar e exportar fechamento"
-            />
-          </div>
+          {/* Tarefas dos colaboradores com cliente */}
+          <CollaboratorTasksPanel />
         </TabsContent>
 
         <TabsContent value="clinica" className="mt-0">
@@ -348,9 +467,7 @@ function KpiCard({
   return (
     <Card className="p-5 bg-gradient-card border-border/50">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          {label}
-        </span>
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</span>
         {icon}
       </div>
       <div className="text-3xl font-bold tabular-nums">{value}</div>
@@ -359,30 +476,25 @@ function KpiCard({
   );
 }
 
-function QuickLink({
-  to,
-  icon,
-  title,
-  desc,
+function Mini({
+  label,
+  value,
+  tone,
 }: {
-  to: string;
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
+  label: string;
+  value: number;
+  tone?: "success" | "destructive";
 }) {
+  const cls =
+    tone === "success"
+      ? "text-success"
+      : tone === "destructive"
+        ? "text-destructive"
+        : "text-foreground";
   return (
-    <Link to={to}>
-      <Card className="p-5 bg-card border-border/50 hover:border-primary/40 transition-smooth h-full group">
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/15 text-primary flex items-center justify-center group-hover:bg-primary/25 transition-smooth">
-            {icon}
-          </div>
-          <div>
-            <div className="font-semibold">{title}</div>
-            <div className="text-sm text-muted-foreground">{desc}</div>
-          </div>
-        </div>
-      </Card>
-    </Link>
+    <div className="rounded-lg bg-secondary/30 border border-border/30 p-3 text-center">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`text-2xl font-bold tabular-nums mt-0.5 ${cls}`}>{value}</div>
+    </div>
   );
 }
