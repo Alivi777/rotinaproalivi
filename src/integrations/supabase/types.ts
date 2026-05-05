@@ -1954,8 +1954,16 @@ export type Database = {
         Args: { _attendance_id: string; _note?: string; _to_user: string }
         Returns: undefined
       }
+      user_owns_daily_plan: {
+        Args: { _plan_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_owns_doctor: {
         Args: { _doctor_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_participates_in_daily_plan: {
+        Args: { _plan_id: string; _user_id: string }
         Returns: boolean
       }
       whatsapp_user_minutes: {
