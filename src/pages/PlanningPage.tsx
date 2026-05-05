@@ -58,6 +58,9 @@ export default function PlanningPage() {
           <TabsTrigger value="agenda">
             <BookOpen className="h-4 w-4 mr-1" /> Agenda padrão
           </TabsTrigger>
+          <TabsTrigger value="metas">
+            <Target className="h-4 w-4 mr-1" /> Metas e resultados do mês
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="daily" className="space-y-4">
