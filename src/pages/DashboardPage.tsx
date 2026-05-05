@@ -140,11 +140,14 @@ export default function DashboardPage() {
 
   // ─── Aderência de Rotina (por setor, semana) ─────────────────────────
   // Considera: total = tarefas ativas × dias úteis da semana até hoje (1 marcação por tarefa/dia/usuário)
+  // Apenas dias úteis (seg-sex) decorridos da semana atual até hoje
   const daysInWeek = useMemo(() => {
     const days: string[] = [];
     const start = new Date(`${weekStart}T00:00:00`);
     const endD = new Date(`${today}T00:00:00`);
     for (let d = new Date(start); d <= endD; d.setDate(d.getDate() + 1)) {
+      const dow = d.getDay(); // 0=dom, 6=sáb
+      if (dow === 0 || dow === 6) continue;
       days.push(d.toISOString().slice(0, 10));
     }
     return days;
