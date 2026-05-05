@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PriorityAlert from "@/components/PriorityAlert";
 import MyAssignmentCard from "@/components/MyAssignmentCard";
+import SectorResultsPanel from "@/components/SectorResultsPanel";
 import { Link } from "react-router-dom";
 
 type Task = {
