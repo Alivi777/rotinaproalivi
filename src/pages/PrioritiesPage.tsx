@@ -40,6 +40,7 @@ type Profile = { user_id: string; display_name: string | null };
 export default function PrioritiesPage() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
+  const { profile } = useProfile();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filterUser, setFilterUser] = useState<string>("all");
