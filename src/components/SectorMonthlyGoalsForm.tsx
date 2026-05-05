@@ -13,9 +13,10 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useSectors } from "@/lib/useProfile";
-import { useSectorMetrics, monthStartStr } from "@/lib/useSectorMetrics";
-import { Plus, Save, Trash2, Target } from "lucide-react";
+import { useSectorMetrics, monthStartStr, GENERAL_SECTOR } from "@/lib/useSectorMetrics";
+import { Plus, Save, Trash2, Target, ChevronLeft, ChevronRight, History } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AUTO_SOURCES = [
   { value: "", label: "Manual" },
