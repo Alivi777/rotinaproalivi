@@ -350,6 +350,10 @@ export default function AdminPage() {
               {saving ? "Salvando..." : "Salvar metas do mês"}
             </Button>
           </Card>
+
+          <div className="mt-6">
+            <SectorMonthlyGoalsForm />
+          </div>
         </TabsContent>
 
         <TabsContent value="payments" className="mt-4">
