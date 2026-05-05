@@ -131,6 +131,14 @@ export default function PrioritiesPage() {
 
       <PriorityAlert />
 
+      <div className="mb-6">
+        <SectorResultsPanel
+          defaultSectorId={profile?.sector_id}
+          showSectorTabs={isAdmin}
+          title="Resultados do mês — meu setor"
+        />
+      </div>
+
       {isAdmin && (
         <div className="mb-6">
           <PrioritiesAdminPanel />
