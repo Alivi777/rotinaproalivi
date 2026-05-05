@@ -238,26 +238,43 @@ Deno.serve(async (req) => {
     end.setDate(today.getDate() + daysAhead);
 
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
-    const res = await clinicorpGet("/appointment/list", {
-      start_date: fmt(today),
-      end_date: fmt(end),
-      start_date_json: fmt(today),
-      end_date_json: fmt(end),
-      data_inicial: fmt(today),
-      data_final: fmt(end),
-      data_inicio: fmt(today),
-      data_fim: fmt(end),
-      from: fmt(today),
-      to: fmt(end),
-    });
-    const list = extractList(res) as Appointment[];
+
+    // Pagina dia-a-dia: a API do Clinicorp limita o total devolvido por chamada,
+    // então pedir um intervalo grande "comia" agendas (ex: a Wanessa ficava com
+    // 2 consultas no dia em vez de 8+). Buscar dia a dia garante a lista completa.
+    const list: Appointment[] = [];
+    const seenApptIds = new Set<string>();
+    for (let i = 0; i <= daysAhead; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const ds = fmt(d);
+      try {
+        const dayRes = await clinicorpGet("/appointment/list", {
+          start_date: ds,
+          end_date: ds,
+          start_date_json: ds,
+          end_date_json: ds,
+          data_inicial: ds,
+          data_final: ds,
+          data_inicio: ds,
+          data_fim: ds,
+          from: ds,
+          to: ds,
+        });
+        const dayList = extractList(dayRes) as Appointment[];
+        for (const a of dayList) {
+          const id = String(a.id ?? a.appointment_id ?? `${a.Patient_PersonId ?? a.patient_id}_${a.date ?? a.start_date}_${a.fromTime ?? a.start_time ?? ""}`);
+          if (seenApptIds.has(id)) continue;
+          seenApptIds.add(id);
+          list.push(a);
+        }
+        console.log(`[clinicorp] day ${ds}: +${dayList.length} (total ${list.length})`);
+      } catch (err) {
+        console.error(`[clinicorp] day ${ds} failed: ${(err as Error).message.slice(0, 200)}`);
+      }
+    }
     if (list.length === 0) {
-      const topLevelKeys = res && typeof res === "object" ? Object.keys(res as Record<string, unknown>).slice(0, 20) : [];
-      console.warn("[clinicorp] appointment/list returned no extracted items", {
-        responseType: Array.isArray(res) ? "array" : typeof res,
-        topLevelKeys,
-        sample: JSON.stringify(res).slice(0, 1200),
-      });
+      console.warn("[clinicorp] appointment/list returned no items across the window");
     }
 
     // 2a) Tentar buscar nomes reais de profissionais via endpoint do Clinicorp
