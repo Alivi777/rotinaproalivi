@@ -352,38 +352,43 @@ type ReportRow = {
   submitted_at: string | null;
 };
 
-function AdminReportsHistory({ sectors }: { sectors: { id: string; name: string }[] }) {
+function ReportsHistory({
+  sectors,
+  isAdmin,
+  currentUserId,
+}: {
+  sectors: { id: string; name: string }[];
+  isAdmin: boolean;
+  currentUserId?: string;
+}) {
   const [profiles, setProfiles] = useState<{ user_id: string; display_name: string | null }[]>([]);
   const [items, setItems] = useState<ReportRow[]>([]);
   const [filterUser, setFilterUser] = useState<string>("all");
   const [filterSector, setFilterSector] = useState<string>("all");
-  const [from, setFrom] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().slice(0, 10);
-  });
-  const [to, setTo] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [period, setPeriod] = useState<PeriodValue>(() => defaultPeriod("30d"));
 
   useEffect(() => {
+    if (!isAdmin) return;
     supabase
       .from("profiles")
       .select("user_id, display_name")
       .eq("is_active", true)
       .order("display_name")
       .then(({ data }) => setProfiles(data ?? []));
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     let q = supabase
       .from("daily_reports")
       .select("id, user_id, sector_id, report_date, notes, data, submitted_at")
-      .gte("report_date", from)
-      .lte("report_date", to)
+      .gte("report_date", period.from)
+      .lte("report_date", period.to)
       .order("report_date", { ascending: false });
-    if (filterUser !== "all") q = q.eq("user_id", filterUser);
+    if (!isAdmin && currentUserId) q = q.eq("user_id", currentUserId);
+    else if (filterUser !== "all") q = q.eq("user_id", filterUser);
     if (filterSector !== "all") q = q.eq("sector_id", filterSector);
     q.then(({ data }) => setItems((data as ReportRow[]) ?? []));
-  }, [filterUser, filterSector, from, to]);
+  }, [filterUser, filterSector, period.from, period.to, isAdmin, currentUserId]);
 
   const nameOf = (uid: string) =>
     profiles.find((p) => p.user_id === uid)?.display_name || "—";
@@ -394,17 +399,14 @@ function AdminReportsHistory({ sectors }: { sectors: { id: string; name: string 
       <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
           <History className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-lg font-semibold">Histórico geral (admin)</h2>
+          <h2 className="text-lg font-semibold">
+            {isAdmin ? "Histórico arquivado (todos)" : "Meus relatórios arquivados"}
+          </h2>
+          <Badge variant="outline" className="text-[10px]">{items.length}</Badge>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          <div>
-            <Label className="text-[10px] uppercase tracking-widest">De</Label>
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8 w-36" />
-          </div>
-          <div>
-            <Label className="text-[10px] uppercase tracking-widest">Até</Label>
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="h-8 w-36" />
-          </div>
+          <PeriodFilter value={period} onChange={setPeriod} />
+          {isAdmin && (
           <div>
             <Label className="text-[10px] uppercase tracking-widest">Colaborador</Label>
             <Select value={filterUser} onValueChange={setFilterUser}>
@@ -419,6 +421,7 @@ function AdminReportsHistory({ sectors }: { sectors: { id: string; name: string 
               </SelectContent>
             </Select>
           </div>
+          )}
           <div>
             <Label className="text-[10px] uppercase tracking-widest">Setor</Label>
             <Select value={filterSector} onValueChange={setFilterSector}>
