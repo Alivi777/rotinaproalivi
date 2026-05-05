@@ -26,6 +26,7 @@ import { usePendingPriorities } from "@/lib/usePendingPriorities";
 import { cn } from "@/lib/utils";
 import SectorPickerDialog from "./SectorPickerDialog";
 import { usePendingAttendances } from "@/lib/usePendingAttendances";
+import { useHourlyRoutineAlert } from "@/lib/useHourlyRoutineAlert";
 import FloatingAIButton from "./FloatingAIButton";
 
 const baseNav = [
