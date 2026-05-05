@@ -260,30 +260,32 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Dashboard CRM</h1>
             <p className="text-muted-foreground mt-1">
-              Semana atual: <span className="text-foreground font-medium">{weekStart}</span> →{" "}
-              <span className="text-foreground font-medium">{today}</span>
+              Período: <span className="text-foreground font-medium">{periodLabel}</span>
             </p>
           </div>
-          {isAdmin && (
-            <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
-              <Button
-                variant={scope === "all" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setScope("all")}
-                className="h-8 px-3 text-xs"
-              >
-                Visão geral
-              </Button>
-              <Button
-                variant={scope === "me" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setScope("me")}
-                className="h-8 px-3 text-xs"
-              >
-                Só eu
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <PeriodFilter value={period} onChange={setPeriod} />
+            {isAdmin && (
+              <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
+                <Button
+                  variant={scope === "all" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setScope("all")}
+                  className="h-8 px-3 text-xs"
+                >
+                  Visão geral
+                </Button>
+                <Button
+                  variant={scope === "me" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setScope("me")}
+                  className="h-8 px-3 text-xs"
+                >
+                  Só eu
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -308,7 +310,7 @@ export default function DashboardPage() {
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
               label="Aderência de rotina"
               value={`${overallRoutinePct}%`}
-              hint={`semana — ${scope === "all" ? "todos" : "você"}`}
+              hint={`período — ${scope === "all" ? "todos" : "você"}`}
             />
             <KpiCard
               icon={<ClipboardList className="h-4 w-4 text-primary" />}
@@ -318,7 +320,7 @@ export default function DashboardPage() {
             />
             <KpiCard
               icon={<Clock className="h-4 w-4 text-primary" />}
-              label="Horas na semana"
+              label="Horas no período"
               value={fmtMinutes(totalWeekMinutes)}
               hint={`${hoursByUser.length} pessoa(s) batendo ponto`}
             />
@@ -337,7 +339,7 @@ export default function DashboardPage() {
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold">Aderência de rotina</h2>
                 <Badge variant="outline" className="text-[10px]">
-                  semana ({daysInWeek.length} dia{daysInWeek.length === 1 ? "" : "s"})
+                  {expectedWeekdays} dia(s) úteis
                 </Badge>
               </div>
               <span className="text-xs text-muted-foreground">tempo real</span>
@@ -348,7 +350,7 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableHead>Setor</TableHead>
                     <TableHead className="text-right">Tarefas</TableHead>
-                    <TableHead className="text-right">Esperado na semana</TableHead>
+                    <TableHead className="text-right">Esperado no período</TableHead>
                     <TableHead className="text-right">Concluídas</TableHead>
                     <TableHead className="text-right">% Atingimento</TableHead>
                   </TableRow>
