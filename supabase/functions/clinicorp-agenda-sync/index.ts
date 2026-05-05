@@ -318,19 +318,20 @@ Deno.serve(async (req) => {
 
     // 2d) Auto-cadastrar/atualizar TODOS os doutores que apareceram (ativos por padrão)
     if (seenDoctorIds.size) {
-      const upsertDoctors = [...seenDoctorIds].map((extId) => {
-        const existing = existingDoctorMap.get(extId);
-        const syncedName = dentistNames.get(extId) || `Profissional #${extId}`;
-        return {
+      // Only insert new doctors as active; never re-activate ones the admin deactivated.
+      const newDoctors = [...seenDoctorIds]
+        .filter((extId) => !existingDoctorMap.has(extId))
+        .map((extId) => ({
           external_id: extId,
-          name: existing?.name_locked ? existing.name : syncedName,
+          name: dentistNames.get(extId) || `Profissional #${extId}`,
           active: true,
-        };
-      });
-      const { error: drErr } = await supabase
-        .from("clinic_doctors")
-        .upsert(upsertDoctors, { onConflict: "external_id", ignoreDuplicates: false });
-      if (drErr) console.error("[clinicorp] doctor upsert err:", drErr.message);
+        }));
+      if (newDoctors.length) {
+        const { error: drErr } = await supabase
+          .from("clinic_doctors")
+          .insert(newDoctors);
+        if (drErr) console.error("[clinicorp] doctor insert err:", drErr.message);
+      }
 
       // Atualizar nomes só de agendas não travadas e ainda placeholders
       for (const [extId, realName] of dentistNames) {
