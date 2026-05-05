@@ -182,9 +182,10 @@ export default function AdminPage() {
   const newPatientsCount = sales.filter((s) => s.is_new_patient).length;
   const margin = totalRevenue ? (totalProfit / totalRevenue) * 100 : 0;
 
-  const monthLabel = new Date(period).toLocaleDateString("pt-BR", {
+  const monthLabel = new Date(`${period}T12:00:00`).toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
+    timeZone: "America/Sao_Paulo",
   });
 
   if (roleLoading) {
