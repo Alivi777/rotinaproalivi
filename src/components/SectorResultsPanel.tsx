@@ -59,6 +59,7 @@ export default function SectorResultsPanel({
         {showSectorTabs && sectors.length > 0 && (
           <Tabs value={activeSectorId} onValueChange={setActiveSectorId}>
             <TabsList className="h-8 flex-wrap">
+              <TabsTrigger value={GENERAL_SECTOR} className="h-7 text-xs px-2">🎯 Geral</TabsTrigger>
               {sectors.map((s) => (
                 <TabsTrigger key={s.id} value={s.id} className="h-7 text-xs px-2">
                   {s.name}
