@@ -20,7 +20,8 @@ import PriorityAlert from "@/components/PriorityAlert";
 import CollaboratorTasksPanel from "@/components/CollaboratorTasksPanel";
 import SectorResultsPanel from "@/components/SectorResultsPanel";
 import ClinicDashboardTab from "@/components/ClinicDashboardTab";
-import { spToday, spWeekStart, fmtMinutes } from "@/lib/spTime";
+import PeriodFilter, { defaultPeriod, type PeriodValue, usePeriodLabel } from "@/components/PeriodFilter";
+import { spToday, fmtMinutes } from "@/lib/spTime";
 import {
   Calendar,
   TrendingUp,
@@ -77,8 +78,11 @@ export default function DashboardPage() {
     if (!adminLoading) setScope(isAdmin ? "all" : "me");
   }, [isAdmin, adminLoading]);
 
-  const weekStart = spWeekStart();
-  const today = spToday();
+  const [period, setPeriod] = useState<PeriodValue>(() => defaultPeriod("week"));
+  const periodLabel = usePeriodLabel(period);
+  const weekStart = period.from;
+  const today = period.to;
+  const todayReal = spToday();
 
   const [tasks, setTasks] = useState<RoutineTask[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
@@ -153,8 +157,17 @@ export default function DashboardPage() {
     return days;
   }, [weekStart, today]);
 
-  // Esperado da semana sempre considera 5 dias úteis (seg-sex completos)
-  const expectedWeekdays = 5;
+  // Esperado: dias úteis dentro do período selecionado
+  const expectedWeekdays = useMemo(() => {
+    let n = 0;
+    const start = new Date(`${weekStart}T00:00:00`);
+    const end = new Date(`${today}T00:00:00`);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dow = d.getDay();
+      if (dow !== 0 && dow !== 6) n++;
+    }
+    return n;
+  }, [weekStart, today]);
 
   const sectorAdherence = useMemo(() => {
     return sectors.map((s) => {
@@ -196,10 +209,10 @@ export default function DashboardPage() {
     });
     const total = filtered.length;
     const done = filtered.filter((i) => i.status === "done").length;
-    const overdue = filtered.filter((i) => i.status !== "done" && i.task_date < today).length;
+    const overdue = filtered.filter((i) => i.status !== "done" && i.task_date < todayReal).length;
     const pct = total ? Math.round((done / total) * 100) : 0;
     return { total, done, overdue, pct };
-  }, [clientTasks, clientBy, scope, myUid, today]);
+  }, [clientTasks, clientBy, scope, myUid, todayReal]);
 
   // ─── Horas trabalhadas na semana (do ponto) ──────────────────────────
   const hoursByUser = useMemo(() => {
@@ -247,30 +260,32 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">Dashboard CRM</h1>
             <p className="text-muted-foreground mt-1">
-              Semana atual: <span className="text-foreground font-medium">{weekStart}</span> →{" "}
-              <span className="text-foreground font-medium">{today}</span>
+              Período: <span className="text-foreground font-medium">{periodLabel}</span>
             </p>
           </div>
-          {isAdmin && (
-            <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
-              <Button
-                variant={scope === "all" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setScope("all")}
-                className="h-8 px-3 text-xs"
-              >
-                Visão geral
-              </Button>
-              <Button
-                variant={scope === "me" ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setScope("me")}
-                className="h-8 px-3 text-xs"
-              >
-                Só eu
-              </Button>
-            </div>
-          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <PeriodFilter value={period} onChange={setPeriod} />
+            {isAdmin && (
+              <div className="inline-flex rounded-lg border border-border/60 p-0.5 bg-secondary/30">
+                <Button
+                  variant={scope === "all" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setScope("all")}
+                  className="h-8 px-3 text-xs"
+                >
+                  Visão geral
+                </Button>
+                <Button
+                  variant={scope === "me" ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setScope("me")}
+                  className="h-8 px-3 text-xs"
+                >
+                  Só eu
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -295,7 +310,7 @@ export default function DashboardPage() {
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
               label="Aderência de rotina"
               value={`${overallRoutinePct}%`}
-              hint={`semana — ${scope === "all" ? "todos" : "você"}`}
+              hint={`período — ${scope === "all" ? "todos" : "você"}`}
             />
             <KpiCard
               icon={<ClipboardList className="h-4 w-4 text-primary" />}
@@ -305,7 +320,7 @@ export default function DashboardPage() {
             />
             <KpiCard
               icon={<Clock className="h-4 w-4 text-primary" />}
-              label="Horas na semana"
+              label="Horas no período"
               value={fmtMinutes(totalWeekMinutes)}
               hint={`${hoursByUser.length} pessoa(s) batendo ponto`}
             />
@@ -324,7 +339,7 @@ export default function DashboardPage() {
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 <h2 className="text-lg font-semibold">Aderência de rotina</h2>
                 <Badge variant="outline" className="text-[10px]">
-                  semana ({daysInWeek.length} dia{daysInWeek.length === 1 ? "" : "s"})
+                  {expectedWeekdays} dia(s) úteis
                 </Badge>
               </div>
               <span className="text-xs text-muted-foreground">tempo real</span>
@@ -335,7 +350,7 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableHead>Setor</TableHead>
                     <TableHead className="text-right">Tarefas</TableHead>
-                    <TableHead className="text-right">Esperado na semana</TableHead>
+                    <TableHead className="text-right">Esperado no período</TableHead>
                     <TableHead className="text-right">Concluídas</TableHead>
                     <TableHead className="text-right">% Atingimento</TableHead>
                   </TableRow>

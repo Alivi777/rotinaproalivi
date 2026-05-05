@@ -2,12 +2,13 @@ import AppShell from "@/components/AppShell";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { ClipboardList, CalendarRange, Lock, BookOpen, Target } from "lucide-react";
+import { ClipboardList, CalendarRange, Lock, BookOpen, Target, Archive } from "lucide-react";
 import DailyPlanForm from "@/components/DailyPlanForm";
 import WeeklyPlanForm from "@/components/WeeklyPlanForm";
 import StandardAgendaCard from "@/components/StandardAgendaCard";
 import SectorMonthlyGoalsForm from "@/components/SectorMonthlyGoalsForm";
 import SectorResultsPanel from "@/components/SectorResultsPanel";
+import PlanningArchive from "@/components/PlanningArchive";
 
 export default function PlanningPage() {
   const { isAdmin, loading } = useIsAdmin();
@@ -61,6 +62,9 @@ export default function PlanningPage() {
           <TabsTrigger value="metas">
             <Target className="h-4 w-4 mr-1" /> Metas e resultados do mês
           </TabsTrigger>
+          <TabsTrigger value="archive">
+            <Archive className="h-4 w-4 mr-1" /> Histórico
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="daily" className="space-y-4">
@@ -96,6 +100,10 @@ export default function PlanningPage() {
           </Card>
           <SectorMonthlyGoalsForm />
           <SectorResultsPanel title="Pré-visualização — resultados do mês" />
+        </TabsContent>
+
+        <TabsContent value="archive" className="space-y-4">
+          <PlanningArchive />
         </TabsContent>
       </Tabs>
     </AppShell>
