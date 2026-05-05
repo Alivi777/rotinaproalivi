@@ -177,43 +177,48 @@ export default function ReceptionTodayCards({
     );
   }, [pending, search, doctorFilter]);
 
-  // ---- Drag handlers ----
-  function onDragStart(e: React.DragEvent, clientId: string) {
-    e.dataTransfer.setData("text/plain", clientId);
+  // ---- Drag handlers (1 tarefa por card => arrasta o item específico) ----
+  function onDragStart(e: React.DragEvent, itemId: string) {
+    e.dataTransfer.setData("text/plain", itemId);
     e.dataTransfer.effectAllowed = "move";
   }
 
   async function onDropCol(e: React.DragEvent, target: ColumnKey) {
     e.preventDefault();
     setOverCol(null);
-    const clientId = e.dataTransfer.getData("text/plain");
-    if (!clientId) return;
-    const items = taskItemsByClient.get(clientId) ?? [];
-    const todayItems = items.filter((i) => i.task_date === today);
-    if (todayItems.length === 0) return;
+    const itemId = e.dataTransfer.getData("text/plain");
+    if (!itemId) return;
+    // Localiza o item arrastado
+    let dragged: ClientTaskItem | null = null;
+    let draggedClientId: string | null = null;
+    for (const [cid, arr] of taskItemsByClient.entries()) {
+      const found = arr.find((i) => i.id === itemId);
+      if (found) {
+        dragged = found;
+        draggedClientId = cid;
+        break;
+      }
+    }
+    if (!dragged || !draggedClientId) return;
 
     if (target === "concluidos") {
-      const next = todayItems.find((i) => i.status === "pending");
-      if (!next) return; // já tudo feito
-      const client = clients.find((c) => c.id === clientId);
-      // Abre o dialog que exige comentário OU cópia da mensagem
-      setChecking({ item: next, clientName: client?.name ?? "" });
+      if (dragged.status === "done") return;
+      const client = clients.find((c) => c.id === draggedClientId);
+      setChecking({ item: dragged, clientName: client?.name ?? "" });
     } else if (target === "programadas") {
-      // Reabrir a última concluída
-      const lastDone = [...todayItems].reverse().find((i) => i.status === "done");
-      if (!lastDone) return;
+      if (dragged.status !== "done") return;
       const { error } = await supabase
         .from("client_task_items")
         .update({ status: "pending", completed_at: null, completed_by: null })
-        .eq("id", lastDone.id);
+        .eq("id", dragged.id);
       if (error) return toast.error(error.message);
-      if (lastDone.daily_task_id) {
+      if (dragged.daily_task_id) {
         await supabase
           .from("clinic_daily_tasks")
           .update({ status: "pending", completed_at: null, completed_by: null })
-          .eq("id", lastDone.daily_task_id);
+          .eq("id", dragged.daily_task_id);
       }
-      toast.message(`Tarefa "${lastDone.task_label}" reaberta`);
+      toast.message(`Tarefa "${dragged.task_label}" reaberta`);
     }
   }
 
