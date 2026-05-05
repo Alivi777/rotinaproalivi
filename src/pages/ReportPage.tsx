@@ -319,12 +319,6 @@ export default function ReportPage() {
   );
 }
 
-// keep backwards-compat name
-function AdminReportsHistory(props: { sectors: { id: string; name: string }[] }) {
-  return <ReportsHistory sectors={props.sectors} isAdmin={true} />;
-}
-function _unused() { AdminReportsHistory; }
-
 function SummaryCard({
   icon,
   label,
