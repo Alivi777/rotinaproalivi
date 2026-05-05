@@ -1348,6 +1348,57 @@ export type Database = {
           },
         ]
       }
+      sector_monthly_metrics: {
+        Row: {
+          actual_text: string | null
+          actual_value: number | null
+          auto_source: string | null
+          created_at: string
+          id: string
+          label: string
+          notes: string | null
+          period_month: string
+          sector_id: string
+          sort_order: number
+          target_text: string | null
+          target_value: number | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          actual_text?: string | null
+          actual_value?: number | null
+          auto_source?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          notes?: string | null
+          period_month: string
+          sector_id: string
+          sort_order?: number
+          target_text?: string | null
+          target_value?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actual_text?: string | null
+          actual_value?: number | null
+          auto_source?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          notes?: string | null
+          period_month?: string
+          sector_id?: string
+          sort_order?: number
+          target_text?: string | null
+          target_value?: number | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sectors: {
         Row: {
           color: string | null

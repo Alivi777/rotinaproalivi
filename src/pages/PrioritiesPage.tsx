@@ -15,7 +15,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useIsAdmin } from "@/lib/useIsAdmin";
+import { useProfile } from "@/lib/useProfile";
 import PrioritiesAdminPanel from "@/components/PrioritiesAdminPanel";
+import SectorResultsPanel from "@/components/SectorResultsPanel";
 import { Crosshair, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -38,6 +40,7 @@ type Profile = { user_id: string; display_name: string | null };
 export default function PrioritiesPage() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
+  const { profile } = useProfile();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filterUser, setFilterUser] = useState<string>("all");
@@ -127,6 +130,14 @@ export default function PrioritiesPage() {
       </header>
 
       <PriorityAlert />
+
+      <div className="mb-6">
+        <SectorResultsPanel
+          defaultSectorId={profile?.sector_id}
+          showSectorTabs={isAdmin}
+          title="Resultados do mês — meu setor"
+        />
+      </div>
 
       {isAdmin && (
         <div className="mb-6">

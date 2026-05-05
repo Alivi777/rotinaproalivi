@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PriorityAlert from "@/components/PriorityAlert";
 import MyAssignmentCard from "@/components/MyAssignmentCard";
+import SectorResultsPanel from "@/components/SectorResultsPanel";
 import { Link } from "react-router-dom";
 
 type Task = {
@@ -225,6 +226,14 @@ export default function RoutinePage() {
 
       <PriorityAlert />
       <MyAssignmentCard />
+
+      <div className="mb-6">
+        <SectorResultsPanel
+          defaultSectorId={profile?.sector_id}
+          showSectorTabs
+          title="Resultados esperados do setor — mês"
+        />
+      </div>
 
       {clientTasks.length > 0 && (
         <Card className="p-5 mb-6 bg-gradient-card border-primary/30">
