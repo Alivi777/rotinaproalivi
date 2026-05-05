@@ -26,6 +26,7 @@ import { usePendingPriorities } from "@/lib/usePendingPriorities";
 import { cn } from "@/lib/utils";
 import SectorPickerDialog from "./SectorPickerDialog";
 import { usePendingAttendances } from "@/lib/usePendingAttendances";
+import { useHourlyRoutineAlert } from "@/lib/useHourlyRoutineAlert";
 import FloatingAIButton from "./FloatingAIButton";
 
 const baseNav = [
@@ -48,6 +49,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { count: pendingPriorities } = usePendingPriorities();
   // Global subscription so toast+beep happens on any page
   usePendingAttendances();
+  useHourlyRoutineAlert();
   const nav = isAdmin
     ? [
         ...baseNav,
