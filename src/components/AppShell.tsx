@@ -144,7 +144,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </Button>
       </div>
 
-      <main className="flex-1 lg:p-8 p-4 pt-20 lg:pt-8 max-w-[1400px]">
+      <main className="flex-1 min-w-0 w-full lg:p-8 p-4 pt-20 lg:pt-8 max-w-[1400px] overflow-x-hidden">
         <div className="lg:hidden mb-4 flex gap-2 overflow-x-auto">
           {nav.map((item) => {
             const showBadge =
