@@ -490,13 +490,21 @@ function KpiCard({
   hint?: string;
 }) {
   return (
-    <Card className="p-5 bg-gradient-card border-border/50">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</span>
-        {icon}
+    <Card className="p-3 sm:p-5 bg-gradient-card border-border/50 min-w-0 overflow-hidden flex flex-col h-full">
+      <div className="flex items-start justify-between gap-2 mb-2 min-w-0">
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground leading-tight break-words flex-1 min-w-0">
+          {label}
+        </span>
+        <span className="shrink-0">{icon}</span>
       </div>
-      <div className="text-3xl font-bold tabular-nums">{value}</div>
-      {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
+      <div className="text-xl sm:text-3xl font-bold tabular-nums leading-tight break-words">
+        {value}
+      </div>
+      {hint && (
+        <div className="text-[11px] sm:text-xs text-muted-foreground mt-1 leading-snug break-words">
+          {hint}
+        </div>
+      )}
     </Card>
   );
 }
@@ -517,9 +525,11 @@ function Mini({
         ? "text-destructive"
         : "text-foreground";
   return (
-    <div className="rounded-lg bg-secondary/30 border border-border/30 p-3 text-center">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`text-2xl font-bold tabular-nums mt-0.5 ${cls}`}>{value}</div>
+    <div className="rounded-lg bg-secondary/30 border border-border/30 p-2 sm:p-3 text-center min-w-0 overflow-hidden">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground leading-tight break-words">
+        {label}
+      </div>
+      <div className={`text-lg sm:text-2xl font-bold tabular-nums mt-0.5 ${cls}`}>{value}</div>
     </div>
   );
 }
