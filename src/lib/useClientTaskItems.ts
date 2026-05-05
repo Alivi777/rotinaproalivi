@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type ClientTaskItem = {
@@ -68,17 +68,24 @@ export function useClientTaskItems(clientIds: string[]) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
+  const debounceRef = useRef<number | null>(null);
+
   useEffect(() => {
     load();
+    const debouncedLoad = () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => load(), 300);
+    };
     const ch = supabase
       .channel(`cti-live:${key || "empty"}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "client_task_items" },
-        () => load(),
+        debouncedLoad,
       )
       .subscribe();
     return () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
       supabase.removeChannel(ch);
     };
   }, [load, key]);
