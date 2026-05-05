@@ -30,6 +30,7 @@ import PrioritiesAdminPanel from "@/components/PrioritiesAdminPanel";
 import WeeklyRankingPanel from "@/components/WeeklyRankingPanel";
 import KanbanStagesAdminPanel from "@/components/KanbanStagesAdminPanel";
 import DoctorsAdminPanel from "@/components/DoctorsAdminPanel";
+import SectorMonthlyGoalsForm from "@/components/SectorMonthlyGoalsForm";
 
 type Goal = {
   id: string;
@@ -349,6 +350,10 @@ export default function AdminPage() {
               {saving ? "Salvando..." : "Salvar metas do mês"}
             </Button>
           </Card>
+
+          <div className="mt-6">
+            <SectorMonthlyGoalsForm />
+          </div>
         </TabsContent>
 
         <TabsContent value="payments" className="mt-4">
