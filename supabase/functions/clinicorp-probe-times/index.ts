@@ -1,5 +1,4 @@
 const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" };
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const user = Deno.env.get("CLINICORP_API_USER")!;
@@ -11,20 +10,15 @@ Deno.serve(async (req) => {
   for (const k of ["subscriber","subscriber_id","id_subscriber","assinante","id_assinante"]) u.searchParams.set(k, sub);
   for (const k of ["start_date","end_date","start_date_json","end_date_json","data_inicial","data_final","data_inicio","data_fim","from","to"]) u.searchParams.set(k, date);
   const r = await fetch(u, { headers: { Authorization: "Basic " + btoa(`${user}:${token}`), "x-api-user": user, "x-api-token": token, Accept: "application/json" }});
-  const text = await r.text();
-  let j: unknown; try { j = JSON.parse(text); } catch { j = text; }
+  const j = await r.json();
   function findArr(o: any): any[] {
     if (Array.isArray(o)) return o;
     if (!o || typeof o !== "object") return [];
-    for (const v of Object.values(o)) {
-      if (Array.isArray(v) && v.length && typeof v[0] === "object") return v as any[];
-    }
-    for (const v of Object.values(o)) {
-      const r = findArr(v); if (r.length) return r;
-    }
+    for (const v of Object.values(o)) if (Array.isArray(v) && v.length && typeof v[0] === "object") return v as any[];
+    for (const v of Object.values(o)) { const r = findArr(v); if (r.length) return r; }
     return [];
   }
   const arr = findArr(j);
-  const sample = arr.slice(0, 5);
-  return new Response(JSON.stringify({ count: arr.length, keys: sample[0] ? Object.keys(sample[0]) : [], sample }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" }});
+  const slim = arr.map((a: any) => ({ name: a.PatientName, dentist: a.Dentist_PersonId, date: a.date, fromTime: a.fromTime, toTime: a.toTime })).sort((a,b)=>String(a.fromTime).localeCompare(String(b.fromTime)));
+  return new Response(JSON.stringify({ count: arr.length, slim }, null, 2), { headers: { ...corsHeaders, "Content-Type": "application/json" }});
 });
