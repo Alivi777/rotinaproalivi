@@ -52,7 +52,19 @@ export function useSectorMetrics(sectorId: string | null | undefined, periodMont
 
   useEffect(() => {
     reload();
-  }, [reload]);
+    if (!sectorId) return;
+    const ch = supabase
+      .channel(`metrics-${sectorId}-${periodMonth}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sector_monthly_metrics" },
+        () => reload()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [reload, sectorId, periodMonth]);
 
   return { metrics, loading, reload };
 }
