@@ -153,6 +153,9 @@ export default function DashboardPage() {
     return days;
   }, [weekStart, today]);
 
+  // Esperado da semana sempre considera 5 dias úteis (seg-sex completos)
+  const expectedWeekdays = 5;
+
   const sectorAdherence = useMemo(() => {
     return sectors.map((s) => {
       const sTasks = tasks.filter((t) => t.sector_id === s.id);
