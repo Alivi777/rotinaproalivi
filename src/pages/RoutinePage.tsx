@@ -227,6 +227,14 @@ export default function RoutinePage() {
       <PriorityAlert />
       <MyAssignmentCard />
 
+      <div className="mb-6">
+        <SectorResultsPanel
+          defaultSectorId={profile?.sector_id}
+          showSectorTabs
+          title="Resultados esperados do setor — mês"
+        />
+      </div>
+
       {clientTasks.length > 0 && (
         <Card className="p-5 mb-6 bg-gradient-card border-primary/30">
           <div className="flex items-center justify-between mb-3">
