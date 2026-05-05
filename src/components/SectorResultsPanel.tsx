@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Target, TrendingUp } from "lucide-react";
 import { useSectors } from "@/lib/useProfile";
-import { useSectorMetrics, monthStartStr, computeAutoMetrics } from "@/lib/useSectorMetrics";
+import { useSectorMetrics, monthStartStr, computeAutoMetrics, GENERAL_SECTOR } from "@/lib/useSectorMetrics";
 
 type Props = {
   /** Setor padrão (ex: setor do colaborador). Se omitido, mostra abas de todos. */
