@@ -157,8 +157,17 @@ export default function DashboardPage() {
     return days;
   }, [weekStart, today]);
 
-  // Esperado da semana sempre considera 5 dias úteis (seg-sex completos)
-  const expectedWeekdays = 5;
+  // Esperado: dias úteis dentro do período selecionado
+  const expectedWeekdays = useMemo(() => {
+    let n = 0;
+    const start = new Date(`${weekStart}T00:00:00`);
+    const end = new Date(`${today}T00:00:00`);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dow = d.getDay();
+      if (dow !== 0 && dow !== 6) n++;
+    }
+    return n;
+  }, [weekStart, today]);
 
   const sectorAdherence = useMemo(() => {
     return sectors.map((s) => {
@@ -200,10 +209,10 @@ export default function DashboardPage() {
     });
     const total = filtered.length;
     const done = filtered.filter((i) => i.status === "done").length;
-    const overdue = filtered.filter((i) => i.status !== "done" && i.task_date < today).length;
+    const overdue = filtered.filter((i) => i.status !== "done" && i.task_date < todayReal).length;
     const pct = total ? Math.round((done / total) * 100) : 0;
     return { total, done, overdue, pct };
-  }, [clientTasks, clientBy, scope, myUid, today]);
+  }, [clientTasks, clientBy, scope, myUid, todayReal]);
 
   // ─── Horas trabalhadas na semana (do ponto) ──────────────────────────
   const hoursByUser = useMemo(() => {
