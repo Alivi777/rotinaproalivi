@@ -19,6 +19,7 @@ import { useIsAdmin } from "@/lib/useIsAdmin";
 import { FileText, Save, Download, CheckCircle2, MessageSquareText, UserPlus, History } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import PeriodFilter, { defaultPeriod, type PeriodValue } from "@/components/PeriodFilter";
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const startOfDay = () => {
@@ -313,10 +314,16 @@ export default function ReportPage() {
         </div>
       </Card>
 
-      {isAdmin && <AdminReportsHistory sectors={sectors} />}
+      <ReportsHistory sectors={sectors} isAdmin={isAdmin} currentUserId={user?.id} />
     </AppShell>
   );
 }
+
+// keep backwards-compat name
+function AdminReportsHistory(props: { sectors: { id: string; name: string }[] }) {
+  return <ReportsHistory sectors={props.sectors} isAdmin={true} />;
+}
+function _unused() { AdminReportsHistory; }
 
 function SummaryCard({
   icon,
