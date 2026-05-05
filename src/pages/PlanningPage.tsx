@@ -101,6 +101,10 @@ export default function PlanningPage() {
           <SectorMonthlyGoalsForm />
           <SectorResultsPanel title="Pré-visualização — resultados do mês" />
         </TabsContent>
+
+        <TabsContent value="archive" className="space-y-4">
+          <PlanningArchive />
+        </TabsContent>
       </Tabs>
     </AppShell>
   );
