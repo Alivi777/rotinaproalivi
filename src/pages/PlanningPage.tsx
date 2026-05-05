@@ -87,6 +87,16 @@ export default function PlanningPage() {
         <TabsContent value="agenda">
           <StandardAgendaCard />
         </TabsContent>
+
+        <TabsContent value="metas" className="space-y-4">
+          <Card className="p-4 bg-primary/5 border-primary/20">
+            <p className="text-sm">
+              <strong>Metas mensais por setor:</strong> defina aqui os indicadores e metas. Os valores aparecem na rotina e nas prioridades de cada colaborador. Indicadores com fonte automática puxam do banco; os demais são preenchidos manualmente.
+            </p>
+          </Card>
+          <SectorMonthlyGoalsForm />
+          <SectorResultsPanel title="Pré-visualização — resultados do mês" />
+        </TabsContent>
       </Tabs>
     </AppShell>
   );
