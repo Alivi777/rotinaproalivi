@@ -183,7 +183,7 @@ export default function SectorMonthlyGoalsForm() {
                 <Label className="text-[10px] uppercase">Fonte</Label>
                 <Select
                   defaultValue={m.auto_source ?? ""}
-                  onValueChange={(v) => setField(m.id, "auto_source", v || null)}
+                  onValueChange={(v) => setField(m.id, "auto_source", v && v !== "_manual" ? v : null)}
                 >
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
