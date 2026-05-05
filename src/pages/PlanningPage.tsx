@@ -62,6 +62,9 @@ export default function PlanningPage() {
           <TabsTrigger value="metas">
             <Target className="h-4 w-4 mr-1" /> Metas e resultados do mês
           </TabsTrigger>
+          <TabsTrigger value="archive">
+            <Archive className="h-4 w-4 mr-1" /> Histórico
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="daily" className="space-y-4">
