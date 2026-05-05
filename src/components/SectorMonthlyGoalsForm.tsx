@@ -145,12 +145,13 @@ export default function SectorMonthlyGoalsForm() {
         <h3 className="font-semibold">Metas mensais por setor</h3>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-3 mb-5">
+      <div className="grid sm:grid-cols-3 gap-3 mb-4">
         <div>
           <Label>Setor</Label>
           <Select value={sectorId} onValueChange={setSectorId}>
             <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
             <SelectContent>
+              <SelectItem value={GENERAL_SECTOR}>🎯 Geral (clínica)</SelectItem>
               {sectors.map((s) => (
                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
               ))}
@@ -159,7 +160,15 @@ export default function SectorMonthlyGoalsForm() {
         </div>
         <div>
           <Label>Mês</Label>
-          <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+          <div className="flex gap-1">
+            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => shiftMonth(-1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} className="flex-1" />
+            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => shiftMonth(1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div className="flex items-end">
           <Button variant="outline" size="sm" onClick={copyFromPrevMonth} className="w-full">
@@ -167,6 +176,30 @@ export default function SectorMonthlyGoalsForm() {
           </Button>
         </div>
       </div>
+
+      {history.length > 0 && (
+        <div className="mb-5 p-2 rounded-lg bg-secondary/30 border border-border/40">
+          <div className="flex items-center gap-2 mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+            <History className="h-3 w-3" /> Histórico de meses com metas
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {history.map((h) => {
+              const active = h.period_month === periodMonth;
+              const label = new Date(h.period_month + "T00:00:00").toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+              return (
+                <button
+                  key={h.period_month}
+                  onClick={() => setPeriod(h.period_month.slice(0, 7))}
+                  className={`px-2 py-1 rounded-md text-xs border transition-colors ${active ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-secondary border-border/50"}`}
+                  title={`${h.count} indicador(es)`}
+                >
+                  {label} <span className="opacity-60">· {h.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2 mb-4">
         {metrics.length === 0 && (
