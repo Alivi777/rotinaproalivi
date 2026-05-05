@@ -2,10 +2,12 @@ import AppShell from "@/components/AppShell";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
-import { ClipboardList, CalendarRange, Lock, BookOpen } from "lucide-react";
+import { ClipboardList, CalendarRange, Lock, BookOpen, Target } from "lucide-react";
 import DailyPlanForm from "@/components/DailyPlanForm";
 import WeeklyPlanForm from "@/components/WeeklyPlanForm";
 import StandardAgendaCard from "@/components/StandardAgendaCard";
+import SectorMonthlyGoalsForm from "@/components/SectorMonthlyGoalsForm";
+import SectorResultsPanel from "@/components/SectorResultsPanel";
 
 export default function PlanningPage() {
   const { isAdmin, loading } = useIsAdmin();
