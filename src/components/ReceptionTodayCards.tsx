@@ -137,6 +137,9 @@ export default function ReceptionTodayCards({
   const cardsToday = useMemo(() => {
     const list: { client: Client; items: ClientTaskItem[]; allDone: boolean; key: string }[] = [];
     for (const client of clients) {
+      // "Agenda Geral" pertence ao SDR e não deve aparecer na Recepção
+      const docMeta = doctorByClient.get(client.id);
+      if (docMeta?.name?.trim().toLowerCase() === "agenda geral") continue;
       const all = taskItemsByClient.get(client.id) ?? [];
       const todayItems = all.filter((i) => i.task_date === today);
       if (todayItems.length === 0) continue;

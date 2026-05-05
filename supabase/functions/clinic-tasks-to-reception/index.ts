@@ -130,7 +130,10 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       .in("task_date", [todayKey, tomorrowKey])
       .order("task_date", { ascending: true });
     if (tErr) throw tErr;
-    const tasks = (tasksRaw ?? []) as Task[];
+    // "Agenda Geral" é responsabilidade do SDR — nunca entra no funil da Recepção.
+    const tasks = ((tasksRaw ?? []) as Task[]).filter(
+      (t) => (t.doctor_name ?? "").trim().toLowerCase() !== "agenda geral",
+    );
 
     // 3) Doutores
     const { data: docsRaw } = await supabase
