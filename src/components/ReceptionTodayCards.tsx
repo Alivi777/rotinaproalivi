@@ -133,24 +133,32 @@ export default function ReceptionTodayCards({
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [clients, taskItemsByClient, today, doctorByClient]);
 
-  // ---- Mapeia pacientes com tarefas de HOJE ----
+  // ---- Mapeia 1 CARD por TAREFA de HOJE (nunca agrupa várias tarefas no mesmo card) ----
   const cardsToday = useMemo(() => {
-    const list: { client: Client; items: ClientTaskItem[]; allDone: boolean }[] = [];
+    const list: { client: Client; items: ClientTaskItem[]; allDone: boolean; key: string }[] = [];
     for (const client of clients) {
       const all = taskItemsByClient.get(client.id) ?? [];
-      const todayItems = all
-        .filter((i) => i.task_date === today)
-        .sort((a, b) => a.sort_order - b.sort_order);
+      const todayItems = all.filter((i) => i.task_date === today);
       if (todayItems.length === 0) continue;
       if (search && !client.name.toLowerCase().includes(search.toLowerCase())) continue;
       if (doctorFilter) {
         const d = doctorByClient.get(client.id);
         if (!d || d.name !== doctorFilter) continue;
       }
-      const allDone = todayItems.every((i) => i.status === "done");
-      list.push({ client, items: todayItems, allDone });
+      for (const item of todayItems) {
+        list.push({
+          client,
+          items: [item],
+          allDone: item.status === "done",
+          key: item.id,
+        });
+      }
     }
-    list.sort((a, b) => a.client.name.localeCompare(b.client.name));
+    list.sort((a, b) => {
+      const an = a.client.name.localeCompare(b.client.name);
+      if (an !== 0) return an;
+      return a.items[0].sort_order - b.items[0].sort_order;
+    });
     return list;
   }, [clients, taskItemsByClient, today, search, doctorFilter, doctorByClient]);
 
