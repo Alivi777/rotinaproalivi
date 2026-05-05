@@ -160,8 +160,12 @@ export default function DashboardPage() {
       const totalExpected = sTasks.length * daysInWeek.length;
       // marcações no período para essas tarefas (filtradas por scope)
       const sectorTaskIds = new Set(sTasks.map((t) => t.id));
+      const weekdaySet = new Set(daysInWeek);
       const sCompletions = completions.filter(
-        (c) => sectorTaskIds.has(c.task_id) && inScopeUser(c.user_id),
+        (c) =>
+          sectorTaskIds.has(c.task_id) &&
+          weekdaySet.has(c.completion_date) &&
+          inScopeUser(c.user_id),
       );
       // distintas por (task_id + date) para evitar dupla contagem
       const distinct = new Set(sCompletions.map((c) => `${c.task_id}|${c.completion_date}`)).size;
