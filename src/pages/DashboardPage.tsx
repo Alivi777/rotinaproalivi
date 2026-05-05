@@ -20,7 +20,8 @@ import PriorityAlert from "@/components/PriorityAlert";
 import CollaboratorTasksPanel from "@/components/CollaboratorTasksPanel";
 import SectorResultsPanel from "@/components/SectorResultsPanel";
 import ClinicDashboardTab from "@/components/ClinicDashboardTab";
-import { spToday, spWeekStart, fmtMinutes } from "@/lib/spTime";
+import PeriodFilter, { defaultPeriod, type PeriodValue, usePeriodLabel } from "@/components/PeriodFilter";
+import { spToday, fmtMinutes } from "@/lib/spTime";
 import {
   Calendar,
   TrendingUp,
@@ -77,8 +78,11 @@ export default function DashboardPage() {
     if (!adminLoading) setScope(isAdmin ? "all" : "me");
   }, [isAdmin, adminLoading]);
 
-  const weekStart = spWeekStart();
-  const today = spToday();
+  const [period, setPeriod] = useState<PeriodValue>(() => defaultPeriod("week"));
+  const periodLabel = usePeriodLabel(period);
+  const weekStart = period.from;
+  const today = period.to;
+  const todayReal = spToday();
 
   const [tasks, setTasks] = useState<RoutineTask[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
