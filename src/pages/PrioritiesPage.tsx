@@ -21,6 +21,7 @@ import SectorResultsPanel from "@/components/SectorResultsPanel";
 import { Crosshair, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import PeriodFilter, { defaultPeriod, type PeriodValue } from "@/components/PeriodFilter";
 
 type HistoryItem = {
   id: string;
@@ -44,14 +45,9 @@ export default function PrioritiesPage() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [filterUser, setFilterUser] = useState<string>("all");
-  const [fromDate, setFromDate] = useState<string>(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().slice(0, 10);
-  });
-  const [toDate, setToDate] = useState<string>(
-    () => new Date().toISOString().slice(0, 10)
-  );
+  const [period, setPeriod] = useState<PeriodValue>(() => defaultPeriod("30d"));
+  const fromDate = period.from;
+  const toDate = period.to;
 
   async function load() {
     if (!user) return;
@@ -152,30 +148,10 @@ export default function PrioritiesPage() {
             <h2 className="text-lg font-semibold">
               {isAdmin ? "Histórico geral" : "Meu histórico"}
             </h2>
+            <Badge variant="outline" className="text-[10px]">{history.length}</Badge>
           </div>
           <div className="flex flex-wrap items-end gap-2">
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                De
-              </label>
-              <Input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="h-8 w-36"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                Até
-              </label>
-              <Input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="h-8 w-36"
-              />
-            </div>
+            <PeriodFilter value={period} onChange={setPeriod} />
             {isAdmin && (
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
