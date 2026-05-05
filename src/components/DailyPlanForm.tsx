@@ -20,13 +20,14 @@ import { todayStr, type DailyPlan, type Assignment, type Deliverable } from "@/l
 import { Badge } from "@/components/ui/badge";
 
 const OPENING = [
+  "Analisou números, relatórios e indicadores na 1ª hora",
+  "Revisou execuções, tarefas em aberto e bateu o funil",
   "Revisou a missão principal de ontem",
   "Identificou pendências abertas",
   "Identificou travas e gargalos",
-  "Conduziu a reunião de alinhamento",
-  "Fechou missão principal do dia",
-  "Fechou prioridade secundária 1",
-  "Fechou prioridade secundária 2",
+  "Preparou o dia e definiu as próprias prioridades",
+  "Delegou as prioridades do time",
+  "Fez reunião de 10 min com cada membro para planejar e corrigir o dia",
   "Definiu donos e prazos",
   "Eliminou o que não entra no dia",
   "Ajustou a agenda real do time",
