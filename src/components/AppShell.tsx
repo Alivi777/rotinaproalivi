@@ -49,6 +49,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { count: pendingPriorities } = usePendingPriorities();
   // Global subscription so toast+beep happens on any page
   usePendingAttendances();
+  useHourlyRoutineAlert();
   const nav = isAdmin
     ? [
         ...baseNav,
