@@ -396,6 +396,8 @@ export default function DashboardPage() {
                   ))}
                   <TableRow className="border-t-2 border-border font-semibold">
                     <TableCell>Total</TableCell>
+                    <TableCell />
+
                     <TableCell className="text-right tabular-nums">
                       {sectorAdherence.reduce((a, s) => a + s.tasksCount, 0)}
                     </TableCell>
