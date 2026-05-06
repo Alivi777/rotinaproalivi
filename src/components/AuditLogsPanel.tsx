@@ -200,7 +200,12 @@ export default function AuditLogsPanel() {
         administradores visualizam.
       </p>
 
+      <div className="mb-3">
+        <PeriodFilter value={period} onChange={(v) => { setPeriod(v); setPage(0); }} />
+      </div>
+
       <div className="grid md:grid-cols-4 gap-2 mb-4">
+
         <Input
           placeholder="Buscar por usuário, tabela, campo…"
           value={search}
