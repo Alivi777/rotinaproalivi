@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { History, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import PeriodFilter, { defaultPeriod, type PeriodValue } from "@/components/PeriodFilter";
 
 type AuditLog = {
   id: string;
@@ -77,19 +78,40 @@ export default function AuditLogsPanel() {
   const [actionFilter, setActionFilter] = useState<string>("all");
   const [tableFilter, setTableFilter] = useState<string>("all");
   const [userFilter, setUserFilter] = useState<string>("all");
+  const [period, setPeriod] = useState<PeriodValue>(() => defaultPeriod("week"));
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   async function load() {
     setLoading(true);
+    const fromIso = new Date(`${period.from}T00:00:00-03:00`).toISOString();
+    const toIso = new Date(`${period.to}T23:59:59-03:00`).toISOString();
     const { data } = await supabase
       .from("audit_logs")
       .select("*")
+      .gte("occurred_at", fromIso)
+      .lte("occurred_at", toIso)
       .order("occurred_at", { ascending: false })
-      .limit(1000);
+      .limit(5000);
     setLogs((data ?? []) as AuditLog[]);
     setLoading(false);
   }
+
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel("audit-logs-live")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "audit_logs" },
+        load,
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period.from, period.to]);
 
   useEffect(() => {
     load();
@@ -178,7 +200,12 @@ export default function AuditLogsPanel() {
         administradores visualizam.
       </p>
 
+      <div className="mb-3">
+        <PeriodFilter value={period} onChange={(v) => { setPeriod(v); setPage(0); }} />
+      </div>
+
       <div className="grid md:grid-cols-4 gap-2 mb-4">
+
         <Input
           placeholder="Buscar por usuário, tabela, campo…"
           value={search}
