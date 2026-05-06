@@ -169,33 +169,48 @@ export default function DashboardPage() {
     return n;
   }, [weekStart, today]);
 
+  // Aderência por colaborador (substitui agrupamento por setor)
   const sectorAdherence = useMemo(() => {
-    return sectors.map((s) => {
-      const sTasks = tasks.filter((t) => t.sector_id === s.id);
-      // total esperado = tarefas × 5 dias úteis (semana cheia)
-      const totalExpected = sTasks.length * expectedWeekdays;
-      // marcações no período para essas tarefas (filtradas por scope)
-      const sectorTaskIds = new Set(sTasks.map((t) => t.id));
-      const weekdaySet = new Set(daysInWeek);
-      const sCompletions = completions.filter(
-        (c) =>
-          sectorTaskIds.has(c.task_id) &&
-          weekdaySet.has(c.completion_date) &&
-          inScopeUser(c.user_id),
-      );
-      // distintas por (task_id + date) para evitar dupla contagem
-      const distinct = new Set(sCompletions.map((c) => `${c.task_id}|${c.completion_date}`)).size;
-      const pct = totalExpected ? Math.round((distinct / totalExpected) * 100) : 0;
-      return {
-        id: s.id,
-        name: s.name,
-        tasksCount: sTasks.length,
-        expected: totalExpected,
-        done: distinct,
-        pct,
-      };
-    });
-  }, [sectors, tasks, completions, daysInWeek, scope, myUid]);
+    const weekdaySet = new Set(daysInWeek);
+    const sectorName = new Map(sectors.map((s) => [s.id, s.name]));
+    const tasksBySector = new Map<string, string[]>();
+    for (const t of tasks) {
+      if (!t.sector_id) continue;
+      const arr = tasksBySector.get(t.sector_id) ?? [];
+      arr.push(t.id);
+      tasksBySector.set(t.sector_id, arr);
+    }
+    const scoped = profiles.filter((p) => inScopeUser(p.user_id));
+    return scoped
+      .map((p) => {
+        const sTaskIds = p.sector_id ? tasksBySector.get(p.sector_id) ?? [] : [];
+        const tasksCount = sTaskIds.length;
+        const totalExpected = tasksCount * expectedWeekdays;
+        const taskIdSet = new Set(sTaskIds);
+        const userComps = completions.filter(
+          (c) =>
+            c.user_id === p.user_id &&
+            taskIdSet.has(c.task_id) &&
+            weekdaySet.has(c.completion_date),
+        );
+        const distinct = new Set(userComps.map((c) => `${c.task_id}|${c.completion_date}`)).size;
+        const pct = totalExpected ? Math.round((distinct / totalExpected) * 100) : 0;
+        const displayName =
+          (p.display_name && p.display_name.trim()) ||
+          (p.user_id ? p.user_id.slice(0, 8) : "Sem nome");
+        const sName = p.sector_id ? sectorName.get(p.sector_id) ?? "—" : "—";
+        return {
+          id: p.user_id,
+          name: displayName,
+          sectorName: sName,
+          tasksCount,
+          expected: totalExpected,
+          done: distinct,
+          pct,
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+  }, [profiles, sectors, tasks, completions, daysInWeek, expectedWeekdays, scope, myUid]);
 
   // ─── Aderência de Tarefas com Clientes (semana) ──────────────────────
   const clientAdherence = useMemo(() => {
@@ -348,6 +363,7 @@ export default function DashboardPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Colaborador</TableHead>
                     <TableHead>Setor</TableHead>
                     <TableHead className="text-right">Tarefas</TableHead>
                     <TableHead className="text-right">Esperado no período</TableHead>
@@ -359,6 +375,7 @@ export default function DashboardPage() {
                   {sectorAdherence.map((s) => (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{s.sectorName}</TableCell>
                       <TableCell className="text-right tabular-nums">{s.tasksCount}</TableCell>
                       <TableCell className="text-right tabular-nums">{s.expected}</TableCell>
                       <TableCell className="text-right tabular-nums">{s.done}</TableCell>
@@ -379,6 +396,8 @@ export default function DashboardPage() {
                   ))}
                   <TableRow className="border-t-2 border-border font-semibold">
                     <TableCell>Total</TableCell>
+                    <TableCell />
+
                     <TableCell className="text-right tabular-nums">
                       {sectorAdherence.reduce((a, s) => a + s.tasksCount, 0)}
                     </TableCell>
