@@ -180,7 +180,10 @@ export default function DashboardPage() {
       arr.push(t.id);
       tasksBySector.set(t.sector_id, arr);
     }
-    const EXCLUDED_USER_IDS = new Set(["7ef3122e-9d2a-4088-89ab-aa62d2550289"]); // Flavio Barros Santos (admin sem rotina)
+    const EXCLUDED_USER_IDS = new Set([
+      "7ef3122e-9d2a-4088-89ab-aa62d2550289", // Flavio Barros Santos (admin sem rotina)
+      "42dba37b-b2cf-48f2-9eb3-9bf4250eac94", // Hugo Carneiro (dono)
+    ]);
     const scoped = profiles.filter(
       (p) => inScopeUser(p.user_id) && !EXCLUDED_USER_IDS.has(p.user_id),
     );
