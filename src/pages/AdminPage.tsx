@@ -295,7 +295,14 @@ export default function AdminPage() {
           <TabsTrigger value="doctors">
             <Stethoscope className="h-4 w-4 mr-1.5" /> Delegação por doutor
           </TabsTrigger>
+          <TabsTrigger value="audit">
+            <History className="h-4 w-4 mr-1.5" /> Histórico
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="audit" className="mt-4">
+          <AuditLogsPanel />
+        </TabsContent>
 
         <TabsContent value="doctors" className="mt-4">
           <DoctorsAdminPanel />
