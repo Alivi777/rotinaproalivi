@@ -363,6 +363,7 @@ export default function DashboardPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Colaborador</TableHead>
                     <TableHead>Setor</TableHead>
                     <TableHead className="text-right">Tarefas</TableHead>
                     <TableHead className="text-right">Esperado no período</TableHead>
