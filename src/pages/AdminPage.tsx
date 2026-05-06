@@ -32,6 +32,7 @@ import WeeklyRankingPanel from "@/components/WeeklyRankingPanel";
 import KanbanStagesAdminPanel from "@/components/KanbanStagesAdminPanel";
 import DoctorsAdminPanel from "@/components/DoctorsAdminPanel";
 import SectorMonthlyGoalsForm from "@/components/SectorMonthlyGoalsForm";
+import AuditLogsPanel from "@/components/AuditLogsPanel";
 
 type Goal = {
   id: string;
