@@ -99,19 +99,23 @@ export default function AuditLogsPanel() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period.from, period.to]);
+
+  useEffect(() => {
     const ch = supabase
-      .channel("audit-logs-live")
+      .channel(`audit-logs-live-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "audit_logs" },
-        load,
+        () => load(),
       )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period.from, period.to]);
+  }, []);
 
   useEffect(() => {
     load();
