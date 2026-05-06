@@ -375,6 +375,7 @@ export default function DashboardPage() {
                   {sectorAdherence.map((s) => (
                     <TableRow key={s.id}>
                       <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{s.sectorName}</TableCell>
                       <TableCell className="text-right tabular-nums">{s.tasksCount}</TableCell>
                       <TableCell className="text-right tabular-nums">{s.expected}</TableCell>
                       <TableCell className="text-right tabular-nums">{s.done}</TableCell>
