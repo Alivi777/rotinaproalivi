@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { useSectors } from "@/lib/useProfile";
 import {
   LineChart,
   Line,
@@ -14,9 +13,7 @@ import {
 } from "recharts";
 import { TrendingUp } from "lucide-react";
 
-// Palette of HSL semantic-friendly colors. We use direct HSL strings here because
-// Recharts needs raw color values (it doesn't process Tailwind classes).
-const SECTOR_COLORS = [
+const USER_COLORS = [
   "hsl(175 84% 48%)",
   "hsl(188 90% 60%)",
   "hsl(38 92% 60%)",
@@ -24,12 +21,17 @@ const SECTOR_COLORS = [
   "hsl(280 75% 65%)",
   "hsl(0 75% 62%)",
   "hsl(220 80% 65%)",
+  "hsl(48 95% 60%)",
+  "hsl(320 75% 65%)",
+  "hsl(160 70% 50%)",
+  "hsl(25 90% 60%)",
+  "hsl(260 80% 70%)",
 ];
 
 type Row = {
-  date: string; // "2026-04-14"
-  label: string; // "seg 14"
-  [sectorName: string]: string | number;
+  date: string;
+  label: string;
+  [userName: string]: string | number;
 };
 
 function lastNDays(n: number) {
@@ -47,25 +49,38 @@ function lastNDays(n: number) {
   return out;
 }
 
+type UserInfo = { id: string; name: string; sector_id: string | null };
+
 export default function WeeklyAdherenceChart() {
-  const { sectors } = useSectors();
   const [rows, setRows] = useState<Row[]>([]);
+  const [userNames, setUserNames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (sectors.length === 0) return;
     (async () => {
       setLoading(true);
       const days = lastNDays(7);
       const startDate = days[0].iso;
 
-      const [tasksRes, compsRes] = await Promise.all([
+      const [profilesRes, tasksRes, compsRes] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("user_id, display_name, email, sector_id, is_active")
+          .eq("is_active", true),
         supabase.from("routine_tasks").select("id, sector_id").eq("active", true),
         supabase
           .from("task_completions")
-          .select("task_id, completion_date")
+          .select("task_id, user_id, completion_date")
           .gte("completion_date", startDate),
       ]);
+
+      const users: UserInfo[] = (profilesRes.data ?? []).map((p) => ({
+        id: p.user_id,
+        name:
+          (p.display_name && p.display_name.trim()) ||
+          (p.email ? p.email.split("@")[0] : "Sem nome"),
+        sector_id: p.sector_id,
+      }));
 
       const tasks = tasksRes.data ?? [];
       const comps = compsRes.data ?? [];
@@ -77,30 +92,39 @@ export default function WeeklyAdherenceChart() {
         tasksBySector.get(t.sector_id)!.add(t.id);
       }
 
+      // Sort users by name for stable color assignment
+      users.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
       const data: Row[] = days.map(({ iso, label }) => {
         const row: Row = { date: iso, label };
-        for (const s of sectors) {
-          const sTaskIds = tasksBySector.get(s.id) ?? new Set();
+        for (const u of users) {
+          const sTaskIds = u.sector_id ? tasksBySector.get(u.sector_id) ?? new Set() : new Set();
           if (sTaskIds.size === 0) {
-            row[s.name] = 0;
+            row[u.name] = 0;
             continue;
           }
           const doneIds = new Set(
             comps
-              .filter((c) => c.completion_date === iso && sTaskIds.has(c.task_id))
+              .filter(
+                (c) =>
+                  c.completion_date === iso &&
+                  c.user_id === u.id &&
+                  sTaskIds.has(c.task_id)
+              )
               .map((c) => c.task_id)
           );
-          row[s.name] = Math.round((doneIds.size / sTaskIds.size) * 100);
+          row[u.name] = Math.round((doneIds.size / sTaskIds.size) * 100);
         }
         return row;
       });
 
+      setUserNames(users.map((u) => u.name));
       setRows(data);
       setLoading(false);
     })();
-  }, [sectors]);
+  }, []);
 
-  const sectorNames = useMemo(() => sectors.map((s) => s.name), [sectors]);
+  const names = useMemo(() => userNames, [userNames]);
 
   return (
     <Card className="p-6 bg-gradient-card border-border/50">
@@ -108,7 +132,7 @@ export default function WeeklyAdherenceChart() {
         <div>
           <h2 className="text-lg font-semibold">Aderência semanal</h2>
           <p className="text-xs text-muted-foreground">
-            % de tarefas concluídas por setor nos últimos 7 dias
+            % de tarefas da rotina concluídas por colaborador nos últimos 7 dias
           </p>
         </div>
         <TrendingUp className="h-4 w-4 text-primary" />
@@ -119,7 +143,7 @@ export default function WeeklyAdherenceChart() {
           Carregando…
         </div>
       ) : (
-        <div className="h-[300px] w-full">
+        <div className="h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={rows} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
@@ -153,12 +177,12 @@ export default function WeeklyAdherenceChart() {
                 iconType="circle"
                 iconSize={8}
               />
-              {sectorNames.map((name, idx) => (
+              {names.map((name, idx) => (
                 <Line
                   key={name}
                   type="monotone"
                   dataKey={name}
-                  stroke={SECTOR_COLORS[idx % SECTOR_COLORS.length]}
+                  stroke={USER_COLORS[idx % USER_COLORS.length]}
                   strokeWidth={2}
                   dot={{ r: 3, strokeWidth: 0 }}
                   activeDot={{ r: 5 }}
