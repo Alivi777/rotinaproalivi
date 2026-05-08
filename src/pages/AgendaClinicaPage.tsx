@@ -16,7 +16,7 @@ import {
   LayoutGrid,
   Columns3,
 } from "lucide-react";
-import { useAgendaClinica, getWeekDates, dateOnly } from "@/lib/useAgendaClinica";
+import { useAgendaClinica, getDateRange, dateOnly } from "@/lib/useAgendaClinica";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -34,7 +34,7 @@ export default function AgendaClinicaPage() {
   const [viewMode, setViewMode] = useState<"day" | "doctor">("doctor");
   const [selectedDay, setSelectedDay] = useState<string>(dateOnly(new Date()));
 
-  const weekDates = useMemo(() => getWeekDates(refDate), [refDate]);
+  const periodDates = useMemo(() => getDateRange(refDate, 30), [refDate]);
   const { tasks, doctors, loading } = useAgendaClinica(weekDates);
 
   const doctorMap = useMemo(() => {
