@@ -102,7 +102,7 @@ export default function AgendaClinicaPage() {
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke("clinicorp-agenda-sync", {
-        body: { days_ahead: 30 },
+        body: { days_ahead: 30, days_back: 14 },
       });
       if (error) throw error;
       const d = data as { appointments?: number; tasks_generated?: number };
