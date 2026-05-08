@@ -466,8 +466,9 @@ Deno.serve(async (req) => {
         const taskDate = new Date(apptDate);
         taskDate.setDate(apptDate.getDate() - rule.offset);
         const taskDateStr = dateOnly(taskDate);
-        // Only generate tasks today or in the future
-        if (taskDateStr < todayDateOnly) continue;
+        // Tarefas de preparação (D-7..D-1) só do hoje em diante.
+        // A âncora do dia da consulta (offset 0) sempre é gerada.
+        if (!rule.keep_past && taskDateStr < todayDateOnly) continue;
         taskRows.push({
           appointment_id: a.id,
           contact_id: contactId,
