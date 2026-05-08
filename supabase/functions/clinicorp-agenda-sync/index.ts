@@ -234,22 +234,24 @@ Deno.serve(async (req) => {
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const daysAhead: number = Number(body.days_ahead ?? 30);
+    const daysBack: number = Number(body.days_back ?? 14);
 
-    // 1) Fetch appointments next N days
+    // 1) Fetch appointments [today - daysBack, today + daysAhead]
     const today = new Date();
+    const start = new Date();
+    start.setDate(today.getDate() - daysBack);
     const end = new Date();
     end.setDate(today.getDate() + daysAhead);
 
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-    // Pagina dia-a-dia: a API do Clinicorp limita o total devolvido por chamada,
-    // então pedir um intervalo grande "comia" agendas (ex: a Wanessa ficava com
-    // 2 consultas no dia em vez de 8+). Buscar dia a dia garante a lista completa.
+    // Pagina dia-a-dia: a API do Clinicorp limita o total devolvido por chamada.
     const list: Appointment[] = [];
     const seenApptIds = new Set<string>();
-    for (let i = 0; i <= daysAhead; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
+    const totalDays = daysBack + daysAhead;
+    for (let i = 0; i <= totalDays; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
       const ds = fmt(d);
       try {
         const dayRes = await clinicorpGet("/appointment/list", {
