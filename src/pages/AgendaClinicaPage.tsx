@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import AgendaTaskCard from "@/components/AgendaTaskCard";
 import DoctorKanbanView from "@/components/DoctorKanbanView";
 
-const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const DAY_LABEL = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
 
 export default function AgendaClinicaPage() {
   const { isAdmin } = useIsAdmin();
@@ -35,61 +35,28 @@ export default function AgendaClinicaPage() {
   const [selectedDay, setSelectedDay] = useState<string>(dateOnly(new Date()));
 
   const periodDates = useMemo(() => getDateRange(refDate, 30), [refDate]);
-  const { tasks, doctors, loading } = useAgendaClinica(weekDates);
+  const { tasks, doctors, loading } = useAgendaClinica(periodDates);
 
   const doctorMap = useMemo(() => {
     const m = new Map(doctors.map((d) => [d.id, d]));
     return m;
   }, [doctors]);
 
-  // Dedup: 1 linha por (paciente + data + horário). Como tasks são geradas
-  // várias vezes por agendamento (D-7..D-1), na Agenda Clínica queremos só
-  // mostrar o atendimento — então pegamos a tarefa "âncora" do dia da consulta.
+  // Mostra todas as tarefas por dia de execução: confirmações, protocolo,
+  // urgência, aniversários e consulta do dia.
   const filtered = useMemo(() => {
-    const list = tasks.filter((t) => {
+    return tasks.filter((t) => {
       if (doctorFilter !== "all" && t.doctor_id !== doctorFilter && doctorFilter !== "none") return false;
       if (doctorFilter === "none" && t.doctor_id !== null) return false;
       if (search && !t.patient_name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-
-    const seen = new Map<string, typeof list[number]>();
-    for (const t of list) {
-      // Aniversário tem identidade própria
-      const key = t.task_type === "birthday"
-        ? `bday:${t.patient_name}:${t.task_date}`
-        : `appt:${t.patient_name}:${t.appointment_at ?? t.task_date}`;
-      const existing = seen.get(key);
-      if (!existing) {
-        seen.set(key, t);
-        continue;
-      }
-      // Prioriza a tarefa-âncora (task_type === 'appointment')
-      if (t.task_type === "appointment" && existing.task_type !== "appointment") {
-        seen.set(key, t);
-        continue;
-      }
-      // Senão, prioriza a entrada cuja task_date == data da consulta
-      if (existing.task_type !== "appointment" && t.appointment_at) {
-        const apptDay = t.appointment_at.slice(0, 10);
-        const exApptDay = existing.appointment_at?.slice(0, 10);
-        if (t.task_date === apptDay && existing.task_date !== exApptDay) {
-          seen.set(key, t);
-        }
-      }
-    }
-    return Array.from(seen.values());
   }, [tasks, doctorFilter, search]);
 
   const birthdays = filtered.filter((t) => t.task_type === "birthday");
-  const byDay = weekDates.map((d) => {
+  const byDay = periodDates.map((d) => {
     const ds = dateOnly(d);
-    return filtered.filter((t) => {
-      if (t.task_type === "birthday") return false;
-      // Mostra na coluna do dia da consulta, não da tarefa
-      const dayKey = t.appointment_at ? t.appointment_at.slice(0, 10) : t.task_date;
-      return dayKey === ds;
-    });
+    return filtered.filter((t) => t.task_type !== "birthday" && t.task_date === ds);
   });
 
   function shiftWeek(delta: number) {
