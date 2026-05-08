@@ -11,7 +11,6 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Cake,
   Loader2,
   LayoutGrid,
   Columns3,
@@ -53,15 +52,14 @@ export default function AgendaClinicaPage() {
     });
   }, [tasks, doctorFilter, search]);
 
-  const birthdays = filtered.filter((t) => t.task_type === "birthday");
   const byDay = periodDates.map((d) => {
     const ds = dateOnly(d);
-    return filtered.filter((t) => t.task_type !== "birthday" && t.task_date === ds);
+    return filtered.filter((t) => t.task_date === ds);
   });
 
   function shiftWeek(delta: number) {
     const d = new Date(refDate);
-    d.setDate(d.getDate() + delta * 7);
+    d.setDate(d.getDate() + delta * 30);
     setRefDate(d);
   }
 
@@ -118,8 +116,8 @@ export default function AgendaClinicaPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
           <div className="text-sm text-muted-foreground ml-2">
-            {weekDates[0].toLocaleDateString("pt-BR")} —{" "}
-            {weekDates[weekDates.length - 1].toLocaleDateString("pt-BR")}
+            {periodDates[0].toLocaleDateString("pt-BR")} —{" "}
+            {periodDates[periodDates.length - 1].toLocaleDateString("pt-BR")}
           </div>
 
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "day" | "doctor")} className="ml-2">
@@ -166,9 +164,9 @@ export default function AgendaClinicaPage() {
               onClick={() => setSelectedDay("")}
               className="h-8 text-xs"
             >
-              Semana toda
+              30 dias
             </Button>
-            {weekDates.map((d, i) => {
+            {periodDates.map((d) => {
               const ds = dateOnly(d);
               const isToday = ds === dateOnly(new Date());
               return (
@@ -179,7 +177,7 @@ export default function AgendaClinicaPage() {
                   onClick={() => setSelectedDay(ds)}
                   className="h-8 text-xs"
                 >
-                  {DAYS[i].slice(0, 3)} {d.getDate()}/{d.getMonth() + 1}
+                  {DAY_LABEL.format(d)}
                   {isToday && <span className="ml-1 text-[9px] opacity-70">(hoje)</span>}
                 </Button>
               );
@@ -196,7 +194,7 @@ export default function AgendaClinicaPage() {
           <DoctorKanbanView
             tasks={filtered}
             doctors={doctors}
-            weekDates={weekDates}
+            weekDates={periodDates}
             selectedDate={selectedDay ? new Date(selectedDay + "T12:00:00") : null}
           />
         ) : (
