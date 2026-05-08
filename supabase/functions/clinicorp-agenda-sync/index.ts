@@ -550,19 +550,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Remove duplicidades antigas quando o contact_id foi ligado depois da primeira sincronização.
+    const taskRowsByKey = new Map<string, Record<string, unknown>>();
+    for (const row of taskRows) {
+      if (!row.appointment_id) continue;
+      taskRowsByKey.set(`${row.appointment_id}:${row.task_type}`, row);
+    }
+    const appointmentTaskRows = [...taskRowsByKey.values()];
+
     // 7) Upsert tasks in batches
     let tasksCount = 0;
     const batchSize = 200;
-    for (let i = 0; i < taskRows.length; i += batchSize) {
-      const slice = taskRows.slice(i, i + batchSize);
+    for (let i = 0; i < appointmentTaskRows.length; i += batchSize) {
+      const slice = appointmentTaskRows.slice(i, i + batchSize);
       const { error } = await supabase
         .from("clinic_daily_tasks")
-        .upsert(slice, { onConflict: "appointment_id,task_type,contact_id", ignoreDuplicates: false });
+        .upsert(slice, { onConflict: "appointment_id,task_type", ignoreDuplicates: false });
       if (error) {
         console.error("tasks upsert error:", error.message);
       } else {
         tasksCount += slice.length;
       }
+    }
+
+    const birthdayRows = taskRows.filter((row) => !row.appointment_id);
+    for (let i = 0; i < birthdayRows.length; i += batchSize) {
+      const slice = birthdayRows.slice(i, i + batchSize);
+      const { error } = await supabase
+        .from("clinic_daily_tasks")
+        .upsert(slice, { onConflict: "appointment_id,task_type,contact_id", ignoreDuplicates: false });
+      if (error) console.error("birthday tasks upsert error:", error.message);
+      else tasksCount += slice.length;
     }
 
     // 7b) Reconciliação: sincroniza doutor/horário das tarefas com a consulta
