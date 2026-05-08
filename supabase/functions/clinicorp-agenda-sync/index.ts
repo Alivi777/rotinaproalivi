@@ -545,6 +545,46 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 7b) Reconciliação: sincroniza doutor/horário das tarefas com a consulta
+    // (corrige tarefas de remarcações e trocas de doutor no Clinicorp).
+    const apptIds = (storedAppts || []).map((a) => a.id);
+    for (let i = 0; i < apptIds.length; i += 200) {
+      const slice = apptIds.slice(i, i + 200);
+      const apptsById = new Map(
+        (storedAppts || [])
+          .filter((a) => slice.includes(a.id))
+          .map((a) => [a.id, a]),
+      );
+      const { data: existingTasks } = await supabase
+        .from("clinic_daily_tasks")
+        .select("id, appointment_id, doctor_id, doctor_name, appointment_at")
+        .in("appointment_id", slice);
+      const updates: Record<string, unknown>[] = [];
+      for (const t of existingTasks || []) {
+        const a = apptsById.get(t.appointment_id);
+        if (!a) continue;
+        if (
+          t.doctor_id !== a.doctor_id ||
+          t.doctor_name !== a.doctor_name ||
+          t.appointment_at !== a.appointment_at
+        ) {
+          updates.push({
+            id: t.id,
+            doctor_id: a.doctor_id,
+            doctor_name: a.doctor_name,
+            appointment_at: a.appointment_at,
+          });
+        }
+      }
+      if (updates.length) {
+        const { error: upErr } = await supabase
+          .from("clinic_daily_tasks")
+          .upsert(updates, { onConflict: "id" });
+        if (upErr) console.error("reconcile tasks err:", upErr.message);
+        else console.log(`[clinicorp] reconciled ${updates.length} task doctors`);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
