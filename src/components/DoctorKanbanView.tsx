@@ -20,16 +20,12 @@ interface Props {
 export default function DoctorKanbanView({ tasks, doctors, weekDates, selectedDate }: Props) {
   const doctorMap = useMemo(() => new Map(doctors.map((d) => [d.id, d])), [doctors]);
 
-  // Filtrar por data selecionada (se houver) ou pegar semana inteira.
-  // Usa o dia da consulta (`appointment_at`) quando existir, para espelhar
-  // exatamente a agenda do Clinicorp. Tarefas sem consulta caem no `task_date`.
+  // Filtrar por data selecionada (se houver) ou pegar o período inteiro.
+  // Usa `task_date`, porque esta visão agora mostra o que deve ser feito em cada dia.
   const filteredTasks = useMemo(() => {
     if (!selectedDate) return tasks;
     const ds = dateOnly(selectedDate);
-    return tasks.filter((t) => {
-      const dayKey = t.appointment_at ? t.appointment_at.slice(0, 10) : t.task_date;
-      return dayKey === ds;
-    });
+    return tasks.filter((t) => t.task_date === ds);
   }, [tasks, selectedDate]);
 
   // Agrupar por doctor_id (null = Recepção/Geral)
