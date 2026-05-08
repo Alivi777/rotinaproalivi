@@ -417,11 +417,31 @@ Deno.serve(async (req) => {
     }
 
     // 4) Reload appointments to get IDs and link contacts
-    const { data: storedAppts } = await supabase
+    let { data: storedAppts } = await supabase
       .from("clinic_appointments")
       .select("id, external_id, patient_external_id, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, contact_id")
       .gte("appointment_at", start.toISOString())
       .lte("appointment_at", end.toISOString());
+
+    // Clone exato da janela: se uma consulta saiu do Clinicorp, removemos daqui também.
+    // Só executa quando a API devolveu agenda válida para evitar apagar tudo em falha externa.
+    if (appointmentRows.length && storedAppts?.length) {
+      const currentExternalIds = new Set(appointmentRows.map((a) => String(a.external_id)).filter(Boolean));
+      const staleIds = storedAppts
+        .filter((a) => a.external_id && !currentExternalIds.has(String(a.external_id)))
+        .map((a) => a.id);
+      for (let i = 0; i < staleIds.length; i += 200) {
+        const { error: staleErr } = await supabase
+          .from("clinic_appointments")
+          .delete()
+          .in("id", staleIds.slice(i, i + 200));
+        if (staleErr) console.error("stale appointments delete err:", staleErr.message);
+      }
+      if (staleIds.length) {
+        console.log(`[clinicorp] removed ${staleIds.length} stale appointments`);
+        storedAppts = storedAppts.filter((a) => !staleIds.includes(a.id));
+      }
+    }
 
     // Best-effort: link contact_id via external_id or phone
     const phonesToFind = new Set<string>();
