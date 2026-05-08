@@ -75,6 +75,17 @@ export function getWeekDates(reference?: Date): Date[] {
   });
 }
 
+/** Retorna uma sequência de dias a partir da data de referência no fuso de SP. */
+export function getDateRange(reference: Date, days: number): Date[] {
+  const refKey = spDate(reference);
+  const start = new Date(`${refKey}T00:00:00-03:00`);
+  return Array.from({ length: days }, (_, i) => {
+    const x = new Date(start);
+    x.setUTCDate(start.getUTCDate() + i);
+    return x;
+  });
+}
+
 /** YYYY-MM-DD da Date no fuso de São Paulo (consistente com `task_date`). */
 export function dateOnly(d: Date): string {
   return spDate(d);
@@ -96,6 +107,7 @@ export function useAgendaClinica(weekDates: Date[]) {
         .select("*")
         .gte("task_date", start)
         .lte("task_date", end)
+        .order("task_date", { ascending: true })
         .order("appointment_at", { ascending: true }),
       supabase.from("clinic_doctors").select("*").eq("active", true).order("name"),
     ]);
