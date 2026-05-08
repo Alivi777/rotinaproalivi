@@ -184,8 +184,8 @@ function pickDoctor(a: Appointment): { extId: string | null; name: string | null
   return { extId: id != null ? String(id) : null, name };
 }
 
-// Rule of tasks: D-7, D-6, D-5, D-4, D-3, D-2, D-1
-const TASK_RULE: { offset: number; type: string }[] = [
+// Rule of tasks: D-7..D-1 (preparação) + D-0 (âncora — espelha a agenda do Clinicorp)
+const TASK_RULE: { offset: number; type: string; keep_past?: boolean }[] = [
   { offset: 7, type: "confirm_d7" },
   { offset: 6, type: "confirm_d6" },
   { offset: 5, type: "confirm_d5" },
@@ -193,6 +193,9 @@ const TASK_RULE: { offset: number; type: string }[] = [
   { offset: 3, type: "protocol_d3" },
   { offset: 2, type: "urgency_d2" },
   { offset: 1, type: "unbook_confirm_d1" },
+  // Âncora do dia da consulta — sempre criada (mesmo se for hoje/passado)
+  // para que a Agenda Clínica seja um espelho 1:1 do Clinicorp.
+  { offset: 0, type: "appointment", keep_past: true },
 ];
 
 function dateOnly(d: Date): string {
@@ -231,22 +234,24 @@ Deno.serve(async (req) => {
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const daysAhead: number = Number(body.days_ahead ?? 30);
+    const daysBack: number = Number(body.days_back ?? 14);
 
-    // 1) Fetch appointments next N days
+    // 1) Fetch appointments [today - daysBack, today + daysAhead]
     const today = new Date();
+    const start = new Date();
+    start.setDate(today.getDate() - daysBack);
     const end = new Date();
     end.setDate(today.getDate() + daysAhead);
 
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-    // Pagina dia-a-dia: a API do Clinicorp limita o total devolvido por chamada,
-    // então pedir um intervalo grande "comia" agendas (ex: a Wanessa ficava com
-    // 2 consultas no dia em vez de 8+). Buscar dia a dia garante a lista completa.
+    // Pagina dia-a-dia: a API do Clinicorp limita o total devolvido por chamada.
     const list: Appointment[] = [];
     const seenApptIds = new Set<string>();
-    for (let i = 0; i <= daysAhead; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
+    const totalDays = daysBack + daysAhead;
+    for (let i = 0; i <= totalDays; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
       const ds = fmt(d);
       try {
         const dayRes = await clinicorpGet("/appointment/list", {
@@ -415,7 +420,7 @@ Deno.serve(async (req) => {
     const { data: storedAppts } = await supabase
       .from("clinic_appointments")
       .select("id, external_id, patient_external_id, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, contact_id")
-      .gte("appointment_at", today.toISOString())
+      .gte("appointment_at", start.toISOString())
       .lte("appointment_at", end.toISOString());
 
     // Best-effort: link contact_id via external_id or phone
@@ -463,8 +468,9 @@ Deno.serve(async (req) => {
         const taskDate = new Date(apptDate);
         taskDate.setDate(apptDate.getDate() - rule.offset);
         const taskDateStr = dateOnly(taskDate);
-        // Only generate tasks today or in the future
-        if (taskDateStr < todayDateOnly) continue;
+        // Tarefas de preparação (D-7..D-1) só do hoje em diante.
+        // A âncora do dia da consulta (offset 0) sempre é gerada.
+        if (!rule.keep_past && taskDateStr < todayDateOnly) continue;
         taskRows.push({
           appointment_id: a.id,
           contact_id: contactId,
