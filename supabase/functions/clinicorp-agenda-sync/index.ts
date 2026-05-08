@@ -420,7 +420,7 @@ Deno.serve(async (req) => {
     const { data: storedAppts } = await supabase
       .from("clinic_appointments")
       .select("id, external_id, patient_external_id, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, contact_id")
-      .gte("appointment_at", today.toISOString())
+      .gte("appointment_at", start.toISOString())
       .lte("appointment_at", end.toISOString());
 
     // Best-effort: link contact_id via external_id or phone
