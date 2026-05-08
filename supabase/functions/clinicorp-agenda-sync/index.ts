@@ -184,8 +184,8 @@ function pickDoctor(a: Appointment): { extId: string | null; name: string | null
   return { extId: id != null ? String(id) : null, name };
 }
 
-// Rule of tasks: D-7, D-6, D-5, D-4, D-3, D-2, D-1
-const TASK_RULE: { offset: number; type: string }[] = [
+// Rule of tasks: D-7..D-1 (preparação) + D-0 (âncora — espelha a agenda do Clinicorp)
+const TASK_RULE: { offset: number; type: string; keep_past?: boolean }[] = [
   { offset: 7, type: "confirm_d7" },
   { offset: 6, type: "confirm_d6" },
   { offset: 5, type: "confirm_d5" },
@@ -193,6 +193,9 @@ const TASK_RULE: { offset: number; type: string }[] = [
   { offset: 3, type: "protocol_d3" },
   { offset: 2, type: "urgency_d2" },
   { offset: 1, type: "unbook_confirm_d1" },
+  // Âncora do dia da consulta — sempre criada (mesmo se for hoje/passado)
+  // para que a Agenda Clínica seja um espelho 1:1 do Clinicorp.
+  { offset: 0, type: "appointment", keep_past: true },
 ];
 
 function dateOnly(d: Date): string {
