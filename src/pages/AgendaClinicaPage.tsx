@@ -60,10 +60,17 @@ export default function AgendaClinicaPage() {
         ? `bday:${t.patient_name}:${t.task_date}`
         : `appt:${t.patient_name}:${t.appointment_at ?? t.task_date}`;
       const existing = seen.get(key);
-      // Prioriza a entrada cuja task_date == data da consulta (o "dia 0")
       if (!existing) {
         seen.set(key, t);
-      } else if (t.appointment_at) {
+        continue;
+      }
+      // Prioriza a tarefa-âncora (task_type === 'appointment')
+      if (t.task_type === "appointment" && existing.task_type !== "appointment") {
+        seen.set(key, t);
+        continue;
+      }
+      // Senão, prioriza a entrada cuja task_date == data da consulta
+      if (existing.task_type !== "appointment" && t.appointment_at) {
         const apptDay = t.appointment_at.slice(0, 10);
         const exApptDay = existing.appointment_at?.slice(0, 10);
         if (t.task_date === apptDay && existing.task_date !== exApptDay) {
