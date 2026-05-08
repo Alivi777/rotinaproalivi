@@ -11,19 +11,18 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Cake,
   Loader2,
   LayoutGrid,
   Columns3,
 } from "lucide-react";
-import { useAgendaClinica, getWeekDates, dateOnly } from "@/lib/useAgendaClinica";
+import { useAgendaClinica, getDateRange, dateOnly } from "@/lib/useAgendaClinica";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import AgendaTaskCard from "@/components/AgendaTaskCard";
 import DoctorKanbanView from "@/components/DoctorKanbanView";
 
-const DAYS = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const DAY_LABEL = new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
 
 export default function AgendaClinicaPage() {
   const { isAdmin } = useIsAdmin();
@@ -34,67 +33,33 @@ export default function AgendaClinicaPage() {
   const [viewMode, setViewMode] = useState<"day" | "doctor">("doctor");
   const [selectedDay, setSelectedDay] = useState<string>(dateOnly(new Date()));
 
-  const weekDates = useMemo(() => getWeekDates(refDate), [refDate]);
-  const { tasks, doctors, loading } = useAgendaClinica(weekDates);
+  const periodDates = useMemo(() => getDateRange(refDate, 30), [refDate]);
+  const { tasks, doctors, loading } = useAgendaClinica(periodDates);
 
   const doctorMap = useMemo(() => {
     const m = new Map(doctors.map((d) => [d.id, d]));
     return m;
   }, [doctors]);
 
-  // Dedup: 1 linha por (paciente + data + horário). Como tasks são geradas
-  // várias vezes por agendamento (D-7..D-1), na Agenda Clínica queremos só
-  // mostrar o atendimento — então pegamos a tarefa "âncora" do dia da consulta.
+  // Mostra todas as tarefas por dia de execução: confirmações, protocolo,
+  // urgência, aniversários e consulta do dia.
   const filtered = useMemo(() => {
-    const list = tasks.filter((t) => {
+    return tasks.filter((t) => {
       if (doctorFilter !== "all" && t.doctor_id !== doctorFilter && doctorFilter !== "none") return false;
       if (doctorFilter === "none" && t.doctor_id !== null) return false;
       if (search && !t.patient_name.toLowerCase().includes(search.toLowerCase())) return false;
       return true;
     });
-
-    const seen = new Map<string, typeof list[number]>();
-    for (const t of list) {
-      // Aniversário tem identidade própria
-      const key = t.task_type === "birthday"
-        ? `bday:${t.patient_name}:${t.task_date}`
-        : `appt:${t.patient_name}:${t.appointment_at ?? t.task_date}`;
-      const existing = seen.get(key);
-      if (!existing) {
-        seen.set(key, t);
-        continue;
-      }
-      // Prioriza a tarefa-âncora (task_type === 'appointment')
-      if (t.task_type === "appointment" && existing.task_type !== "appointment") {
-        seen.set(key, t);
-        continue;
-      }
-      // Senão, prioriza a entrada cuja task_date == data da consulta
-      if (existing.task_type !== "appointment" && t.appointment_at) {
-        const apptDay = t.appointment_at.slice(0, 10);
-        const exApptDay = existing.appointment_at?.slice(0, 10);
-        if (t.task_date === apptDay && existing.task_date !== exApptDay) {
-          seen.set(key, t);
-        }
-      }
-    }
-    return Array.from(seen.values());
   }, [tasks, doctorFilter, search]);
 
-  const birthdays = filtered.filter((t) => t.task_type === "birthday");
-  const byDay = weekDates.map((d) => {
+  const byDay = periodDates.map((d) => {
     const ds = dateOnly(d);
-    return filtered.filter((t) => {
-      if (t.task_type === "birthday") return false;
-      // Mostra na coluna do dia da consulta, não da tarefa
-      const dayKey = t.appointment_at ? t.appointment_at.slice(0, 10) : t.task_date;
-      return dayKey === ds;
-    });
+    return filtered.filter((t) => t.task_date === ds);
   });
 
   function shiftWeek(delta: number) {
     const d = new Date(refDate);
-    d.setDate(d.getDate() + delta * 7);
+    d.setDate(d.getDate() + delta * 30);
     setRefDate(d);
   }
 
@@ -151,8 +116,8 @@ export default function AgendaClinicaPage() {
             <ChevronRight className="h-4 w-4" />
           </Button>
           <div className="text-sm text-muted-foreground ml-2">
-            {weekDates[0].toLocaleDateString("pt-BR")} —{" "}
-            {weekDates[weekDates.length - 1].toLocaleDateString("pt-BR")}
+            {periodDates[0].toLocaleDateString("pt-BR")} —{" "}
+            {periodDates[periodDates.length - 1].toLocaleDateString("pt-BR")}
           </div>
 
           <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "day" | "doctor")} className="ml-2">
@@ -199,9 +164,9 @@ export default function AgendaClinicaPage() {
               onClick={() => setSelectedDay("")}
               className="h-8 text-xs"
             >
-              Semana toda
+              30 dias
             </Button>
-            {weekDates.map((d, i) => {
+            {periodDates.map((d) => {
               const ds = dateOnly(d);
               const isToday = ds === dateOnly(new Date());
               return (
@@ -212,7 +177,7 @@ export default function AgendaClinicaPage() {
                   onClick={() => setSelectedDay(ds)}
                   className="h-8 text-xs"
                 >
-                  {DAYS[i].slice(0, 3)} {d.getDate()}/{d.getMonth() + 1}
+                  {DAY_LABEL.format(d)}
                   {isToday && <span className="ml-1 text-[9px] opacity-70">(hoje)</span>}
                 </Button>
               );
@@ -229,51 +194,20 @@ export default function AgendaClinicaPage() {
           <DoctorKanbanView
             tasks={filtered}
             doctors={doctors}
-            weekDates={weekDates}
+            weekDates={periodDates}
             selectedDate={selectedDay ? new Date(selectedDay + "T12:00:00") : null}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-            {/* Birthdays column */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-2">
-                <div className="flex items-center gap-2 font-semibold text-sm">
-                  <Cake className="h-4 w-4 text-primary" />
-                  Aniversários
-                </div>
-                <Badge variant="secondary" className="text-[10px]">
-                  {birthdays.length}
-                </Badge>
-              </div>
-              <div className="space-y-2 min-h-[100px] p-2 rounded-lg bg-muted/30">
-                {birthdays.length === 0 && (
-                  <div className="text-xs text-muted-foreground text-center py-6">
-                    Nenhum aniversário
-                  </div>
-                )}
-                {birthdays.map((t) => (
-                  <AgendaTaskCard
-                    key={t.id}
-                    task={t}
-                    doctor={t.doctor_id ? doctorMap.get(t.doctor_id) : undefined}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Day columns */}
-            {DAYS.map((label, i) => {
-              const date = weekDates[i];
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {periodDates.map((date, i) => {
+              const label = DAY_LABEL.format(date);
               const dayTasks = byDay[i];
               const isToday = dateOnly(date) === dateOnly(new Date());
               return (
-                <div key={label} className="space-y-2">
+                <div key={dateOnly(date)} className="space-y-2">
                   <div className="flex items-center justify-between px-2">
                     <div className="text-sm font-semibold">
                       {label}
-                      <span className="ml-1 text-xs text-muted-foreground font-normal">
-                        {date.getDate()}/{date.getMonth() + 1}
-                      </span>
                       {isToday && (
                         <Badge variant="default" className="ml-2 text-[9px] h-4">
                           Hoje

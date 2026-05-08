@@ -417,11 +417,31 @@ Deno.serve(async (req) => {
     }
 
     // 4) Reload appointments to get IDs and link contacts
-    const { data: storedAppts } = await supabase
+    let { data: storedAppts } = await supabase
       .from("clinic_appointments")
       .select("id, external_id, patient_external_id, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, contact_id")
       .gte("appointment_at", start.toISOString())
       .lte("appointment_at", end.toISOString());
+
+    // Clone exato da janela: se uma consulta saiu do Clinicorp, removemos daqui também.
+    // Só executa quando a API devolveu agenda válida para evitar apagar tudo em falha externa.
+    if (appointmentRows.length && storedAppts?.length) {
+      const currentExternalIds = new Set(appointmentRows.map((a) => String(a.external_id)).filter(Boolean));
+      const staleIds = storedAppts
+        .filter((a) => a.external_id && !currentExternalIds.has(String(a.external_id)))
+        .map((a) => a.id);
+      for (let i = 0; i < staleIds.length; i += 200) {
+        const { error: staleErr } = await supabase
+          .from("clinic_appointments")
+          .delete()
+          .in("id", staleIds.slice(i, i + 200));
+        if (staleErr) console.error("stale appointments delete err:", staleErr.message);
+      }
+      if (staleIds.length) {
+        console.log(`[clinicorp] removed ${staleIds.length} stale appointments`);
+        storedAppts = storedAppts.filter((a) => !staleIds.includes(a.id));
+      }
+    }
 
     // Best-effort: link contact_id via external_id or phone
     const phonesToFind = new Set<string>();
@@ -530,19 +550,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Remove duplicidades antigas quando o contact_id foi ligado depois da primeira sincronização.
+    const taskRowsByKey = new Map<string, Record<string, unknown>>();
+    for (const row of taskRows) {
+      if (!row.appointment_id) continue;
+      taskRowsByKey.set(`${row.appointment_id}:${row.task_type}`, row);
+    }
+    const appointmentTaskRows = [...taskRowsByKey.values()];
+
     // 7) Upsert tasks in batches
     let tasksCount = 0;
     const batchSize = 200;
-    for (let i = 0; i < taskRows.length; i += batchSize) {
-      const slice = taskRows.slice(i, i + batchSize);
+    for (let i = 0; i < appointmentTaskRows.length; i += batchSize) {
+      const slice = appointmentTaskRows.slice(i, i + batchSize);
       const { error } = await supabase
         .from("clinic_daily_tasks")
-        .upsert(slice, { onConflict: "appointment_id,task_type,contact_id", ignoreDuplicates: false });
+        .upsert(slice, { onConflict: "appointment_id,task_type", ignoreDuplicates: false });
       if (error) {
         console.error("tasks upsert error:", error.message);
       } else {
         tasksCount += slice.length;
       }
+    }
+
+    const birthdayRows = taskRows.filter((row) => !row.appointment_id);
+    for (let i = 0; i < birthdayRows.length; i += batchSize) {
+      const slice = birthdayRows.slice(i, i + batchSize);
+      const { error } = await supabase
+        .from("clinic_daily_tasks")
+        .upsert(slice, { onConflict: "task_type,contact_id,task_date", ignoreDuplicates: false });
+      if (error) console.error("birthday tasks upsert error:", error.message);
+      else tasksCount += slice.length;
     }
 
     // 7b) Reconciliação: sincroniza doutor/horário das tarefas com a consulta
