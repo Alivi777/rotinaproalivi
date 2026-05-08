@@ -30,6 +30,7 @@ export type ClinicDoctor = {
 };
 
 export const TASK_TYPE_LABEL: Record<string, string> = {
+  appointment: "Consulta",
   birthday: "🎂 Aniversário",
   confirm_d7: "Confirmar (D-7)",
   confirm_d6: "Confirmar (D-6)",
@@ -41,6 +42,7 @@ export const TASK_TYPE_LABEL: Record<string, string> = {
 };
 
 export const TASK_TYPE_COLOR: Record<string, string> = {
+  appointment: "bg-primary/15 text-primary border-primary/30",
   birthday: "bg-pink-500/15 text-pink-700 dark:text-pink-300 border-pink-500/30",
   confirm_d7: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
   confirm_d6: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30",
