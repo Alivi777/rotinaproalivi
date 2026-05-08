@@ -198,47 +198,16 @@ export default function AgendaClinicaPage() {
             selectedDate={selectedDay ? new Date(selectedDay + "T12:00:00") : null}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-            {/* Birthdays column */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-2">
-                <div className="flex items-center gap-2 font-semibold text-sm">
-                  <Cake className="h-4 w-4 text-primary" />
-                  Aniversários
-                </div>
-                <Badge variant="secondary" className="text-[10px]">
-                  {birthdays.length}
-                </Badge>
-              </div>
-              <div className="space-y-2 min-h-[100px] p-2 rounded-lg bg-muted/30">
-                {birthdays.length === 0 && (
-                  <div className="text-xs text-muted-foreground text-center py-6">
-                    Nenhum aniversário
-                  </div>
-                )}
-                {birthdays.map((t) => (
-                  <AgendaTaskCard
-                    key={t.id}
-                    task={t}
-                    doctor={t.doctor_id ? doctorMap.get(t.doctor_id) : undefined}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Day columns */}
-            {DAYS.map((label, i) => {
-              const date = weekDates[i];
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {periodDates.map((date, i) => {
+              const label = DAY_LABEL.format(date);
               const dayTasks = byDay[i];
               const isToday = dateOnly(date) === dateOnly(new Date());
               return (
-                <div key={label} className="space-y-2">
+                <div key={dateOnly(date)} className="space-y-2">
                   <div className="flex items-center justify-between px-2">
                     <div className="text-sm font-semibold">
                       {label}
-                      <span className="ml-1 text-xs text-muted-foreground font-normal">
-                        {date.getDate()}/{date.getMonth() + 1}
-                      </span>
                       {isToday && (
                         <Badge variant="default" className="ml-2 text-[9px] h-4">
                           Hoje
