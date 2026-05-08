@@ -578,7 +578,7 @@ Deno.serve(async (req) => {
       const slice = birthdayRows.slice(i, i + batchSize);
       const { error } = await supabase
         .from("clinic_daily_tasks")
-        .upsert(slice, { onConflict: "appointment_id,task_type,contact_id", ignoreDuplicates: false });
+        .upsert(slice, { onConflict: "task_type,contact_id,task_date", ignoreDuplicates: false });
       if (error) console.error("birthday tasks upsert error:", error.message);
       else tasksCount += slice.length;
     }
