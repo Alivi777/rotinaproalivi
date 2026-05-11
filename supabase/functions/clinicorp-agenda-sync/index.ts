@@ -324,9 +324,11 @@ Deno.serve(async (req) => {
 
     // 2b) Coletar TODOS os IDs de doutor que aparecem na agenda
     const seenDoctorIds = new Set<string>();
+    const doctorNamesFromAgenda = new Map<string, string>();
     for (const a of list) {
       const dr = pickDoctor(a);
       if (dr.extId) seenDoctorIds.add(dr.extId);
+      if (dr.extId && dr.name && dr.name.trim()) doctorNamesFromAgenda.set(dr.extId, dr.name.trim());
     }
 
     // 2c) Recarregar doutores atuais para respeitar nomes travados manualmente
@@ -358,7 +360,7 @@ Deno.serve(async (req) => {
         .filter((extId) => !existingDoctorMap.has(extId))
         .map((extId) => ({
           external_id: extId,
-          name: dentistNames.get(extId) || `Profissional #${extId}`,
+          name: doctorNamesFromAgenda.get(extId) || dentistNames.get(extId) || `Profissional #${extId}`,
           active: true,
         }));
       if (newDoctors.length) {
@@ -368,14 +370,14 @@ Deno.serve(async (req) => {
         if (drErr) console.error("[clinicorp] doctor insert err:", drErr.message);
       }
 
-      // Atualizar nomes só de agendas não travadas e ainda placeholders
-      for (const [extId, realName] of dentistNames) {
+      // Para agenda exata, o nome do profissional vem da própria agenda do Clinicorp.
+      const namesToApply = new Map([...dentistNames, ...doctorNamesFromAgenda]);
+      for (const [extId, realName] of namesToApply) {
         await supabase
           .from("clinic_doctors")
           .update({ name: realName })
           .eq("external_id", extId)
-          .eq("name_locked", false)
-          .like("name", "Profissional #%");
+          .or(`name_locked.eq.false,name.ilike.Profissional #%`);
       }
     }
 
