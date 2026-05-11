@@ -116,18 +116,23 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
     const doneStageId = stageBySlug.get("task-done");
     if (!todoStageId) throw new Error("Stage 'reception-todo' não encontrada");
 
-    // Datas de referência em SP
+    // Datas de referência em SP — gera cards para hoje + próximos 7 dias (D-1..D-7)
     const nowSp = new Date(Date.now() - 3 * 60 * 60 * 1000);
     const todayKey = nowSp.toISOString().slice(0, 10);
     const tomorrowKey = new Date(nowSp.getTime() + 24 * 60 * 60 * 1000)
       .toISOString().slice(0, 10);
+    const dateKeys: string[] = [];
+    for (let i = 0; i <= 7; i++) {
+      dateKeys.push(
+        new Date(nowSp.getTime() + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      );
+    }
 
-    // 2) Tarefas APENAS de hoje e amanhã (não joga dias futuros em "Fazer hoje")
-    //    O cron diário das 6am recria tudo, então cada dia é redistribuído na hora certa.
+    // 2) Tarefas de hoje até D-7 (todas as colunas do funil da Recepção)
     const { data: tasksRaw, error: tErr } = await supabase
       .from("clinic_daily_tasks")
       .select("id, task_type, task_date, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, notes")
-      .in("task_date", [todayKey, tomorrowKey])
+      .in("task_date", dateKeys)
       .order("task_date", { ascending: true });
     if (tErr) throw tErr;
     // "Agenda Geral" é responsabilidade do SDR — nunca entra no funil da Recepção.
