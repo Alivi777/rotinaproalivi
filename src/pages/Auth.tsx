@@ -10,10 +10,9 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
+  const [mode, setMode] = useState<"login" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -30,18 +29,7 @@ export default function Auth() {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { display_name: name },
-          },
-        });
-        if (error) throw error;
-        toast.success("Conta criada! Você já está logado.");
-      } else if (mode === "forgot") {
+      if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         });
@@ -77,29 +65,15 @@ export default function Auth() {
           <div className="mb-6">
             <h2 className="text-xl font-semibold">
               {mode === "login" && "Entrar no painel"}
-              {mode === "signup" && "Criar conta"}
               {mode === "forgot" && "Redefinir senha"}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
               {mode === "login" && "Acesse sua rotina diária"}
-              {mode === "signup" && "Comece a organizar sua operação"}
               {mode === "forgot" && "Informe seu e-mail e enviaremos um link para criar uma nova senha."}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Seu nome"
-                  required
-                />
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <Input
@@ -140,12 +114,11 @@ export default function Auth() {
             <Button type="submit" className="w-full" size="lg" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {mode === "login" && "Entrar"}
-              {mode === "signup" && "Criar conta"}
               {mode === "forgot" && "Enviar link de redefinição"}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          <div className="mt-6 text-center text-sm text-muted-foreground space-y-2">
             {mode === "forgot" ? (
               <button
                 type="button"
@@ -155,16 +128,9 @@ export default function Auth() {
                 Voltar para o login
               </button>
             ) : (
-              <>
-                {mode === "login" ? "Novo por aqui?" : "Já tem conta?"}{" "}
-                <button
-                  type="button"
-                  onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                  className="text-primary hover:text-primary-glow font-medium transition-smooth"
-                >
-                  {mode === "login" ? "Criar conta" : "Entrar"}
-                </button>
-              </>
+              <p className="text-xs">
+                Acesso somente por convite. Solicite ao administrador da clínica.
+              </p>
             )}
           </div>
         </Card>
