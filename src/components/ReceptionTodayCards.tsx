@@ -388,12 +388,11 @@ export default function ReceptionTodayCards({
         </Card>
       )}
 
-      {/* Kanban — colunas Agenda Hoje + D-7..D-1, agrupado por responsável */}
+      {/* Kanban — colunas por DIA (Hoje, D-1..D-7), agrupado por responsável */}
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
-        {TASK_COLUMNS.map((col) => {
-          const colCards = cardsToday.filter((c) =>
-            col.types.includes(c.items[0].task_type),
-          );
+        {DAY_COLUMNS.map((col) => {
+          const colDate = addDaysISO(today, col.offset);
+          const colCards = cardsToday.filter((c) => c.items[0].task_date === colDate);
 
           // Agrupar por responsável (nome do doutor; cai p/ "Sem responsável")
           const byResp = new Map<
