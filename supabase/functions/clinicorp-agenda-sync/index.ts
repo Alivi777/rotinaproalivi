@@ -248,11 +248,16 @@ Deno.serve(async (req) => {
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const today = new Date();
+    const todayKey = dateOnly(today);
     const requestedStart = typeof body.start_date === "string" ? normalizeDateInput(body.start_date) : null;
     const requestedEnd = typeof body.end_date === "string" ? normalizeDateInput(body.end_date) : null;
-    const defaultWeek = mondayToSaturday(dateOnly(today));
-    const startKey = requestedStart || defaultWeek.startKey;
-    const endKey = requestedEnd || requestedStart || defaultWeek.endKey;
+    const daysAhead = typeof body.days_ahead === "number" ? body.days_ahead : null;
+    const daysBack = typeof body.days_back === "number" ? body.days_back : null;
+    const defaultWeek = mondayToSaturday(todayKey);
+    const startKey = requestedStart
+      || (daysBack != null ? addDaysKey(todayKey, -daysBack) : defaultWeek.startKey);
+    const endKey = requestedEnd
+      || (daysAhead != null ? addDaysKey(todayKey, daysAhead) : (requestedStart || defaultWeek.endKey));
     const start = new Date(`${startKey}T00:00:00-03:00`);
     const end = new Date(`${endKey}T23:59:59-03:00`);
     const totalDays = Math.max(0, Math.round((new Date(`${endKey}T00:00:00-03:00`).getTime() - new Date(`${startKey}T00:00:00-03:00`).getTime()) / 86400000));
