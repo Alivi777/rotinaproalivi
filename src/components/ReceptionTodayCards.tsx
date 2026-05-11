@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Search,
   AlertOctagon,
-  CalendarClock,
-  CheckCircle2,
   MessageSquareText,
   Clock,
 } from "lucide-react";
