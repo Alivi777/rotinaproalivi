@@ -183,7 +183,8 @@ function pickPatientExtId(a: Appointment): string | null {
 function pickDoctor(a: Appointment): { extId: string | null; name: string | null } {
   const id = a.Dentist_PersonId ?? a.professional?.id ?? a.professional_id ?? a.doctor_id;
   const name = a.DentistName || a.professional?.name || (a.professional_name as string) || (a.doctor_name as string) || null;
-  return { extId: id != null ? String(id) : null, name };
+  const rawExt = id != null ? String(id) : null;
+  return { extId: canonicalDoctorExtId(rawExt), name };
 }
 
 const DOCTOR_NAME_OVERRIDES = new Map<string, string>([
