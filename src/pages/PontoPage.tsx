@@ -272,28 +272,32 @@ function MyMonth({ userId }: { userId: string }) {
   function exportPDF() {
     const w = window.open("", "_blank");
     if (!w) return;
+    const esc = (s: unknown) =>
+      String(s ?? "").replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!),
+      );
     const rows = entries.map((e) => `
       <tr>
-        <td>${fmtDate(e.entry_date)}</td>
-        <td>${fmtTime(e.clock_in)}</td>
-        <td>${fmtTime(e.lunch_start)}</td>
-        <td>${fmtTime(e.lunch_end)}</td>
-        <td>${fmtTime(e.clock_out)}</td>
-        <td>${fmtDuration(workedMinutes(e))}</td>
+        <td>${esc(fmtDate(e.entry_date))}</td>
+        <td>${esc(fmtTime(e.clock_in))}</td>
+        <td>${esc(fmtTime(e.lunch_start))}</td>
+        <td>${esc(fmtTime(e.lunch_end))}</td>
+        <td>${esc(fmtTime(e.clock_out))}</td>
+        <td>${esc(fmtDuration(workedMinutes(e)))}</td>
         <td>${e.edited_by ? "Sim" : ""}</td>
       </tr>`).join("");
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Espelho de ponto ${month}</title>
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Espelho de ponto ${esc(month)}</title>
       <style>body{font-family:Arial;padding:24px;color:#111}h1{font-size:18px;margin:0 0 4px}p{margin:2px 0;color:#444}
       table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}
       th,td{border:1px solid #ccc;padding:6px;text-align:center}th{background:#f3f4f6}
       tfoot td{font-weight:bold;background:#f9fafb}.sig{margin-top:60px;display:flex;gap:60px}.sig div{flex:1;border-top:1px solid #333;padding-top:6px;text-align:center;font-size:12px}</style>
       </head><body>
-      <h1>Espelho de Ponto — ${month}</h1>
-      <p><b>Colaborador:</b> ${name}</p>
-      <p><b>Total trabalhado:</b> ${fmtDuration(totalMin)}</p>
+      <h1>Espelho de Ponto — ${esc(month)}</h1>
+      <p><b>Colaborador:</b> ${esc(name)}</p>
+      <p><b>Total trabalhado:</b> ${esc(fmtDuration(totalMin))}</p>
       <table><thead><tr><th>Data</th><th>Entrada</th><th>Início almoço</th><th>Fim almoço</th><th>Saída</th><th>Trabalhado</th><th>Ajustado</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td colspan="5">Total</td><td>${fmtDuration(totalMin)}</td><td></td></tr></tfoot></table>
+      <tfoot><tr><td colspan="5">Total</td><td>${esc(fmtDuration(totalMin))}</td><td></td></tr></tfoot></table>
       <div class="sig"><div>Assinatura do colaborador</div><div>Assinatura do gestor</div></div>
       <script>window.onload=()=>window.print()</script></body></html>`);
     w.document.close();
