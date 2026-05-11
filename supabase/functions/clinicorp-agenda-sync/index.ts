@@ -247,25 +247,24 @@ Deno.serve(async (req) => {
 
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const daysAhead: number = Number(body.days_ahead ?? 30);
-    const daysBack: number = Number(body.days_back ?? 14);
-
-    // 1) Fetch appointments [today - daysBack, today + daysAhead]
     const today = new Date();
-    const start = new Date();
-    start.setDate(today.getDate() - daysBack);
-    const end = new Date();
-    end.setDate(today.getDate() + daysAhead);
+    const requestedStart = typeof body.start_date === "string" ? normalizeDateInput(body.start_date) : null;
+    const requestedEnd = typeof body.end_date === "string" ? normalizeDateInput(body.end_date) : null;
+    const defaultWeek = mondayToSaturday(dateOnly(today));
+    const startKey = requestedStart || defaultWeek.startKey;
+    const endKey = requestedEnd || requestedStart || defaultWeek.endKey;
+    const start = new Date(`${startKey}T00:00:00-03:00`);
+    const end = new Date(`${endKey}T23:59:59-03:00`);
+    const totalDays = Math.max(0, Math.round((new Date(`${endKey}T00:00:00-03:00`).getTime() - new Date(`${startKey}T00:00:00-03:00`).getTime()) / 86400000));
 
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    const fmt = (d: Date) => dateOnly(d);
 
     // Pagina dia-a-dia: a API do Clinicorp limita o total devolvido por chamada.
     const list: Appointment[] = [];
     const seenApptIds = new Set<string>();
-    const totalDays = daysBack + daysAhead;
     for (let i = 0; i <= totalDays; i++) {
       const d = new Date(start);
-      d.setDate(start.getDate() + i);
+      d.setUTCDate(start.getUTCDate() + i);
       const ds = fmt(d);
       try {
         const dayRes = await clinicorpGet("/appointment/list", {
