@@ -195,6 +195,7 @@ function debugDoctorFields(rows: Appointment[]) {
     picked.fromTime = row.fromTime;
     picked.toTime = row.toTime;
     picked.date = row.date || row.start_date || row.appointment_at;
+    picked.patient = pickPatientName(row);
     return picked;
   });
 }
