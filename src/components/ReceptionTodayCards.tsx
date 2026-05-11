@@ -347,138 +347,121 @@ export default function ReceptionTodayCards({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* COL 1 — Novo Atendimento */}
-        <FunnelColumn
-          title="Novo Atendimento"
-          subtitle="WhatsApp aguardando — atenda agora"
-          icon={<AlertOctagon className="h-4 w-4 text-destructive" />}
-          accent="destructive"
-          count={novosFiltrados.length}
-          onDragOver={(e) => onDragOverCol(e, "novo")}
-          onDragLeave={() => setOverCol(null)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setOverCol(null);
-          }}
-          highlight={overCol === "novo"}
-        >
-          {novosFiltrados.length === 0 ? (
-            <EmptyHint text="Sem novos atendimentos." />
-          ) : (
-            novosFiltrados.map((att) => (
-              <Card
+      {/* Banner — Novo Atendimento WhatsApp (sempre no topo) */}
+      {novosFiltrados.length > 0 && (
+        <Card className="p-3 border-destructive/40 bg-destructive/5">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertOctagon className="h-4 w-4 text-destructive" />
+            <h3 className="font-semibold text-sm">Novo Atendimento</h3>
+            <Badge variant="destructive" className="h-5 text-[10px]">
+              {novosFiltrados.length}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {novosFiltrados.map((att) => (
+              <div
                 key={att.id}
-                className="p-3 border-destructive/40 bg-destructive/5 ring-1 ring-destructive/30 animate-pulse-slow"
+                className="flex items-center justify-between gap-2 p-2 rounded-md border border-destructive/30 bg-background"
               >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <Badge
-                    variant="destructive"
-                    className="h-5 text-[10px] uppercase tracking-wider"
-                  >
-                    Atenda agora
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground inline-flex items-center gap-1">
+                <div className="min-w-0">
+                  <div className="font-medium text-sm truncate">
+                    {att.from_name || "Contato sem nome"}
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate inline-flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {minutesAgo(att.last_message_at)} min
-                  </span>
+                    {att.from_phone} · {minutesAgo(att.last_message_at)} min
+                  </div>
                 </div>
-                <div className="font-medium text-sm truncate">
-                  {att.from_name || "Contato sem nome"}
-                </div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {att.from_phone}
-                </div>
-                <div className="mt-2 flex gap-2">
-                  <Button
-                    size="sm"
-                    className="flex-1 h-7 text-xs"
-                    onClick={() => attendNow(att)}
-                  >
-                    <MessageSquareText className="h-3 w-3 mr-1" />
-                    Atender
-                  </Button>
-                </div>
-              </Card>
-            ))
-          )}
-        </FunnelColumn>
-
-        {/* COL 2 — Programadas (tarefas de hoje) */}
-        <FunnelColumn
-          title="Programadas para hoje"
-          subtitle="Tarefas da Agenda Clínica do dia"
-          icon={<CalendarClock className="h-4 w-4 text-primary" />}
-          accent="primary"
-          count={programadas.length}
-          onDragOver={(e) => onDragOverCol(e, "programadas")}
-          onDragLeave={() => setOverCol(null)}
-          onDrop={(e) => onDropCol(e, "programadas")}
-          highlight={overCol === "programadas"}
-        >
-          {programadas.length === 0 ? (
-            <EmptyHint text={search ? `Nada para "${search}".` : "Sem programadas hoje."} />
-          ) : (
-            programadas.map(({ client, items, key }) => (
-              <div
-                key={key}
-                draggable
-                onDragStart={(e) => onDragStart(e, items[0].id)}
-                className="cursor-grab active:cursor-grabbing"
-              >
-                <ReceptionTaskCard
-                  client={client}
-                  items={items}
-                  responsibleName={
-                    client.assigned_to
-                      ? profileById.get(client.assigned_to)?.display_name ||
-                        "Sem responsável"
-                      : "— Sem responsável —"
-                  }
-                  onClick={() => onOpenClient(client)}
-                />
+                <Button size="sm" className="h-7 text-xs" onClick={() => attendNow(att)}>
+                  <MessageSquareText className="h-3 w-3 mr-1" />
+                  Atender
+                </Button>
               </div>
-            ))
-          )}
-        </FunnelColumn>
+            ))}
+          </div>
+        </Card>
+      )}
 
-        {/* COL 3 — Concluídos */}
-        <FunnelColumn
-          title="Concluídos"
-          subtitle="Todas as tarefas do dia feitas"
-          icon={<CheckCircle2 className="h-4 w-4 text-success" />}
-          accent="success"
-          count={concluidos.length}
-          onDragOver={(e) => onDragOverCol(e, "concluidos")}
-          onDragLeave={() => setOverCol(null)}
-          onDrop={(e) => onDropCol(e, "concluidos")}
-          highlight={overCol === "concluidos"}
-        >
-          {concluidos.length === 0 ? (
-            <EmptyHint text="Arraste cards prontos para cá." />
-          ) : (
-            concluidos.map(({ client, items, key }) => (
-              <div
-                key={key}
-                draggable
-                onDragStart={(e) => onDragStart(e, items[0].id)}
-                className="cursor-grab active:cursor-grabbing"
-              >
-                <ReceptionTaskCard
-                  client={client}
-                  items={items}
-                  responsibleName={
-                    client.assigned_to
-                      ? profileById.get(client.assigned_to)?.display_name ||
-                        "Sem responsável"
-                      : "— Sem responsável —"
-                  }
-                  onClick={() => onOpenClient(client)}
-                />
+      {/* Kanban — colunas Agenda Hoje + D-7..D-1, agrupado por responsável */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
+        {TASK_COLUMNS.map((col) => {
+          const colCards = cardsToday.filter((c) =>
+            col.types.includes(c.items[0].task_type),
+          );
+
+          // Agrupar por responsável (nome do doutor; cai p/ "Sem responsável")
+          const byResp = new Map<
+            string,
+            { color: string | null; cards: typeof colCards }
+          >();
+          for (const c of colCards) {
+            const d = doctorByClient.get(c.client.id);
+            const name = d?.name || "Sem responsável";
+            const cur = byResp.get(name);
+            if (cur) cur.cards.push(c);
+            else byResp.set(name, { color: d?.color ?? null, cards: [c] });
+          }
+          const groups = Array.from(byResp.entries()).sort((a, b) =>
+            a[0].localeCompare(b[0]),
+          );
+
+          return (
+            <section
+              key={col.key}
+              className="rounded-xl bg-secondary/30 border border-border/50 p-2 min-h-[200px]"
+            >
+              <header className="flex items-center justify-between mb-2 px-1">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-sm leading-none truncate">
+                    {col.title}
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                    {col.subtitle}
+                  </p>
+                </div>
+                <Badge variant="secondary" className="h-5 text-xs">
+                  {colCards.length}
+                </Badge>
+              </header>
+
+              <div className="space-y-3">
+                {groups.length === 0 && (
+                  <EmptyHint text="Sem tarefas" />
+                )}
+                {groups.map(([respName, { color, cards }]) => (
+                  <div key={respName} className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 px-1">
+                      <span
+                        className="h-2 w-2 rounded-full flex-shrink-0"
+                        style={{ background: color || "hsl(var(--muted-foreground))" }}
+                      />
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                        {respName}
+                      </span>
+                      <Badge variant="outline" className="h-4 text-[9px] px-1 ml-auto">
+                        {cards.length}
+                      </Badge>
+                    </div>
+                    {cards.map(({ client, items, key }) => (
+                      <ReceptionTaskCard
+                        key={key}
+                        client={client}
+                        items={items}
+                        responsibleName={
+                          client.assigned_to
+                            ? profileById.get(client.assigned_to)?.display_name ||
+                              "Sem responsável"
+                            : "— Sem responsável —"
+                        }
+                        onClick={() => onOpenClient(client)}
+                      />
+                    ))}
+                  </div>
+                ))}
               </div>
-            ))
-          )}
-        </FunnelColumn>
+            </section>
+          );
+        })}
       </div>
 
       {totalToday === 0 && pending.length === 0 && (
