@@ -248,11 +248,16 @@ Deno.serve(async (req) => {
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const today = new Date();
+    const todayKey = dateOnly(today);
     const requestedStart = typeof body.start_date === "string" ? normalizeDateInput(body.start_date) : null;
     const requestedEnd = typeof body.end_date === "string" ? normalizeDateInput(body.end_date) : null;
-    const defaultWeek = mondayToSaturday(dateOnly(today));
-    const startKey = requestedStart || defaultWeek.startKey;
-    const endKey = requestedEnd || requestedStart || defaultWeek.endKey;
+    const daysAhead = typeof body.days_ahead === "number" ? body.days_ahead : null;
+    const daysBack = typeof body.days_back === "number" ? body.days_back : null;
+    const defaultWeek = mondayToSaturday(todayKey);
+    const startKey = requestedStart
+      || (daysBack != null ? addDaysKey(todayKey, -daysBack) : defaultWeek.startKey);
+    const endKey = requestedEnd
+      || (daysAhead != null ? addDaysKey(todayKey, daysAhead) : (requestedStart || defaultWeek.endKey));
     const start = new Date(`${startKey}T00:00:00-03:00`);
     const end = new Date(`${endKey}T23:59:59-03:00`);
     const totalDays = Math.max(0, Math.round((new Date(`${endKey}T00:00:00-03:00`).getTime() - new Date(`${startKey}T00:00:00-03:00`).getTime()) / 86400000));
@@ -549,11 +554,11 @@ Deno.serve(async (req) => {
       if (!c.birth_date) continue;
       const [_, m, d] = (c.birth_date as string).split("-");
       // Check if mm-dd falls within window
-      for (let i = 0; i <= daysAhead; i++) {
-        const candidate = new Date(today);
-        candidate.setDate(today.getDate() + i);
-        const cm = String(candidate.getMonth() + 1).padStart(2, "0");
-        const cd = String(candidate.getDate()).padStart(2, "0");
+      for (let i = 0; i <= totalDays; i++) {
+        const candidate = new Date(start);
+        candidate.setUTCDate(start.getUTCDate() + i);
+        const cm = String(candidate.getUTCMonth() + 1).padStart(2, "0");
+        const cd = String(candidate.getUTCDate()).padStart(2, "0");
         if (cm === m && cd === d) {
           taskRows.push({
             appointment_id: null,
@@ -650,7 +655,8 @@ Deno.serve(async (req) => {
         success: true,
         appointments: appointmentsCount,
         tasks_generated: tasksCount,
-        days_ahead: daysAhead,
+        start_date: startKey,
+        end_date: endKey,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

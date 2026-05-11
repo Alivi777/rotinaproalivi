@@ -66,12 +66,14 @@ export default function AgendaClinicaPage() {
   async function runSync() {
     setSyncing(true);
     try {
+      const start = dateOnly(periodDates[0]);
+      const end = dateOnly(periodDates[periodDates.length - 1]);
       const { data, error } = await supabase.functions.invoke("clinicorp-agenda-sync", {
-        body: { days_ahead: 30, days_back: 14 },
+        body: { start_date: start, end_date: end },
       });
       if (error) throw error;
       const d = data as { appointments?: number; tasks_generated?: number };
-      toast.success(`Sincronizado: ${d.appointments ?? 0} consultas, ${d.tasks_generated ?? 0} tarefas`);
+      toast.success(`Sincronizado ${start} → ${end}: ${d.appointments ?? 0} consultas, ${d.tasks_generated ?? 0} tarefas`);
     } catch (e) {
       toast.error(`Falha: ${(e as Error).message}`);
     } finally {
