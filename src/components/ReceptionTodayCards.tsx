@@ -388,11 +388,13 @@ export default function ReceptionTodayCards({
         </Card>
       )}
 
-      {/* Kanban — colunas por DIA (Hoje, D-1..D-7), agrupado por responsável */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
+      {/* Kanban — colunas por DIA + Concluído, agrupado por responsável */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-9">
         {DAY_COLUMNS.map((col) => {
           const colDate = addDaysISO(today, col.offset);
-          const colCards = cardsToday.filter((c) => c.items[0].task_date === colDate);
+          const colCards = cardsToday.filter(
+            (c) => c.items[0].task_date === colDate && !c.allDone,
+          );
 
           // Agrupar por responsável (nome do doutor; cai p/ "Sem responsável")
           const byResp = new Map<
@@ -413,7 +415,12 @@ export default function ReceptionTodayCards({
           return (
             <section
               key={col.key}
-              className="rounded-xl bg-secondary/30 border border-border/50 p-2 min-h-[200px]"
+              onDragOver={(e) => onDragOverCol(e, "programadas")}
+              onDrop={(e) => onDropCol(e, "programadas")}
+              className={cn(
+                "rounded-xl bg-secondary/30 border border-border/50 p-2 min-h-[200px] transition-colors",
+                overCol === "programadas" && "border-primary/50 bg-secondary/50",
+              )}
             >
               <header className="flex items-center justify-between mb-2 px-1">
                 <div className="min-w-0">
@@ -430,9 +437,7 @@ export default function ReceptionTodayCards({
               </header>
 
               <div className="space-y-3">
-                {groups.length === 0 && (
-                  <EmptyHint text="Sem tarefas" />
-                )}
+                {groups.length === 0 && <EmptyHint text="Sem tarefas" />}
                 {groups.map(([respName, { color, cards }]) => (
                   <div key={respName} className="space-y-1.5">
                     <div className="flex items-center gap-1.5 px-1">
@@ -448,18 +453,23 @@ export default function ReceptionTodayCards({
                       </Badge>
                     </div>
                     {cards.map(({ client, items, key }) => (
-                      <ReceptionTaskCard
+                      <div
                         key={key}
-                        client={client}
-                        items={items}
-                        responsibleName={
-                          client.assigned_to
-                            ? profileById.get(client.assigned_to)?.display_name ||
-                              "Sem responsável"
-                            : "— Sem responsável —"
-                        }
-                        onClick={() => onOpenClient(client)}
-                      />
+                        draggable
+                        onDragStart={(e) => onDragStart(e, items[0].id)}
+                      >
+                        <ReceptionTaskCard
+                          client={client}
+                          items={items}
+                          responsibleName={
+                            client.assigned_to
+                              ? profileById.get(client.assigned_to)?.display_name ||
+                                "Sem responsável"
+                              : "— Sem responsável —"
+                          }
+                          onClick={() => onOpenClient(client)}
+                        />
+                      </div>
                     ))}
                   </div>
                 ))}
@@ -467,6 +477,53 @@ export default function ReceptionTodayCards({
             </section>
           );
         })}
+
+        {/* Coluna Concluído — arraste cards aqui para marcar como feito */}
+        <section
+          onDragOver={(e) => onDragOverCol(e, "concluidos")}
+          onDrop={(e) => onDropCol(e, "concluidos")}
+          className={cn(
+            "rounded-xl bg-emerald-500/5 border border-emerald-500/30 p-2 min-h-[200px] transition-colors",
+            overCol === "concluidos" && "border-emerald-500/70 bg-emerald-500/10",
+          )}
+        >
+          <header className="flex items-center justify-between mb-2 px-1">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-sm leading-none truncate text-emerald-600 dark:text-emerald-400">
+                Concluído
+              </h3>
+              <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                Arraste para marcar feito
+              </p>
+            </div>
+            <Badge variant="secondary" className="h-5 text-xs">
+              {concluidos.length}
+            </Badge>
+          </header>
+          <div className="space-y-1.5">
+            {concluidos.length === 0 && <EmptyHint text="Nenhum concluído" />}
+            {concluidos.map(({ client, items, key }) => (
+              <div
+                key={key}
+                draggable
+                onDragStart={(e) => onDragStart(e, items[0].id)}
+                className="opacity-70"
+              >
+                <ReceptionTaskCard
+                  client={client}
+                  items={items}
+                  responsibleName={
+                    client.assigned_to
+                      ? profileById.get(client.assigned_to)?.display_name ||
+                        "Sem responsável"
+                      : "— Sem responsável —"
+                  }
+                  onClick={() => onOpenClient(client)}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
       {totalToday === 0 && pending.length === 0 && (
