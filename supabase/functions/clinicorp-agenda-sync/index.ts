@@ -576,7 +576,6 @@ Deno.serve(async (req) => {
         }
       }
     }
-    }
 
     // Remove duplicidades antigas quando o contact_id foi ligado depois da primeira sincronização.
     const taskRowsByKey = new Map<string, Record<string, unknown>>();
