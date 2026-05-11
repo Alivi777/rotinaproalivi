@@ -379,7 +379,8 @@ Deno.serve(async (req) => {
     for (const a of list) {
       const dr = pickDoctor(a);
       if (dr.extId) seenDoctorIds.add(dr.extId);
-      if (dr.extId && dr.name && dr.name.trim()) doctorNamesFromAgenda.set(dr.extId, dr.name.trim());
+      const resolvedName = resolveDoctorName(dr.extId, dr.name?.trim());
+      if (dr.extId && resolvedName) doctorNamesFromAgenda.set(dr.extId, resolvedName);
     }
 
     // 2c) Recarregar doutores atuais para respeitar nomes travados manualmente
@@ -422,13 +423,14 @@ Deno.serve(async (req) => {
       }
 
       // Para agenda exata, o nome do profissional vem da própria agenda do Clinicorp.
-      const namesToApply = new Map([...dentistNames, ...doctorNamesFromAgenda]);
+      const namesToApply = new Map([...dentistNames, ...doctorNamesFromAgenda, ...DOCTOR_NAME_OVERRIDES]);
       for (const [extId, realName] of namesToApply) {
-        await supabase
+        const update = supabase
           .from("clinic_doctors")
           .update({ name: realName })
-          .eq("external_id", extId)
-          .or(`name_locked.eq.false,name.ilike.Profissional #%`);
+          .eq("external_id", extId);
+        if (DOCTOR_NAME_OVERRIDES.has(extId)) await update;
+        else await update.or(`name_locked.eq.false,name.ilike.Profissional #%`);
       }
     }
 
@@ -465,7 +467,7 @@ Deno.serve(async (req) => {
         patient_phone: pickPatientPhone(a),
         doctor_id: doctor?.id ?? null,
         doctor_external_id: dr.extId,
-        doctor_name: doctor?.name || dr.name || null,
+        doctor_name: resolveDoctorName(dr.extId, doctor?.name || dr.name),
         appointment_at: at,
         duration_min: typeof a.duration === "number" ? a.duration : null,
         status: (a.status as string) || "scheduled",
