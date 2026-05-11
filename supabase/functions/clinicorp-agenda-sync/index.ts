@@ -328,6 +328,8 @@ Deno.serve(async (req) => {
     // 2a) Tentar buscar nomes reais de profissionais via endpoint do Clinicorp
     const dentistNames = new Map<string, string>();
     const dentistEndpoints = [
+      "/users/list",
+      "/users/listUsers",
       "/professional/list",
       "/dentist/list",
       "/person/list",
@@ -339,8 +341,8 @@ Deno.serve(async (req) => {
         const items = extractList(r);
         for (const it of items) {
           const o = it as Record<string, unknown>;
-          const id = String(o.PersonId ?? o.Person_Id ?? o.id ?? o.Id ?? "");
-          const name = String(o.Name ?? o.name ?? o.FullName ?? o.full_name ?? o.DentistName ?? "").trim();
+          const id = String(o.ScheduleToId ?? o.PersonId ?? o.Person_Id ?? o.UserId ?? o.User_Id ?? o.id ?? o.Id ?? o.user_id ?? "");
+          const name = String(o.ScheduleToName ?? o.Name ?? o.name ?? o.FullName ?? o.full_name ?? o.UserName ?? o.DisplayName ?? o.DentistName ?? "").trim();
           if (id && name) dentistNames.set(id, name);
         }
         if (dentistNames.size > 0) {
@@ -350,6 +352,13 @@ Deno.serve(async (req) => {
       } catch (err) {
         console.log(`[clinicorp] ${ep} failed: ${(err as Error).message.slice(0, 120)}`);
       }
+    }
+
+    if (body.debug_doctor_names === true) {
+      return new Response(
+        JSON.stringify({ success: true, names: Object.fromEntries(dentistNames.entries()) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // 2b) Coletar TODOS os IDs de doutor que aparecem na agenda
