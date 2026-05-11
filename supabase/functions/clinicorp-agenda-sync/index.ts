@@ -183,7 +183,8 @@ function pickPatientExtId(a: Appointment): string | null {
 function pickDoctor(a: Appointment): { extId: string | null; name: string | null } {
   const id = a.Dentist_PersonId ?? a.professional?.id ?? a.professional_id ?? a.doctor_id;
   const name = a.DentistName || a.professional?.name || (a.professional_name as string) || (a.doctor_name as string) || null;
-  return { extId: id != null ? String(id) : null, name };
+  const rawExt = id != null ? String(id) : null;
+  return { extId: canonicalDoctorExtId(rawExt), name };
 }
 
 const DOCTOR_NAME_OVERRIDES = new Map<string, string>([
@@ -193,8 +194,19 @@ const DOCTOR_NAME_OVERRIDES = new Map<string, string>([
   ["6744362126475264", "Marianne Cecilia de Oliveira"],
 ]);
 
+// Aliases de external_id duplicados no Clinicorp -> external_id canônico
+const DOCTOR_EXTERNAL_ID_ALIASES = new Map<string, string>([
+  ["4553828117577728", "5716520699691008"], // Wanessa (cadastro antigo) -> canônico
+]);
+
+function canonicalDoctorExtId(extId: string | null): string | null {
+  if (!extId) return extId;
+  return DOCTOR_EXTERNAL_ID_ALIASES.get(extId) ?? extId;
+}
+
 function resolveDoctorName(extId: string | null, apiName: string | null | undefined): string | null {
-  if (extId && DOCTOR_NAME_OVERRIDES.has(extId)) return DOCTOR_NAME_OVERRIDES.get(extId)!;
+  const canonical = canonicalDoctorExtId(extId);
+  if (canonical && DOCTOR_NAME_OVERRIDES.has(canonical)) return DOCTOR_NAME_OVERRIDES.get(canonical)!;
   return apiName || null;
 }
 
