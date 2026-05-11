@@ -184,6 +184,21 @@ function pickDoctor(a: Appointment): { extId: string | null; name: string | null
   return { extId: id != null ? String(id) : null, name };
 }
 
+function debugDoctorFields(rows: Appointment[]) {
+  return rows.slice(0, 30).map((row) => {
+    const picked: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (/dent|doctor|prof|agenda|sched|chair|calendar|resource|column|user|book/i.test(key)) {
+        picked[key] = value;
+      }
+    }
+    picked.fromTime = row.fromTime;
+    picked.toTime = row.toTime;
+    picked.date = row.date || row.start_date || row.appointment_at;
+    return picked;
+  });
+}
+
 // Agenda Clínica precisa espelhar exatamente o Clinicorp: apenas consultas do período.
 const TASK_RULE: { offset: number; type: string; keep_past?: boolean }[] = [
   { offset: 0, type: "appointment", keep_past: true },
@@ -298,6 +313,13 @@ Deno.serve(async (req) => {
     }
     if (list.length === 0) {
       console.warn("[clinicorp] appointment/list returned no items across the window");
+    }
+
+    if (body.debug_doctor_fields === true) {
+      return new Response(
+        JSON.stringify({ success: true, start_date: startKey, end_date: endKey, total: list.length, sample: debugDoctorFields(list) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // 2a) Tentar buscar nomes reais de profissionais via endpoint do Clinicorp
