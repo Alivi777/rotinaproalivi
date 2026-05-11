@@ -32,6 +32,8 @@ type Appointment = {
   MobilePhone?: string;
   Dentist_PersonId?: string | number;
   DentistName?: string;
+  ScheduleToId?: string | number;
+  ScheduleToName?: string;
   fromTime?: string;
   toTime?: string;
   [k: string]: unknown;
@@ -179,8 +181,8 @@ function pickPatientExtId(a: Appointment): string | null {
 }
 
 function pickDoctor(a: Appointment): { extId: string | null; name: string | null } {
-  const id = a.Dentist_PersonId ?? a.professional?.id ?? a.professional_id ?? a.doctor_id;
-  const name = a.DentistName || a.professional?.name || (a.professional_name as string) || (a.doctor_name as string) || null;
+  const id = a.ScheduleToId ?? a.Dentist_PersonId ?? a.professional?.id ?? a.professional_id ?? a.doctor_id;
+  const name = a.ScheduleToName || a.DentistName || a.professional?.name || (a.professional_name as string) || (a.doctor_name as string) || null;
   return { extId: id != null ? String(id) : null, name };
 }
 
