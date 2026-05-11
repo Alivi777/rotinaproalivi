@@ -127,13 +127,12 @@ export default function ReceptionTodayCards({
     return map;
   }, [clients]);
 
-  // Lista de doutores com tarefas de hoje (para chips)
+  // Lista de doutores com tarefas pendentes (para chips)
   const doctorChips = useMemo(() => {
     const seen = new Map<string, { name: string; color: string | null; count: number }>();
     for (const c of clients) {
       const all = taskItemsByClient.get(c.id) ?? [];
-      const hasToday = all.some((i) => i.task_date === today);
-      if (!hasToday) continue;
+      if (all.length === 0) continue;
       const d = doctorByClient.get(c.id);
       if (!d) continue;
       const cur = seen.get(d.name);
