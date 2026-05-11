@@ -249,7 +249,17 @@ async function runSync(supabase: ReturnType<typeof createClient>) {
       const doc = g.doctor_id ? doctorById.get(g.doctor_id) : undefined;
       const docColor = doc?.color ?? "";
       const docName = g.doctor_name ?? doc?.name ?? "";
-      const assignedTo = doc?.assigned_user_id ?? null;
+      // Atribuição manual da Recepção:
+      //   Layane (242fb648-23ad-4192-8815-69d770f5b537) → Wanessa e Alan/Allan
+      //   Rafaely (903467a3-d998-45d0-b444-53c2f469feb8) → demais profissionais
+      const LAYANE_ID = "242fb648-23ad-4192-8815-69d770f5b537";
+      const RAFAELY_ID = "903467a3-d998-45d0-b444-53c2f469feb8";
+      const docLower = docName.toLowerCase();
+      const isLayaneDoctor =
+        docLower.includes("wanessa") ||
+        docLower.includes("alan") ||
+        docLower.includes("allan");
+      const assignedTo = isLayaneDoctor ? LAYANE_ID : RAFAELY_ID;
       const time = fmtTime(g.appointment_at);
       const taskIds = g.tasks.map((t) => t.id);
 
