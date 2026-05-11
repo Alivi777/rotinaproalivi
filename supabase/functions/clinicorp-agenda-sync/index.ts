@@ -554,11 +554,11 @@ Deno.serve(async (req) => {
       if (!c.birth_date) continue;
       const [_, m, d] = (c.birth_date as string).split("-");
       // Check if mm-dd falls within window
-      for (let i = 0; i <= daysAhead; i++) {
-        const candidate = new Date(today);
-        candidate.setDate(today.getDate() + i);
-        const cm = String(candidate.getMonth() + 1).padStart(2, "0");
-        const cd = String(candidate.getDate()).padStart(2, "0");
+      for (let i = 0; i <= totalDays; i++) {
+        const candidate = new Date(start);
+        candidate.setUTCDate(start.getUTCDate() + i);
+        const cm = String(candidate.getUTCMonth() + 1).padStart(2, "0");
+        const cd = String(candidate.getUTCDate()).padStart(2, "0");
         if (cm === m && cd === d) {
           taskRows.push({
             appointment_id: null,
@@ -575,6 +575,7 @@ Deno.serve(async (req) => {
           });
         }
       }
+    }
     }
 
     // Remove duplicidades antigas quando o contact_id foi ligado depois da primeira sincronização.
