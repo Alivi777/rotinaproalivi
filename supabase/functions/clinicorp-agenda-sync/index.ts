@@ -656,7 +656,8 @@ Deno.serve(async (req) => {
         success: true,
         appointments: appointmentsCount,
         tasks_generated: tasksCount,
-        days_ahead: daysAhead,
+        start_date: startKey,
+        end_date: endKey,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
