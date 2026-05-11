@@ -423,11 +423,36 @@ Deno.serve(async (req) => {
     }
     console.log("[clinicorp] appointments to upsert", { total: appointmentRows.length });
 
+    const { data: periodAppointmentsBefore } = await supabase
+      .from("clinic_appointments")
+      .select("id")
+      .gte("appointment_at", start.toISOString())
+      .lte("appointment_at", end.toISOString());
+
+    const periodAppointmentIds = (periodAppointmentsBefore || []).map((a) => a.id);
+    for (let i = 0; i < periodAppointmentIds.length; i += 200) {
+      const slice = periodAppointmentIds.slice(i, i + 200);
+      await supabase.from("clinic_daily_tasks").delete().in("appointment_id", slice);
+    }
+    await supabase
+      .from("clinic_daily_tasks")
+      .delete()
+      .gte("task_date", startKey)
+      .lte("task_date", endKey)
+      .eq("task_type", "birthday");
+    if (periodAppointmentIds.length) {
+      const { error: deleteErr } = await supabase
+        .from("clinic_appointments")
+        .delete()
+        .in("id", periodAppointmentIds);
+      if (deleteErr) throw new Error(`period appointments delete: ${deleteErr.message}`);
+    }
+
     if (appointmentRows.length) {
       const { error: apptErr } = await supabase
         .from("clinic_appointments")
-        .upsert(appointmentRows, { onConflict: "external_id" });
-      if (apptErr) throw new Error(`appointments upsert: ${apptErr.message}`);
+        .insert(appointmentRows);
+      if (apptErr) throw new Error(`appointments insert: ${apptErr.message}`);
       appointmentsCount = appointmentRows.length;
     }
 
@@ -438,25 +463,7 @@ Deno.serve(async (req) => {
       .gte("appointment_at", start.toISOString())
       .lte("appointment_at", end.toISOString());
 
-    // Clone exato da janela: se uma consulta saiu do Clinicorp, removemos daqui também.
-    // Só executa quando a API devolveu agenda válida para evitar apagar tudo em falha externa.
-    if (appointmentRows.length && storedAppts?.length) {
-      const currentExternalIds = new Set(appointmentRows.map((a) => String(a.external_id)).filter(Boolean));
-      const staleIds = storedAppts
-        .filter((a) => a.external_id && !currentExternalIds.has(String(a.external_id)))
-        .map((a) => a.id);
-      for (let i = 0; i < staleIds.length; i += 200) {
-        const { error: staleErr } = await supabase
-          .from("clinic_appointments")
-          .delete()
-          .in("id", staleIds.slice(i, i + 200));
-        if (staleErr) console.error("stale appointments delete err:", staleErr.message);
-      }
-      if (staleIds.length) {
-        console.log(`[clinicorp] removed ${staleIds.length} stale appointments`);
-        storedAppts = storedAppts.filter((a) => !staleIds.includes(a.id));
-      }
-    }
+    console.log(`[clinicorp] rebuilt selected period ${startKey}..${endKey}`);
 
     // Best-effort: link contact_id via external_id or phone
     const phonesToFind = new Set<string>();
