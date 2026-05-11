@@ -51,6 +51,18 @@ type Props = {
 
 type ColumnKey = "novo" | "programadas" | "concluidos";
 
+// Colunas fixas da Recepção: Agenda Hoje + D-7..D-1 (sempre do dia atual).
+const TASK_COLUMNS: { key: string; title: string; subtitle: string; types: string[] }[] = [
+  { key: "agenda_hoje", title: "Agenda Hoje", subtitle: "Consulta do dia", types: ["appointment", "birthday"] },
+  { key: "d7", title: "D-7", subtitle: "Confirmar (D-7)", types: ["confirm_d7"] },
+  { key: "d6", title: "D-6", subtitle: "Confirmar (D-6)", types: ["confirm_d6"] },
+  { key: "d5", title: "D-5", subtitle: "Confirmar (D-5)", types: ["confirm_d5"] },
+  { key: "d4", title: "D-4", subtitle: "Confirmar (D-4)", types: ["confirm_d4"] },
+  { key: "d3", title: "D-3", subtitle: "Protocolo falta confirmação", types: ["protocol_d3"] },
+  { key: "d2", title: "D-2", subtitle: "Urgência / escassez", types: ["urgency_d2"] },
+  { key: "d1", title: "D-1", subtitle: "Confirmação desmarque", types: ["unbook_confirm_d1"] },
+];
+
 /**
  * Funil de Execução da Recepção — 3 colunas fixas:
  *   1) Novo Atendimento (WhatsApp pending)
