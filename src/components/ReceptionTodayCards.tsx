@@ -127,13 +127,12 @@ export default function ReceptionTodayCards({
     return map;
   }, [clients]);
 
-  // Lista de doutores com tarefas de hoje (para chips)
+  // Lista de doutores com tarefas pendentes (para chips)
   const doctorChips = useMemo(() => {
     const seen = new Map<string, { name: string; color: string | null; count: number }>();
     for (const c of clients) {
       const all = taskItemsByClient.get(c.id) ?? [];
-      const hasToday = all.some((i) => i.task_date === today);
-      if (!hasToday) continue;
+      if (all.length === 0) continue;
       const d = doctorByClient.get(c.id);
       if (!d) continue;
       const cur = seen.get(d.name);
@@ -143,7 +142,7 @@ export default function ReceptionTodayCards({
     return Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [clients, taskItemsByClient, today, doctorByClient]);
 
-  // ---- Mapeia 1 CARD por TAREFA de HOJE (nunca agrupa várias tarefas no mesmo card) ----
+  // ---- Mapeia 1 CARD por TAREFA (todas as datas; cards podem repetir entre dias) ----
   const cardsToday = useMemo(() => {
     const list: { client: Client; items: ClientTaskItem[]; allDone: boolean; key: string }[] = [];
     for (const client of clients) {
@@ -151,14 +150,13 @@ export default function ReceptionTodayCards({
       const docMeta = doctorByClient.get(client.id);
       if (docMeta?.name?.trim().toLowerCase() === "agenda geral") continue;
       const all = taskItemsByClient.get(client.id) ?? [];
-      const todayItems = all.filter((i) => i.task_date === today);
-      if (todayItems.length === 0) continue;
+      if (all.length === 0) continue;
       if (search && !client.name.toLowerCase().includes(search.toLowerCase())) continue;
       if (doctorFilter) {
         const d = doctorByClient.get(client.id);
         if (!d || d.name !== doctorFilter) continue;
       }
-      for (const item of todayItems) {
+      for (const item of all) {
         list.push({
           client,
           items: [item],
@@ -168,12 +166,14 @@ export default function ReceptionTodayCards({
       }
     }
     list.sort((a, b) => {
+      const ad = a.items[0].task_date.localeCompare(b.items[0].task_date);
+      if (ad !== 0) return ad;
       const an = a.client.name.localeCompare(b.client.name);
       if (an !== 0) return an;
       return a.items[0].sort_order - b.items[0].sort_order;
     });
     return list;
-  }, [clients, taskItemsByClient, today, search, doctorFilter, doctorByClient]);
+  }, [clients, taskItemsByClient, search, doctorFilter, doctorByClient]);
 
   const programadas = cardsToday.filter((c) => !c.allDone);
   const concluidos = cardsToday.filter((c) => c.allDone);
