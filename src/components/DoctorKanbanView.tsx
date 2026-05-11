@@ -28,16 +28,15 @@ export default function DoctorKanbanView({ tasks, doctors, weekDates, selectedDa
     return tasks.filter((t) => t.task_date === ds);
   }, [tasks, selectedDate]);
 
-  // Agrupar por doctor_id (null = Recepção/Geral)
+  // Agrupar por doctor_id. Tarefas sem doutor são ignoradas (sem coluna Recepção).
   const groups = useMemo(() => {
-    const g = new Map<string | null, ClinicTask[]>();
-    g.set(null, []); // Recepção primeiro
+    const g = new Map<string, ClinicTask[]>();
     for (const d of doctors) g.set(d.id, []);
     for (const t of filteredTasks) {
-      const key = t.doctor_id ?? null;
-      const arr = g.get(key);
+      if (!t.doctor_id) continue;
+      const arr = g.get(t.doctor_id);
       if (arr) arr.push(t);
-      else g.set(key, [t]);
+      else g.set(t.doctor_id, [t]);
     }
     // Ordenar tarefas dentro do grupo por horário/data
     for (const arr of g.values()) {
@@ -55,14 +54,15 @@ export default function DoctorKanbanView({ tasks, doctors, weekDates, selectedDa
     ? selectedDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", weekday: "short" })
     : `${weekDates[0].toLocaleDateString("pt-BR")} — ${weekDates[weekDates.length - 1].toLocaleDateString("pt-BR")}`;
 
-  // Ordenar colunas: Recepção primeiro, depois doutores por volume
-  const orderedKeys: (string | null)[] = [null, ...doctors.map((d) => d.id)];
+  // Apenas colunas de doutores
+  const orderedKeys: string[] = doctors.map((d) => d.id);
 
   return (
     <div className="space-y-3">
       <div className="text-sm text-muted-foreground px-1">
         Mostrando: <span className="font-semibold text-foreground">{dateLabel}</span> ·{" "}
-        {filteredTasks.length} tarefas em {orderedKeys.filter((k) => (groups.get(k)?.length ?? 0) > 0).length} colunas
+        {filteredTasks.filter((t) => t.doctor_id).length} tarefas em{" "}
+        {orderedKeys.filter((k) => (groups.get(k)?.length ?? 0) > 0).length} colunas
       </div>
 
       <div
@@ -73,16 +73,14 @@ export default function DoctorKanbanView({ tasks, doctors, weekDates, selectedDa
       >
         {orderedKeys.map((key) => {
           const colTasks = groups.get(key) ?? [];
-          if (colTasks.length === 0 && key !== null) return null; // esconde colunas vazias de doutores
-          const doctor = key ? doctorMap.get(key) : null;
+          if (colTasks.length === 0) return null; // esconde colunas vazias
+          const doctor = doctorMap.get(key);
           const colorStyle = doctor?.color
             ? { borderTopColor: doctor.color, borderTopWidth: 3 }
-            : key === null
-              ? { borderTopColor: "hsl(var(--primary))", borderTopWidth: 3 }
-              : undefined;
+            : undefined;
 
           return (
-            <Card key={key ?? "geral"} className="p-2 flex flex-col" style={colorStyle}>
+            <Card key={key} className="p-2 flex flex-col" style={colorStyle}>
               <div className="flex items-center justify-between px-2 py-1.5 border-b mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Stethoscope
@@ -90,7 +88,7 @@ export default function DoctorKanbanView({ tasks, doctors, weekDates, selectedDa
                     style={{ color: doctor?.color || "hsl(var(--primary))" }}
                   />
                   <span className="font-semibold text-sm truncate">
-                    {doctor?.name || "Recepção / Geral"}
+                    {doctor?.name}
                   </span>
                 </div>
                 <Badge variant="secondary" className="text-[10px] flex-shrink-0">
