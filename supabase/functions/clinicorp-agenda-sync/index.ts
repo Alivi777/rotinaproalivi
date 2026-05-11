@@ -184,22 +184,36 @@ function pickDoctor(a: Appointment): { extId: string | null; name: string | null
   return { extId: id != null ? String(id) : null, name };
 }
 
-// Rule of tasks: D-7..D-1 (preparação) + D-0 (âncora — espelha a agenda do Clinicorp)
+// Agenda Clínica precisa espelhar exatamente o Clinicorp: apenas consultas do período.
 const TASK_RULE: { offset: number; type: string; keep_past?: boolean }[] = [
-  { offset: 7, type: "confirm_d7" },
-  { offset: 6, type: "confirm_d6" },
-  { offset: 5, type: "confirm_d5" },
-  { offset: 4, type: "confirm_d4" },
-  { offset: 3, type: "protocol_d3" },
-  { offset: 2, type: "urgency_d2" },
-  { offset: 1, type: "unbook_confirm_d1" },
-  // Âncora do dia da consulta — sempre criada (mesmo se for hoje/passado)
-  // para que a Agenda Clínica seja um espelho 1:1 do Clinicorp.
   { offset: 0, type: "appointment", keep_past: true },
 ];
 
 function dateOnly(d: Date): string {
   return spDateFormatter.format(d);
+}
+
+function addDaysKey(key: string, days: number): string {
+  const d = new Date(`${key}T00:00:00-03:00`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return dateOnly(d);
+}
+
+function mondayToSaturday(referenceKey: string): { startKey: string; endKey: string } {
+  const ref = new Date(`${referenceKey}T00:00:00-03:00`);
+  const dow = ref.getUTCDay() === 0 ? 7 : ref.getUTCDay();
+  const monday = new Date(ref);
+  monday.setUTCDate(ref.getUTCDate() - (dow - 1));
+  return { startKey: dateOnly(monday), endKey: addDaysKey(dateOnly(monday), 5) };
+}
+
+function normalizeDoctorName(name: string | null | undefined): string {
+  return (name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 }
 
 Deno.serve(async (req) => {
@@ -233,25 +247,24 @@ Deno.serve(async (req) => {
 
   try {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-    const daysAhead: number = Number(body.days_ahead ?? 30);
-    const daysBack: number = Number(body.days_back ?? 14);
-
-    // 1) Fetch appointments [today - daysBack, today + daysAhead]
     const today = new Date();
-    const start = new Date();
-    start.setDate(today.getDate() - daysBack);
-    const end = new Date();
-    end.setDate(today.getDate() + daysAhead);
+    const requestedStart = typeof body.start_date === "string" ? normalizeDateInput(body.start_date) : null;
+    const requestedEnd = typeof body.end_date === "string" ? normalizeDateInput(body.end_date) : null;
+    const defaultWeek = mondayToSaturday(dateOnly(today));
+    const startKey = requestedStart || defaultWeek.startKey;
+    const endKey = requestedEnd || requestedStart || defaultWeek.endKey;
+    const start = new Date(`${startKey}T00:00:00-03:00`);
+    const end = new Date(`${endKey}T23:59:59-03:00`);
+    const totalDays = Math.max(0, Math.round((new Date(`${endKey}T00:00:00-03:00`).getTime() - new Date(`${startKey}T00:00:00-03:00`).getTime()) / 86400000));
 
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    const fmt = (d: Date) => dateOnly(d);
 
     // Pagina dia-a-dia: a API do Clinicorp limita o total devolvido por chamada.
     const list: Appointment[] = [];
     const seenApptIds = new Set<string>();
-    const totalDays = daysBack + daysAhead;
     for (let i = 0; i <= totalDays; i++) {
       const d = new Date(start);
-      d.setDate(start.getDate() + i);
+      d.setUTCDate(start.getUTCDate() + i);
       const ds = fmt(d);
       try {
         const dayRes = await clinicorpGet("/appointment/list", {
@@ -311,9 +324,11 @@ Deno.serve(async (req) => {
 
     // 2b) Coletar TODOS os IDs de doutor que aparecem na agenda
     const seenDoctorIds = new Set<string>();
+    const doctorNamesFromAgenda = new Map<string, string>();
     for (const a of list) {
       const dr = pickDoctor(a);
       if (dr.extId) seenDoctorIds.add(dr.extId);
+      if (dr.extId && dr.name && dr.name.trim()) doctorNamesFromAgenda.set(dr.extId, dr.name.trim());
     }
 
     // 2c) Recarregar doutores atuais para respeitar nomes travados manualmente
@@ -345,7 +360,7 @@ Deno.serve(async (req) => {
         .filter((extId) => !existingDoctorMap.has(extId))
         .map((extId) => ({
           external_id: extId,
-          name: dentistNames.get(extId) || `Profissional #${extId}`,
+          name: doctorNamesFromAgenda.get(extId) || dentistNames.get(extId) || `Profissional #${extId}`,
           active: true,
         }));
       if (newDoctors.length) {
@@ -355,14 +370,14 @@ Deno.serve(async (req) => {
         if (drErr) console.error("[clinicorp] doctor insert err:", drErr.message);
       }
 
-      // Atualizar nomes só de agendas não travadas e ainda placeholders
-      for (const [extId, realName] of dentistNames) {
+      // Para agenda exata, o nome do profissional vem da própria agenda do Clinicorp.
+      const namesToApply = new Map([...dentistNames, ...doctorNamesFromAgenda]);
+      for (const [extId, realName] of namesToApply) {
         await supabase
           .from("clinic_doctors")
           .update({ name: realName })
           .eq("external_id", extId)
-          .eq("name_locked", false)
-          .like("name", "Profissional #%");
+          .or(`name_locked.eq.false,name.ilike.Profissional #%`);
       }
     }
 
@@ -408,11 +423,36 @@ Deno.serve(async (req) => {
     }
     console.log("[clinicorp] appointments to upsert", { total: appointmentRows.length });
 
+    const { data: periodAppointmentsBefore } = await supabase
+      .from("clinic_appointments")
+      .select("id")
+      .gte("appointment_at", start.toISOString())
+      .lte("appointment_at", end.toISOString());
+
+    const periodAppointmentIds = (periodAppointmentsBefore || []).map((a) => a.id);
+    for (let i = 0; i < periodAppointmentIds.length; i += 200) {
+      const slice = periodAppointmentIds.slice(i, i + 200);
+      await supabase.from("clinic_daily_tasks").delete().in("appointment_id", slice);
+    }
+    await supabase
+      .from("clinic_daily_tasks")
+      .delete()
+      .gte("task_date", startKey)
+      .lte("task_date", endKey)
+      .eq("task_type", "birthday");
+    if (periodAppointmentIds.length) {
+      const { error: deleteErr } = await supabase
+        .from("clinic_appointments")
+        .delete()
+        .in("id", periodAppointmentIds);
+      if (deleteErr) throw new Error(`period appointments delete: ${deleteErr.message}`);
+    }
+
     if (appointmentRows.length) {
       const { error: apptErr } = await supabase
         .from("clinic_appointments")
-        .upsert(appointmentRows, { onConflict: "external_id" });
-      if (apptErr) throw new Error(`appointments upsert: ${apptErr.message}`);
+        .insert(appointmentRows);
+      if (apptErr) throw new Error(`appointments insert: ${apptErr.message}`);
       appointmentsCount = appointmentRows.length;
     }
 
@@ -423,25 +463,7 @@ Deno.serve(async (req) => {
       .gte("appointment_at", start.toISOString())
       .lte("appointment_at", end.toISOString());
 
-    // Clone exato da janela: se uma consulta saiu do Clinicorp, removemos daqui também.
-    // Só executa quando a API devolveu agenda válida para evitar apagar tudo em falha externa.
-    if (appointmentRows.length && storedAppts?.length) {
-      const currentExternalIds = new Set(appointmentRows.map((a) => String(a.external_id)).filter(Boolean));
-      const staleIds = storedAppts
-        .filter((a) => a.external_id && !currentExternalIds.has(String(a.external_id)))
-        .map((a) => a.id);
-      for (let i = 0; i < staleIds.length; i += 200) {
-        const { error: staleErr } = await supabase
-          .from("clinic_appointments")
-          .delete()
-          .in("id", staleIds.slice(i, i + 200));
-        if (staleErr) console.error("stale appointments delete err:", staleErr.message);
-      }
-      if (staleIds.length) {
-        console.log(`[clinicorp] removed ${staleIds.length} stale appointments`);
-        storedAppts = storedAppts.filter((a) => !staleIds.includes(a.id));
-      }
-    }
+    console.log(`[clinicorp] rebuilt selected period ${startKey}..${endKey}`);
 
     // Best-effort: link contact_id via external_id or phone
     const phonesToFind = new Set<string>();
