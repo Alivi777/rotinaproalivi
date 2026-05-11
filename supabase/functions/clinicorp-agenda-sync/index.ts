@@ -193,8 +193,19 @@ const DOCTOR_NAME_OVERRIDES = new Map<string, string>([
   ["6744362126475264", "Marianne Cecilia de Oliveira"],
 ]);
 
+// Aliases de external_id duplicados no Clinicorp -> external_id canônico
+const DOCTOR_EXTERNAL_ID_ALIASES = new Map<string, string>([
+  ["4553828117577728", "5716520699691008"], // Wanessa (cadastro antigo) -> canônico
+]);
+
+function canonicalDoctorExtId(extId: string | null): string | null {
+  if (!extId) return extId;
+  return DOCTOR_EXTERNAL_ID_ALIASES.get(extId) ?? extId;
+}
+
 function resolveDoctorName(extId: string | null, apiName: string | null | undefined): string | null {
-  if (extId && DOCTOR_NAME_OVERRIDES.has(extId)) return DOCTOR_NAME_OVERRIDES.get(extId)!;
+  const canonical = canonicalDoctorExtId(extId);
+  if (canonical && DOCTOR_NAME_OVERRIDES.has(canonical)) return DOCTOR_NAME_OVERRIDES.get(canonical)!;
   return apiName || null;
 }
 
