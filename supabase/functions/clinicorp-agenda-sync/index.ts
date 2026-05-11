@@ -181,9 +181,21 @@ function pickPatientExtId(a: Appointment): string | null {
 }
 
 function pickDoctor(a: Appointment): { extId: string | null; name: string | null } {
-  const id = a.ScheduleToId ?? a.Dentist_PersonId ?? a.professional?.id ?? a.professional_id ?? a.doctor_id;
-  const name = a.ScheduleToName || a.DentistName || a.professional?.name || (a.professional_name as string) || (a.doctor_name as string) || null;
+  const id = a.Dentist_PersonId ?? a.professional?.id ?? a.professional_id ?? a.doctor_id;
+  const name = a.DentistName || a.professional?.name || (a.professional_name as string) || (a.doctor_name as string) || null;
   return { extId: id != null ? String(id) : null, name };
+}
+
+const DOCTOR_NAME_OVERRIDES = new Map<string, string>([
+  ["5716520699691008", "Wanessa Matzenbacher Carneiro"],
+  ["6442024534867968", "Davi da Cunha Leal"],
+  ["5346381677854720", "Allan Henrique Modrow"],
+  ["6744362126475264", "Marianne Cecilia de Oliveira"],
+]);
+
+function resolveDoctorName(extId: string | null, apiName: string | null | undefined): string | null {
+  if (extId && DOCTOR_NAME_OVERRIDES.has(extId)) return DOCTOR_NAME_OVERRIDES.get(extId)!;
+  return apiName || null;
 }
 
 function debugDoctorFields(rows: Appointment[]) {
