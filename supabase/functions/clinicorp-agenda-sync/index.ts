@@ -202,6 +202,29 @@ function dateOnly(d: Date): string {
   return spDateFormatter.format(d);
 }
 
+function addDaysKey(key: string, days: number): string {
+  const d = new Date(`${key}T00:00:00-03:00`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return dateOnly(d);
+}
+
+function mondayToSaturday(referenceKey: string): { startKey: string; endKey: string } {
+  const ref = new Date(`${referenceKey}T00:00:00-03:00`);
+  const dow = ref.getUTCDay() === 0 ? 7 : ref.getUTCDay();
+  const monday = new Date(ref);
+  monday.setUTCDate(ref.getUTCDate() - (dow - 1));
+  return { startKey: dateOnly(monday), endKey: addDaysKey(dateOnly(monday), 5) };
+}
+
+function normalizeDoctorName(name: string | null | undefined): string {
+  return (name || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
