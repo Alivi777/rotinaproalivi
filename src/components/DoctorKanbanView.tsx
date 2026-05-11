@@ -28,16 +28,15 @@ export default function DoctorKanbanView({ tasks, doctors, weekDates, selectedDa
     return tasks.filter((t) => t.task_date === ds);
   }, [tasks, selectedDate]);
 
-  // Agrupar por doctor_id (null = Recepção/Geral)
+  // Agrupar por doctor_id. Tarefas sem doutor são ignoradas (sem coluna Recepção).
   const groups = useMemo(() => {
-    const g = new Map<string | null, ClinicTask[]>();
-    g.set(null, []); // Recepção primeiro
+    const g = new Map<string, ClinicTask[]>();
     for (const d of doctors) g.set(d.id, []);
     for (const t of filteredTasks) {
-      const key = t.doctor_id ?? null;
-      const arr = g.get(key);
+      if (!t.doctor_id) continue;
+      const arr = g.get(t.doctor_id);
       if (arr) arr.push(t);
-      else g.set(key, [t]);
+      else g.set(t.doctor_id, [t]);
     }
     // Ordenar tarefas dentro do grupo por horário/data
     for (const arr of g.values()) {
