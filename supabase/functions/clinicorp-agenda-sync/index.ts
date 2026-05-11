@@ -32,6 +32,8 @@ type Appointment = {
   MobilePhone?: string;
   Dentist_PersonId?: string | number;
   DentistName?: string;
+  ScheduleToId?: string | number;
+  ScheduleToName?: string;
   fromTime?: string;
   toTime?: string;
   [k: string]: unknown;
@@ -184,6 +186,34 @@ function pickDoctor(a: Appointment): { extId: string | null; name: string | null
   return { extId: id != null ? String(id) : null, name };
 }
 
+const DOCTOR_NAME_OVERRIDES = new Map<string, string>([
+  ["5716520699691008", "Wanessa Matzenbacher Carneiro"],
+  ["6442024534867968", "Davi da Cunha Leal"],
+  ["5346381677854720", "Allan Henrique Modrow"],
+  ["6744362126475264", "Marianne Cecilia de Oliveira"],
+]);
+
+function resolveDoctorName(extId: string | null, apiName: string | null | undefined): string | null {
+  if (extId && DOCTOR_NAME_OVERRIDES.has(extId)) return DOCTOR_NAME_OVERRIDES.get(extId)!;
+  return apiName || null;
+}
+
+function debugDoctorFields(rows: Appointment[]) {
+  return rows.slice(0, 30).map((row) => {
+    const picked: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (/dent|doctor|prof|agenda|sched|chair|calendar|resource|column|user|book/i.test(key)) {
+        picked[key] = value;
+      }
+    }
+    picked.fromTime = row.fromTime;
+    picked.toTime = row.toTime;
+    picked.date = row.date || row.start_date || row.appointment_at;
+    picked.patient = pickPatientName(row);
+    return picked;
+  });
+}
+
 // Agenda Clínica precisa espelhar exatamente o Clinicorp: apenas consultas do período.
 const TASK_RULE: { offset: number; type: string; keep_past?: boolean }[] = [
   { offset: 0, type: "appointment", keep_past: true },
@@ -300,9 +330,18 @@ Deno.serve(async (req) => {
       console.warn("[clinicorp] appointment/list returned no items across the window");
     }
 
+    if (body.debug_doctor_fields === true) {
+      return new Response(
+        JSON.stringify({ success: true, start_date: startKey, end_date: endKey, total: list.length, sample: debugDoctorFields(list) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // 2a) Tentar buscar nomes reais de profissionais via endpoint do Clinicorp
     const dentistNames = new Map<string, string>();
     const dentistEndpoints = [
+      "/users/list",
+      "/users/listUsers",
       "/professional/list",
       "/dentist/list",
       "/person/list",
@@ -314,8 +353,8 @@ Deno.serve(async (req) => {
         const items = extractList(r);
         for (const it of items) {
           const o = it as Record<string, unknown>;
-          const id = String(o.PersonId ?? o.Person_Id ?? o.id ?? o.Id ?? "");
-          const name = String(o.Name ?? o.name ?? o.FullName ?? o.full_name ?? o.DentistName ?? "").trim();
+          const id = String(o.ScheduleToId ?? o.PersonId ?? o.Person_Id ?? o.UserId ?? o.User_Id ?? o.id ?? o.Id ?? o.user_id ?? "");
+          const name = String(o.ScheduleToName ?? o.Name ?? o.name ?? o.FullName ?? o.full_name ?? o.UserName ?? o.DisplayName ?? o.DentistName ?? "").trim();
           if (id && name) dentistNames.set(id, name);
         }
         if (dentistNames.size > 0) {
@@ -327,13 +366,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (body.debug_doctor_names === true) {
+      return new Response(
+        JSON.stringify({ success: true, names: Object.fromEntries(dentistNames.entries()) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // 2b) Coletar TODOS os IDs de doutor que aparecem na agenda
     const seenDoctorIds = new Set<string>();
     const doctorNamesFromAgenda = new Map<string, string>();
     for (const a of list) {
       const dr = pickDoctor(a);
       if (dr.extId) seenDoctorIds.add(dr.extId);
-      if (dr.extId && dr.name && dr.name.trim()) doctorNamesFromAgenda.set(dr.extId, dr.name.trim());
+      const resolvedName = resolveDoctorName(dr.extId, dr.name?.trim());
+      if (dr.extId && resolvedName) doctorNamesFromAgenda.set(dr.extId, resolvedName);
     }
 
     // 2c) Recarregar doutores atuais para respeitar nomes travados manualmente
@@ -376,13 +423,14 @@ Deno.serve(async (req) => {
       }
 
       // Para agenda exata, o nome do profissional vem da própria agenda do Clinicorp.
-      const namesToApply = new Map([...dentistNames, ...doctorNamesFromAgenda]);
+      const namesToApply = new Map([...dentistNames, ...doctorNamesFromAgenda, ...DOCTOR_NAME_OVERRIDES]);
       for (const [extId, realName] of namesToApply) {
-        await supabase
+        const update = supabase
           .from("clinic_doctors")
           .update({ name: realName })
-          .eq("external_id", extId)
-          .or(`name_locked.eq.false,name.ilike.Profissional #%`);
+          .eq("external_id", extId);
+        if (DOCTOR_NAME_OVERRIDES.has(extId)) await update;
+        else await update.or(`name_locked.eq.false,name.ilike.Profissional #%`);
       }
     }
 
@@ -419,7 +467,7 @@ Deno.serve(async (req) => {
         patient_phone: pickPatientPhone(a),
         doctor_id: doctor?.id ?? null,
         doctor_external_id: dr.extId,
-        doctor_name: doctor?.name || dr.name || null,
+        doctor_name: resolveDoctorName(dr.extId, doctor?.name || dr.name),
         appointment_at: at,
         duration_min: typeof a.duration === "number" ? a.duration : null,
         status: (a.status as string) || "scheduled",
