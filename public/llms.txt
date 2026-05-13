@@ -1,0 +1,16 @@
+# Rotina Pro
+
+> Painel interno de operação para o time da clínica: rotina diária, prioridades, agenda clínica, funis de execução e WhatsApp em um só lugar.
+
+Rotina Pro é uma aplicação privada usada pelo time. A maioria das páginas exige autenticação.
+
+## Pages
+
+- [Login](/auth): Acesso para colaboradores autorizados.
+
+## Optional
+
+- [Dashboard](/): Visão geral do dia (requer login).
+- [Rotina](/rotina): Tarefas e checklist do dia (requer login).
+- [Prioridades](/prioridades): Prioridades ativas do time (requer login).
+- [Agenda Clínica](/agenda-clinica): Agendas dos profissionais (requer login).
