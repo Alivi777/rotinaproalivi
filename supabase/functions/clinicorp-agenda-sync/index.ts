@@ -336,11 +336,12 @@ Deno.serve(async (req) => {
     const requestedEnd = typeof body.end_date === "string" ? normalizeDateInput(body.end_date) : null;
     const daysAhead = typeof body.days_ahead === "number" ? body.days_ahead : null;
     const daysBack = typeof body.days_back === "number" ? body.days_back : null;
-    const defaultWeek = mondayToSaturday(todayKey);
+    const defaultStart = addDaysKey(todayKey, -30);
+    const defaultEnd = addDaysKey(todayKey, 60);
     const startKey = requestedStart
-      || (daysBack != null ? addDaysKey(todayKey, -daysBack) : defaultWeek.startKey);
+      || (daysBack != null ? addDaysKey(todayKey, -daysBack) : defaultStart);
     const endKey = requestedEnd
-      || (daysAhead != null ? addDaysKey(todayKey, daysAhead) : (requestedStart || defaultWeek.endKey));
+      || (daysAhead != null ? addDaysKey(todayKey, daysAhead) : defaultEnd);
     const start = new Date(`${startKey}T00:00:00-03:00`);
     const end = new Date(`${endKey}T23:59:59-03:00`);
     const totalDays = Math.max(0, Math.round((new Date(`${endKey}T00:00:00-03:00`).getTime() - new Date(`${startKey}T00:00:00-03:00`).getTime()) / 86400000));
