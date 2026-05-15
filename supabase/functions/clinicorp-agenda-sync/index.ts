@@ -613,13 +613,14 @@ Deno.serve(async (req) => {
         (a.patient_phone ? contactByPhone.get(a.patient_phone.replace(/\D/g, "")) : null) ||
         null;
 
+      const apptStatus = (a.status as string) || "scheduled";
       for (const rule of TASK_RULE) {
         const taskDate = new Date(apptDate);
         taskDate.setDate(apptDate.getDate() - rule.offset);
         const taskDateStr = dateOnly(taskDate);
-        // Tarefas de preparação (D-7..D-1) só do hoje em diante.
-        // A âncora do dia da consulta (offset 0) sempre é gerada.
         if (!rule.keep_past && taskDateStr < todayDateOnly) continue;
+        if (rule.offset > 0 && shouldSkipPrepTask(apptStatus, rule.type)) continue;
+        const anchorDone = rule.offset === 0 && (apptStatus === "completed" || apptStatus === "missed" || apptStatus === "canceled");
         taskRows.push({
           appointment_id: a.id,
           contact_id: contactId,
@@ -631,7 +632,7 @@ Deno.serve(async (req) => {
           task_type: rule.type,
           task_date: taskDateStr,
           assigned_to: assignedTo,
-          status: "pending",
+          status: anchorDone ? "done" : "pending",
         });
       }
     }
