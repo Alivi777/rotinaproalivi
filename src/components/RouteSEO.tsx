@@ -36,6 +36,10 @@ const META: Record<string, { title: string; description: string }> = {
     title: "WhatsApp | Rotina Pro",
     description: "Entradas do WhatsApp, atendimentos pendentes e tempo de resposta.",
   },
+  "/gptmaker": {
+    title: "GPT Maker | Rotina Pro",
+    description: "Dashboard de conversas do GPT Maker: volume, taxa de resposta e principais clientes.",
+  },
   "/relatorio": {
     title: "Relatório | Rotina Pro",
     description: "Relatórios consolidados de produtividade e operação do time.",
