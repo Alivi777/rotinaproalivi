@@ -139,6 +139,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/gptmaker"
+            element={
+              <ProtectedRoute>
+                <GPTMakerDashboardPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
