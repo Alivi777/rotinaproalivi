@@ -39,6 +39,7 @@ const baseNav = [
   { to: "/clientes", label: "Funis de Execução", icon: Users },
   { to: "/contatos", label: "Contatos", icon: ContactIcon },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
+  { to: "/gptmaker", label: "GPT Maker", icon: Bot },
   { to: "/relatorio", label: "Relatório", icon: FileText },
   { to: "/ponto", label: "Ponto", icon: Clock },
 ];
