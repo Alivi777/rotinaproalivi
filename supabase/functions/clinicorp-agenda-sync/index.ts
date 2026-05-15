@@ -226,10 +226,37 @@ function debugDoctorFields(rows: Appointment[]) {
   });
 }
 
-// Agenda Clínica precisa espelhar exatamente o Clinicorp: apenas consultas do período.
+// Pipeline completo de tarefas (D-7..D-1 + ancora do dia da consulta).
 const TASK_RULE: { offset: number; type: string; keep_past?: boolean }[] = [
   { offset: 0, type: "appointment", keep_past: true },
+  { offset: 7, type: "confirm_d7" },
+  { offset: 6, type: "confirm_d6" },
+  { offset: 5, type: "confirm_d5" },
+  { offset: 4, type: "confirm_d4" },
+  { offset: 3, type: "protocol_d3" },
+  { offset: 2, type: "urgency_d2" },
+  { offset: 1, type: "unbook_confirm_d1" },
 ];
+
+// Mapeia status do Clinicorp ("4-Atendido") para o status interno.
+function normalizeApptStatus(raw: unknown): string {
+  if (typeof raw !== "string") return "scheduled";
+  const s = raw.trim().toLowerCase();
+  if (s.includes("atendido")) return "completed";
+  if (s.includes("confirmado")) return "confirmed";
+  if (s.includes("faltou")) return "missed";
+  if (s.includes("desmarcado") || s.includes("cancelad")) return "canceled";
+  if (s.includes("em espera")) return "waiting";
+  if (s.includes("em atendimento")) return "in_progress";
+  return "scheduled";
+}
+
+// Decide se uma tarefa de preparação deve ser pulada com base no status da consulta.
+function shouldSkipPrepTask(status: string, taskType: string): boolean {
+  if (status === "completed" || status === "canceled" || status === "missed") return true;
+  if (status === "confirmed" && (taskType === "protocol_d3" || taskType === "urgency_d2" || taskType === "unbook_confirm_d1")) return true;
+  return false;
+}
 
 function dateOnly(d: Date): string {
   return spDateFormatter.format(d);
