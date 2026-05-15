@@ -49,25 +49,10 @@ type Props = {
 
 type ColumnKey = "novo" | "programadas" | "concluidos";
 
-// Colunas fixas da Recepção, organizadas por DIA relativo a hoje:
-//   Agenda Hoje = consultas/tarefas de hoje
-//   D-1 = amanhã, D-2 = depois de amanhã, ... D-7 = +7 dias
-const DAY_COLUMNS: { key: string; offset: number; title: string; subtitle: string }[] = [
-  { key: "hoje", offset: 0, title: "Agenda Hoje", subtitle: "Consultas para hoje" },
-  { key: "d1", offset: 1, title: "D-1", subtitle: "Agenda de amanhã" },
-  { key: "d2", offset: 2, title: "D-2", subtitle: "Depois de amanhã" },
-  { key: "d3", offset: 3, title: "D-3", subtitle: "Em 3 dias" },
-  { key: "d4", offset: 4, title: "D-4", subtitle: "Em 4 dias" },
-  { key: "d5", offset: 5, title: "D-5", subtitle: "Em 5 dias" },
-  { key: "d6", offset: 6, title: "D-6", subtitle: "Em 6 dias" },
-  { key: "d7", offset: 7, title: "D-7", subtitle: "Em 7 dias" },
-];
-
-function addDaysISO(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d + days));
-  return dt.toISOString().slice(0, 10);
-}
+// Recepção mostra APENAS o que precisa ser feito hoje.
+// As tarefas vêm da agenda da clínica (Clinicorp) — confirmações D-7..D-1,
+// protocolos D-3, urgências D-2 e desmarques D-1 são geradas para o
+// dia em que devem ser executadas, então basta filtrar por task_date = hoje.
 
 /**
  * Funil de Execução da Recepção — 3 colunas fixas:
