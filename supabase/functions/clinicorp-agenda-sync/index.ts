@@ -599,10 +599,29 @@ Deno.serve(async (req) => {
     }
 
     // 5) Generate daily tasks from rule
+    // Dedupe por (paciente + dia + tipo): nunca duplicar card no mesmo dia,
+    // mesmo que o paciente tenha 2+ consultas ou IDs diferentes no Clinicorp.
     const taskRows: Record<string, unknown>[] = [];
     const todayDateOnly = dateOnly(today);
 
-    for (const a of storedAppts || []) {
+    function patientKey(a: { contact_id?: string | null; patient_external_id?: string | null; patient_phone?: string | null; patient_name?: string | null }, contactId: string | null): string {
+      if (contactId) return `c:${contactId}`;
+      if (a.patient_external_id) return `e:${a.patient_external_id}`;
+      const ph = (a.patient_phone || "").replace(/\D/g, "");
+      if (ph) return `p:${ph}`;
+      return `n:${(a.patient_name || "").trim().toLowerCase()}`;
+    }
+
+    // Ordena por horário para que o "primeiro" do dia ganhe e marcamos os demais como done
+    const sortedAppts = [...(storedAppts || [])].sort((x, y) => {
+      const tx = new Date(x.appointment_at as string).getTime();
+      const ty = new Date(y.appointment_at as string).getTime();
+      return tx - ty;
+    });
+
+    const dedupeMap = new Map<string, Record<string, unknown>>();
+
+    for (const a of sortedAppts) {
       const apptDate = new Date(a.appointment_at as string);
       const doctor = (a.doctor_id ? [...doctorMap.values()].find((d) => d.id === a.doctor_id) : null);
       const assignedTo = doctor?.assigned_user_id ?? null;
@@ -613,7 +632,9 @@ Deno.serve(async (req) => {
         (a.patient_phone ? contactByPhone.get(a.patient_phone.replace(/\D/g, "")) : null) ||
         null;
 
+      const pKey = patientKey(a, contactId);
       const apptStatus = (a.status as string) || "scheduled";
+
       for (const rule of TASK_RULE) {
         const taskDate = new Date(apptDate);
         taskDate.setDate(apptDate.getDate() - rule.offset);
@@ -621,7 +642,11 @@ Deno.serve(async (req) => {
         if (!rule.keep_past && taskDateStr < todayDateOnly) continue;
         if (rule.offset > 0 && shouldSkipPrepTask(apptStatus, rule.type)) continue;
         const anchorDone = rule.offset === 0 && (apptStatus === "completed" || apptStatus === "missed" || apptStatus === "canceled");
-        taskRows.push({
+
+        const dedupeKey = `${pKey}|${taskDateStr}|${rule.type}`;
+        if (dedupeMap.has(dedupeKey)) continue; // já existe card desse cliente nesse dia/tipo
+
+        const row = {
           appointment_id: a.id,
           contact_id: contactId,
           patient_name: a.patient_name,
@@ -633,7 +658,9 @@ Deno.serve(async (req) => {
           task_date: taskDateStr,
           assigned_to: assignedTo,
           status: anchorDone ? "done" : "pending",
-        });
+        };
+        dedupeMap.set(dedupeKey, row);
+        taskRows.push(row);
       }
     }
 
