@@ -168,7 +168,7 @@ export default function ReceptionTodayCards({
       return a.items[0].sort_order - b.items[0].sort_order;
     });
     return list;
-  }, [clients, taskItemsByClient, search, doctorFilter, doctorByClient]);
+  }, [clients, taskItemsByClient, search, doctorFilter, doctorByClient, today]);
 
   const programadas = cardsToday.filter((c) => !c.allDone);
   const concluidos = cardsToday.filter((c) => c.allDone);
