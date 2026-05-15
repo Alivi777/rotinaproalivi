@@ -265,6 +265,47 @@ export default function DashboardPage() {
     return set.size;
   }, [completions, scope, myUid]);
 
+  // ─── Totais combinados (rotina + tarefas com clientes) ────────────────
+  const combinedTotals = useMemo(() => {
+    const expRoutine = sectorAdherence.reduce((a, s) => a + s.expected, 0);
+    const doneRoutine = sectorAdherence.reduce((a, s) => a + s.done, 0);
+    const total = expRoutine + clientAdherence.total;
+    const done = doneRoutine + clientAdherence.done;
+    const pending = Math.max(0, total - done);
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    return { total, done, pending, pct };
+  }, [sectorAdherence, clientAdherence]);
+
+  // ─── Rotina detalhada por tarefa × pessoa ────────────────────────────
+  const taskExecutionRows = useMemo(() => {
+    const sectorName = new Map(sectors.map((s) => [s.id, s.name]));
+    const profName = (uid: string) =>
+      profileBy.get(uid)?.display_name?.trim() || uid.slice(0, 8);
+    return tasks
+      .map((t) => {
+        const comps = completions.filter(
+          (c) => c.task_id === t.id && inScopeUser(c.user_id),
+        );
+        const byUser = new Map<string, Set<string>>();
+        for (const c of comps) {
+          const set = byUser.get(c.user_id) ?? new Set<string>();
+          set.add(c.completion_date);
+          byUser.set(c.user_id, set);
+        }
+        const executors = Array.from(byUser.entries())
+          .map(([uid, dates]) => ({ uid, name: profName(uid), count: dates.size }))
+          .sort((a, b) => b.count - a.count);
+        return {
+          id: t.id,
+          title: t.title,
+          sector: t.sector_id ? sectorName.get(t.sector_id) ?? "—" : "—",
+          totalCompletions: comps.length,
+          executors,
+        };
+      })
+      .sort((a, b) => a.sector.localeCompare(b.sector, "pt-BR") || a.title.localeCompare(b.title, "pt-BR"));
+  }, [tasks, completions, sectors, profileBy, scope, myUid]);
+
   return (
     <AppShell>
       <header className="mb-6">
