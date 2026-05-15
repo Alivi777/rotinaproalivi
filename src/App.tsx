@@ -16,6 +16,7 @@ import ContactsPage from "./pages/ContactsPage";
 import AgendaClinicaPage from "./pages/AgendaClinicaPage";
 import PontoPage from "./pages/PontoPage";
 import GestorIAPage from "./pages/GestorIAPage";
+import GPTMakerDashboardPage from "./pages/GPTMakerDashboardPage";
 import Auth from "./pages/Auth";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound.tsx";
