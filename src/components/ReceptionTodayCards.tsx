@@ -150,6 +150,8 @@ export default function ReceptionTodayCards({
         if (!d || d.name !== doctorFilter) continue;
       }
       for (const item of all) {
+        // Mostra apenas tarefas de HOJE no funil da recepção.
+        if (item.task_date !== today) continue;
         list.push({
           client,
           items: [item],
