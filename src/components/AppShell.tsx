@@ -16,6 +16,7 @@ import {
   CalendarRange,
   Sparkles,
   Clock,
+  Bot,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const baseNav = [
   { to: "/clientes", label: "Funis de Execução", icon: Users },
   { to: "/contatos", label: "Contatos", icon: ContactIcon },
   { to: "/whatsapp", label: "WhatsApp", icon: MessageSquareText },
+  { to: "/gptmaker", label: "GPT Maker", icon: Bot },
   { to: "/relatorio", label: "Relatório", icon: FileText },
   { to: "/ponto", label: "Ponto", icon: Clock },
 ];
