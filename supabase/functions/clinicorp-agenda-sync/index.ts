@@ -524,7 +524,7 @@ Deno.serve(async (req) => {
         doctor_name: resolveDoctorName(dr.extId, doctor?.name || dr.name),
         appointment_at: at,
         duration_min: typeof a.duration === "number" ? a.duration : null,
-        status: (a.status as string) || "scheduled",
+        status: normalizeApptStatus(a.status),
         synced_at: new Date().toISOString(),
       });
     }
