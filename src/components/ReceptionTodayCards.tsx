@@ -375,15 +375,10 @@ export default function ReceptionTodayCards({
         </Card>
       )}
 
-      {/* Kanban — colunas por DIA + Concluído, agrupado por responsável */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-9">
-        {DAY_COLUMNS.map((col) => {
-          const colDate = addDaysISO(today, col.offset);
-          const colCards = cardsToday.filter(
-            (c) => c.items[0].task_date === colDate && !c.allDone,
-          );
-
-          // Agrupar por responsável (nome do doutor; cai p/ "Sem responsável")
+      {/* Para fazer HOJE — agrupado por responsável */}
+      <div className="grid gap-3 grid-cols-1 lg:grid-cols-[2fr_1fr]">
+        {(() => {
+          const colCards = programadas;
           const byResp = new Map<
             string,
             { color: string | null; cards: typeof colCards }
@@ -401,21 +396,20 @@ export default function ReceptionTodayCards({
 
           return (
             <section
-              key={col.key}
               onDragOver={(e) => onDragOverCol(e, "programadas")}
               onDrop={(e) => onDropCol(e, "programadas")}
               className={cn(
-                "rounded-xl bg-secondary/30 border border-border/50 p-2 min-h-[200px] transition-colors",
+                "rounded-xl bg-secondary/30 border border-border/50 p-3 min-h-[200px] transition-colors",
                 overCol === "programadas" && "border-primary/50 bg-secondary/50",
               )}
             >
-              <header className="flex items-center justify-between mb-2 px-1">
+              <header className="flex items-center justify-between mb-3 px-1">
                 <div className="min-w-0">
                   <h3 className="font-semibold text-sm leading-none truncate">
-                    {col.title}
+                    Para fazer hoje
                   </h3>
                   <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                    {col.subtitle}
+                    Tarefas da agenda da clínica para {today.split("-").reverse().join("/")}
                   </p>
                 </div>
                 <Badge variant="secondary" className="h-5 text-xs">
@@ -423,8 +417,12 @@ export default function ReceptionTodayCards({
                 </Badge>
               </header>
 
-              <div className="space-y-3">
-                {groups.length === 0 && <EmptyHint text="Sem tarefas" />}
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                {groups.length === 0 && (
+                  <div className="md:col-span-2 xl:col-span-3">
+                    <EmptyHint text="Nada pendente para hoje" />
+                  </div>
+                )}
                 {groups.map(([respName, { color, cards }]) => (
                   <div key={respName} className="space-y-1.5">
                     <div className="flex items-center gap-1.5 px-1">
@@ -463,7 +461,7 @@ export default function ReceptionTodayCards({
               </div>
             </section>
           );
-        })}
+        })()}
 
         {/* Coluna Concluído — arraste cards aqui para marcar como feito */}
         <section
