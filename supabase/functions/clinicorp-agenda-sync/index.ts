@@ -226,10 +226,37 @@ function debugDoctorFields(rows: Appointment[]) {
   });
 }
 
-// Agenda Clínica precisa espelhar exatamente o Clinicorp: apenas consultas do período.
+// Pipeline completo de tarefas (D-7..D-1 + ancora do dia da consulta).
 const TASK_RULE: { offset: number; type: string; keep_past?: boolean }[] = [
   { offset: 0, type: "appointment", keep_past: true },
+  { offset: 7, type: "confirm_d7" },
+  { offset: 6, type: "confirm_d6" },
+  { offset: 5, type: "confirm_d5" },
+  { offset: 4, type: "confirm_d4" },
+  { offset: 3, type: "protocol_d3" },
+  { offset: 2, type: "urgency_d2" },
+  { offset: 1, type: "unbook_confirm_d1" },
 ];
+
+// Mapeia status do Clinicorp ("4-Atendido") para o status interno.
+function normalizeApptStatus(raw: unknown): string {
+  if (typeof raw !== "string") return "scheduled";
+  const s = raw.trim().toLowerCase();
+  if (s.includes("atendido")) return "completed";
+  if (s.includes("confirmado")) return "confirmed";
+  if (s.includes("faltou")) return "missed";
+  if (s.includes("desmarcado") || s.includes("cancelad")) return "canceled";
+  if (s.includes("em espera")) return "waiting";
+  if (s.includes("em atendimento")) return "in_progress";
+  return "scheduled";
+}
+
+// Decide se uma tarefa de preparação deve ser pulada com base no status da consulta.
+function shouldSkipPrepTask(status: string, taskType: string): boolean {
+  if (status === "completed" || status === "canceled" || status === "missed") return true;
+  if (status === "confirmed" && (taskType === "protocol_d3" || taskType === "urgency_d2" || taskType === "unbook_confirm_d1")) return true;
+  return false;
+}
 
 function dateOnly(d: Date): string {
   return spDateFormatter.format(d);
@@ -309,11 +336,12 @@ Deno.serve(async (req) => {
     const requestedEnd = typeof body.end_date === "string" ? normalizeDateInput(body.end_date) : null;
     const daysAhead = typeof body.days_ahead === "number" ? body.days_ahead : null;
     const daysBack = typeof body.days_back === "number" ? body.days_back : null;
-    const defaultWeek = mondayToSaturday(todayKey);
+    const defaultStart = addDaysKey(todayKey, -30);
+    const defaultEnd = addDaysKey(todayKey, 60);
     const startKey = requestedStart
-      || (daysBack != null ? addDaysKey(todayKey, -daysBack) : defaultWeek.startKey);
+      || (daysBack != null ? addDaysKey(todayKey, -daysBack) : defaultStart);
     const endKey = requestedEnd
-      || (daysAhead != null ? addDaysKey(todayKey, daysAhead) : (requestedStart || defaultWeek.endKey));
+      || (daysAhead != null ? addDaysKey(todayKey, daysAhead) : defaultEnd);
     const start = new Date(`${startKey}T00:00:00-03:00`);
     const end = new Date(`${endKey}T23:59:59-03:00`);
     const totalDays = Math.max(0, Math.round((new Date(`${endKey}T00:00:00-03:00`).getTime() - new Date(`${startKey}T00:00:00-03:00`).getTime()) / 86400000));
@@ -496,7 +524,7 @@ Deno.serve(async (req) => {
         doctor_name: resolveDoctorName(dr.extId, doctor?.name || dr.name),
         appointment_at: at,
         duration_min: typeof a.duration === "number" ? a.duration : null,
-        status: (a.status as string) || "scheduled",
+        status: normalizeApptStatus(a.status),
         synced_at: new Date().toISOString(),
       });
     }
@@ -538,7 +566,7 @@ Deno.serve(async (req) => {
     // 4) Reload appointments to get IDs and link contacts
     let { data: storedAppts } = await supabase
       .from("clinic_appointments")
-      .select("id, external_id, patient_external_id, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, contact_id")
+      .select("id, external_id, patient_external_id, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, contact_id, status")
       .gte("appointment_at", start.toISOString())
       .lte("appointment_at", end.toISOString());
 
@@ -585,13 +613,14 @@ Deno.serve(async (req) => {
         (a.patient_phone ? contactByPhone.get(a.patient_phone.replace(/\D/g, "")) : null) ||
         null;
 
+      const apptStatus = (a.status as string) || "scheduled";
       for (const rule of TASK_RULE) {
         const taskDate = new Date(apptDate);
         taskDate.setDate(apptDate.getDate() - rule.offset);
         const taskDateStr = dateOnly(taskDate);
-        // Tarefas de preparação (D-7..D-1) só do hoje em diante.
-        // A âncora do dia da consulta (offset 0) sempre é gerada.
         if (!rule.keep_past && taskDateStr < todayDateOnly) continue;
+        if (rule.offset > 0 && shouldSkipPrepTask(apptStatus, rule.type)) continue;
+        const anchorDone = rule.offset === 0 && (apptStatus === "completed" || apptStatus === "missed" || apptStatus === "canceled");
         taskRows.push({
           appointment_id: a.id,
           contact_id: contactId,
@@ -603,7 +632,7 @@ Deno.serve(async (req) => {
           task_type: rule.type,
           task_date: taskDateStr,
           assigned_to: assignedTo,
-          status: "pending",
+          status: anchorDone ? "done" : "pending",
         });
       }
     }
