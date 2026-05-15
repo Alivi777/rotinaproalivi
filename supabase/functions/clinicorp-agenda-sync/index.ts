@@ -566,7 +566,7 @@ Deno.serve(async (req) => {
     // 4) Reload appointments to get IDs and link contacts
     let { data: storedAppts } = await supabase
       .from("clinic_appointments")
-      .select("id, external_id, patient_external_id, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, contact_id")
+      .select("id, external_id, patient_external_id, patient_name, patient_phone, doctor_id, doctor_name, appointment_at, contact_id, status")
       .gte("appointment_at", start.toISOString())
       .lte("appointment_at", end.toISOString());
 
