@@ -49,25 +49,10 @@ type Props = {
 
 type ColumnKey = "novo" | "programadas" | "concluidos";
 
-// Colunas fixas da Recepção, organizadas por DIA relativo a hoje:
-//   Agenda Hoje = consultas/tarefas de hoje
-//   D-1 = amanhã, D-2 = depois de amanhã, ... D-7 = +7 dias
-const DAY_COLUMNS: { key: string; offset: number; title: string; subtitle: string }[] = [
-  { key: "hoje", offset: 0, title: "Agenda Hoje", subtitle: "Consultas para hoje" },
-  { key: "d1", offset: 1, title: "D-1", subtitle: "Agenda de amanhã" },
-  { key: "d2", offset: 2, title: "D-2", subtitle: "Depois de amanhã" },
-  { key: "d3", offset: 3, title: "D-3", subtitle: "Em 3 dias" },
-  { key: "d4", offset: 4, title: "D-4", subtitle: "Em 4 dias" },
-  { key: "d5", offset: 5, title: "D-5", subtitle: "Em 5 dias" },
-  { key: "d6", offset: 6, title: "D-6", subtitle: "Em 6 dias" },
-  { key: "d7", offset: 7, title: "D-7", subtitle: "Em 7 dias" },
-];
-
-function addDaysISO(iso: string, days: number): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d + days));
-  return dt.toISOString().slice(0, 10);
-}
+// Recepção mostra APENAS o que precisa ser feito hoje.
+// As tarefas vêm da agenda da clínica (Clinicorp) — confirmações D-7..D-1,
+// protocolos D-3, urgências D-2 e desmarques D-1 são geradas para o
+// dia em que devem ser executadas, então basta filtrar por task_date = hoje.
 
 /**
  * Funil de Execução da Recepção — 3 colunas fixas:
@@ -165,6 +150,8 @@ export default function ReceptionTodayCards({
         if (!d || d.name !== doctorFilter) continue;
       }
       for (const item of all) {
+        // Mostra apenas tarefas de HOJE no funil da recepção.
+        if (item.task_date !== today) continue;
         list.push({
           client,
           items: [item],
@@ -181,7 +168,7 @@ export default function ReceptionTodayCards({
       return a.items[0].sort_order - b.items[0].sort_order;
     });
     return list;
-  }, [clients, taskItemsByClient, search, doctorFilter, doctorByClient]);
+  }, [clients, taskItemsByClient, search, doctorFilter, doctorByClient, today]);
 
   const programadas = cardsToday.filter((c) => !c.allDone);
   const concluidos = cardsToday.filter((c) => c.allDone);
@@ -388,15 +375,10 @@ export default function ReceptionTodayCards({
         </Card>
       )}
 
-      {/* Kanban — colunas por DIA + Concluído, agrupado por responsável */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-9">
-        {DAY_COLUMNS.map((col) => {
-          const colDate = addDaysISO(today, col.offset);
-          const colCards = cardsToday.filter(
-            (c) => c.items[0].task_date === colDate && !c.allDone,
-          );
-
-          // Agrupar por responsável (nome do doutor; cai p/ "Sem responsável")
+      {/* Para fazer HOJE — agrupado por responsável */}
+      <div className="grid gap-3 grid-cols-1 lg:grid-cols-[2fr_1fr]">
+        {(() => {
+          const colCards = programadas;
           const byResp = new Map<
             string,
             { color: string | null; cards: typeof colCards }
@@ -414,21 +396,20 @@ export default function ReceptionTodayCards({
 
           return (
             <section
-              key={col.key}
               onDragOver={(e) => onDragOverCol(e, "programadas")}
               onDrop={(e) => onDropCol(e, "programadas")}
               className={cn(
-                "rounded-xl bg-secondary/30 border border-border/50 p-2 min-h-[200px] transition-colors",
+                "rounded-xl bg-secondary/30 border border-border/50 p-3 min-h-[200px] transition-colors",
                 overCol === "programadas" && "border-primary/50 bg-secondary/50",
               )}
             >
-              <header className="flex items-center justify-between mb-2 px-1">
+              <header className="flex items-center justify-between mb-3 px-1">
                 <div className="min-w-0">
                   <h3 className="font-semibold text-sm leading-none truncate">
-                    {col.title}
+                    Para fazer hoje
                   </h3>
                   <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-                    {col.subtitle}
+                    Tarefas da agenda da clínica para {today.split("-").reverse().join("/")}
                   </p>
                 </div>
                 <Badge variant="secondary" className="h-5 text-xs">
@@ -436,8 +417,12 @@ export default function ReceptionTodayCards({
                 </Badge>
               </header>
 
-              <div className="space-y-3">
-                {groups.length === 0 && <EmptyHint text="Sem tarefas" />}
+              <div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+                {groups.length === 0 && (
+                  <div className="md:col-span-2 xl:col-span-3">
+                    <EmptyHint text="Nada pendente para hoje" />
+                  </div>
+                )}
                 {groups.map(([respName, { color, cards }]) => (
                   <div key={respName} className="space-y-1.5">
                     <div className="flex items-center gap-1.5 px-1">
@@ -476,7 +461,7 @@ export default function ReceptionTodayCards({
               </div>
             </section>
           );
-        })}
+        })()}
 
         {/* Coluna Concluído — arraste cards aqui para marcar como feito */}
         <section
