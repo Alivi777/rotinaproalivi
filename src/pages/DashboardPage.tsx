@@ -367,7 +367,13 @@ export default function DashboardPage() {
 
         <TabsContent value="geral" className="space-y-6 mt-0">
           {/* KPI nível CRM */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-fr">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 auto-rows-fr">
+            <KpiCard
+              icon={<CheckCircle2 className="h-4 w-4 text-primary" />}
+              label="Total tarefas (rotina + clientes)"
+              value={`${combinedTotals.done}/${combinedTotals.total}`}
+              hint={`${combinedTotals.pct}% — ${combinedTotals.pending} pendentes`}
+            />
             <KpiCard
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
               label="Aderência de rotina"
