@@ -265,6 +265,47 @@ export default function DashboardPage() {
     return set.size;
   }, [completions, scope, myUid]);
 
+  // ─── Totais combinados (rotina + tarefas com clientes) ────────────────
+  const combinedTotals = useMemo(() => {
+    const expRoutine = sectorAdherence.reduce((a, s) => a + s.expected, 0);
+    const doneRoutine = sectorAdherence.reduce((a, s) => a + s.done, 0);
+    const total = expRoutine + clientAdherence.total;
+    const done = doneRoutine + clientAdherence.done;
+    const pending = Math.max(0, total - done);
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    return { total, done, pending, pct };
+  }, [sectorAdherence, clientAdherence]);
+
+  // ─── Rotina detalhada por tarefa × pessoa ────────────────────────────
+  const taskExecutionRows = useMemo(() => {
+    const sectorName = new Map(sectors.map((s) => [s.id, s.name]));
+    const profName = (uid: string) =>
+      profileBy.get(uid)?.display_name?.trim() || uid.slice(0, 8);
+    return tasks
+      .map((t) => {
+        const comps = completions.filter(
+          (c) => c.task_id === t.id && inScopeUser(c.user_id),
+        );
+        const byUser = new Map<string, Set<string>>();
+        for (const c of comps) {
+          const set = byUser.get(c.user_id) ?? new Set<string>();
+          set.add(c.completion_date);
+          byUser.set(c.user_id, set);
+        }
+        const executors = Array.from(byUser.entries())
+          .map(([uid, dates]) => ({ uid, name: profName(uid), count: dates.size }))
+          .sort((a, b) => b.count - a.count);
+        return {
+          id: t.id,
+          title: t.title,
+          sector: t.sector_id ? sectorName.get(t.sector_id) ?? "—" : "—",
+          totalCompletions: comps.length,
+          executors,
+        };
+      })
+      .sort((a, b) => a.sector.localeCompare(b.sector, "pt-BR") || a.title.localeCompare(b.title, "pt-BR"));
+  }, [tasks, completions, sectors, profileBy, scope, myUid]);
+
   return (
     <AppShell>
       <header className="mb-6">
@@ -326,7 +367,13 @@ export default function DashboardPage() {
 
         <TabsContent value="geral" className="space-y-6 mt-0">
           {/* KPI nível CRM */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 auto-rows-fr">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 auto-rows-fr">
+            <KpiCard
+              icon={<CheckCircle2 className="h-4 w-4 text-primary" />}
+              label="Total tarefas (rotina + clientes)"
+              value={`${combinedTotals.done}/${combinedTotals.total}`}
+              hint={`${combinedTotals.pct}% — ${combinedTotals.pending} pendentes`}
+            />
             <KpiCard
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
               label="Aderência de rotina"
@@ -420,7 +467,64 @@ export default function DashboardPage() {
             </div>
           </Card>
 
-          {/* Aderência de tarefas com clientes + Horas trabalhadas */}
+          {/* Rotina detalhada por tarefa × pessoa */}
+          <Card className="p-6 bg-gradient-card border-border/50">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-primary" />
+                <h2 className="text-lg font-semibold">Rotina por tarefa — quem executou</h2>
+              </div>
+              <span className="text-xs text-muted-foreground">tempo real</span>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Setor</TableHead>
+                    <TableHead>Tarefa</TableHead>
+                    <TableHead>Executada por (× vezes no período)</TableHead>
+                    <TableHead className="text-right">Total marcações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {taskExecutionRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-6">
+                        Nenhuma tarefa cadastrada.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    taskExecutionRows.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">{row.sector}</TableCell>
+                        <TableCell className="font-medium">{row.title}</TableCell>
+                        <TableCell>
+                          {row.executors.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">— ninguém ainda</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              {row.executors.map((e) => (
+                                <Badge key={e.uid} variant="secondary" className="text-[11px]">
+                                  {e.name}
+                                  {e.uid === myUid && <span className="ml-1 text-primary">(você)</span>}
+                                  <span className="ml-1 opacity-70">×{e.count}</span>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold">
+                          {row.totalCompletions}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+
+
           <div className="grid lg:grid-cols-2 gap-4">
             <Card className="p-6 bg-gradient-card border-border/50">
               <div className="flex items-center gap-2 mb-4">
