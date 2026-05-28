@@ -513,7 +513,62 @@ function buildPlanPdf(args: {
     y = maxBottom + 8;
   }
 
+  // Signatures block (participants of the meeting)
+  const signers: string[] = [];
+  const resolveName = (v: any): string => {
+    if (!v) return "";
+    const s = String(v).trim();
+    if (!s) return "";
+    // UUID? try resolve via profilesById
+    if (/^[0-9a-f-]{32,36}$/i.test(s)) return profilesById[s] || s;
+    return s;
+  };
+  const conducted = resolveName(record["conducted_by"]);
+  if (conducted) signers.push(`${conducted} (conduziu)`);
+  for (const k of ["participant_1", "participant_2", "participant_3"]) {
+    const n = resolveName(record[k]);
+    if (n) signers.push(n);
+  }
+  if (signers.length > 0) {
+    const blockH = 60 + Math.ceil(signers.length / 2) * 70;
+    ensure(blockH);
+    // Title bar
+    doc.setFillColor(241, 245, 249);
+    doc.setDrawColor(203, 213, 225);
+    doc.roundedRect(margin, y, contentWidth, 20, 3, 3, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(30, 41, 59);
+    doc.text("Assinaturas dos participantes", margin + 8, y + 14);
+    y += 30;
+
+    const colGap = 16;
+    const colW = (contentWidth - colGap) / 2;
+    for (let i = 0; i < signers.length; i += 2) {
+      ensure(70);
+      for (let c = 0; c < 2; c++) {
+        const idx = i + c;
+        if (idx >= signers.length) break;
+        const cx = margin + c * (colW + colGap);
+        // signature line
+        doc.setDrawColor(100, 116, 139);
+        doc.setLineWidth(0.6);
+        doc.line(cx, y + 30, cx + colW, y + 30);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        doc.text(signers[idx], cx, y + 44);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text("Assinatura / Visto", cx, y + 56);
+      }
+      y += 66;
+    }
+  }
+
   // Footer page numbers
+
   const pages = doc.getNumberOfPages();
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
