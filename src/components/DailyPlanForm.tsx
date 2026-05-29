@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Trash2, Plus, Users, ClipboardCheck, AlertCircle } from "lucide-react";
+import { Save, Trash2, Plus, Users, ClipboardCheck, AlertCircle, CopyPlus } from "lucide-react";
 import { toast } from "sonner";
 import { todayStr, type DailyPlan, type Assignment, type Deliverable } from "@/lib/usePlanning";
 import { Badge } from "@/components/ui/badge";
@@ -311,6 +311,85 @@ export default function DailyPlanForm() {
     setDeliverables((d) => d.filter((_, idx) => idx !== i));
   }
 
+  async function importYesterdayPending() {
+    if (!user) return;
+    // Busca o plano anterior mais recente do gestor (antes da data atual)
+    const { data: prev } = await supabase
+      .from("manager_daily_plans")
+      .select("*")
+      .eq("manager_id", user.id)
+      .lt("plan_date", date)
+      .order("plan_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!prev) {
+      toast.info("Nenhum plano anterior encontrado.");
+      return;
+    }
+    const [{ data: delivs }, { data: assigns }] = await Promise.all([
+      supabase
+        .from("daily_plan_deliverables")
+        .select("*")
+        .eq("daily_plan_id", prev.id)
+        .order("sort_order"),
+      supabase.from("manager_daily_assignments").select("*").eq("daily_plan_id", prev.id),
+    ]);
+    const pendingDelivs = (delivs ?? []).filter((d: any) => !d.done);
+    const pendingAssigns = (assigns ?? []).filter(
+      (a: any) => a.main_mission || a.secondary_1 || a.secondary_2
+    );
+
+    // Evita duplicar pelo título (entregas) e pelo assignee (atribuições)
+    const existingTitles = new Set(
+      deliverables.map((d) => (d.title ?? "").trim().toLowerCase()).filter(Boolean)
+    );
+    const newDelivs = pendingDelivs
+      .filter((d: any) => !existingTitles.has((d.title ?? "").trim().toLowerCase()))
+      .map((d: any) => ({
+        title: d.title,
+        responsible: d.responsible,
+        responsible_user_id: d.responsible_user_id,
+        due_date: date,
+        status: "pending",
+        done: false,
+      }));
+
+    const existingAssignees = new Set(assignments.map((a) => a.assignee_id).filter(Boolean));
+    const newAssigns = pendingAssigns
+      .filter((a: any) => !existingAssignees.has(a.assignee_id))
+      .map((a: any) => ({
+        assignee_id: a.assignee_id,
+        main_mission: a.main_mission,
+        secondary_1: a.secondary_1,
+        secondary_2: a.secondary_2,
+        observation: a.observation,
+      }));
+
+    setDeliverables((d) => [...d, ...newDelivs]);
+    setAssignments((a) => [...a, ...newAssigns]);
+
+    // Preenche o painel "Revisão de ontem" a partir do plano anterior
+    setPlan((p) => ({
+      ...p,
+      yesterday_main_mission: p.yesterday_main_mission || prev.main_mission || "",
+      yesterday_pending:
+        p.yesterday_pending ||
+        pendingDelivs.map((d: any) => `• ${d.title}`).join("\n") ||
+        prev.pending_next ||
+        "",
+      yesterday_blocked: p.yesterday_blocked || prev.today_bottlenecks || "",
+      yesterday_status:
+        p.yesterday_status ||
+        (pendingDelivs.length === 0 ? "concluida" : pendingDelivs.length === (delivs?.length ?? 0) ? "nao_concluida" : "parcial"),
+    }));
+
+    toast.success(
+      `Importado: ${newDelivs.length} entrega(s) e ${newAssigns.length} atribuição(ões) pendentes de ${new Date(
+        prev.plan_date + "T00:00:00"
+      ).toLocaleDateString("pt-BR")}. Lembre de salvar.`
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card className="p-4 bg-card border-border/50">
@@ -425,11 +504,19 @@ export default function DailyPlanForm() {
             </div>
             {planId && <Badge variant="outline" className="self-end mb-1">Plano salvo</Badge>}
           </div>
-          <Button onClick={save} disabled={saving} className="self-end">
-            <Save className="h-4 w-4 mr-1" />
-            {saving ? "Salvando…" : "Salvar plano"}
-          </Button>
+          <div className="flex items-center gap-2 self-end">
+            <Button variant="outline" onClick={importYesterdayPending}>
+              <CopyPlus className="h-4 w-4 mr-1" />
+              Importar pendências de ontem
+            </Button>
+            <Button onClick={save} disabled={saving}>
+              <Save className="h-4 w-4 mr-1" />
+              {saving ? "Salvando…" : "Salvar plano"}
+            </Button>
+          </div>
         </div>
+
+
 
         <div className="grid md:grid-cols-3 gap-3 text-sm">
           <div>
