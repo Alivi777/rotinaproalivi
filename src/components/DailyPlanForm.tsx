@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save, Trash2, Plus, Users, ClipboardCheck, AlertCircle } from "lucide-react";
+import { Save, Trash2, Plus, Users, ClipboardCheck, AlertCircle, CopyPlus } from "lucide-react";
 import { toast } from "sonner";
 import { todayStr, type DailyPlan, type Assignment, type Deliverable } from "@/lib/usePlanning";
 import { Badge } from "@/components/ui/badge";
