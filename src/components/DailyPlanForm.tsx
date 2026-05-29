@@ -504,11 +504,16 @@ export default function DailyPlanForm() {
             </div>
             {planId && <Badge variant="outline" className="self-end mb-1">Plano salvo</Badge>}
           </div>
-          <Button onClick={save} disabled={saving} className="self-end">
-            <Save className="h-4 w-4 mr-1" />
-            {saving ? "Salvando…" : "Salvar plano"}
-          </Button>
-        </div>
+          <div className="flex items-center gap-2 self-end">
+            <Button variant="outline" onClick={importYesterdayPending}>
+              <CopyPlus className="h-4 w-4 mr-1" />
+              Importar pendências de ontem
+            </Button>
+            <Button onClick={save} disabled={saving}>
+              <Save className="h-4 w-4 mr-1" />
+              {saving ? "Salvando…" : "Salvar plano"}
+            </Button>
+          </div>
 
         <div className="grid md:grid-cols-3 gap-3 text-sm">
           <div>
