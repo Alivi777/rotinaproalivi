@@ -880,6 +880,44 @@ export default function PlanningArchive() {
                     ))}
                   </div>
                 )}
+
+                {/* Signatures block */}
+                {open && (
+                  <div className="border border-border/50 rounded-lg overflow-hidden">
+                    <div className="bg-secondary/60 px-3 py-2 text-xs font-semibold uppercase tracking-wide">
+                      Assinaturas dos participantes
+                    </div>
+                    <div className="p-4 grid md:grid-cols-2 gap-6">
+                      {(() => {
+                        const resolveName = (v: any): string => {
+                          if (!v) return "";
+                          const s = String(v).trim();
+                          if (!s) return "";
+                          if (/^[0-9a-f-]{32,36}$/i.test(s)) return profilesById[s] || s;
+                          return s;
+                        };
+                        const signers: { name: string; tag?: string }[] = [];
+                        const conducted = resolveName(open.record.conducted_by);
+                        if (conducted) signers.push({ name: conducted, tag: "conduziu" });
+                        for (const k of ["participant_1", "participant_2", "participant_3"] as const) {
+                          const n = resolveName(open.record[k]);
+                          if (n) signers.push({ name: n });
+                        }
+                        return signers.map((s, i) => (
+                          <div key={i} className="flex flex-col gap-1">
+                            <div className="h-px bg-border my-4" />
+                            <div className="text-sm font-semibold">
+                              {s.name} {s.tag ? <span className="text-muted-foreground font-normal">({s.tag})</span> : null}
+                            </div>
+                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                              Assinatura / Visto
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <DialogFooter>
