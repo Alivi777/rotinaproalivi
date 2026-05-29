@@ -514,6 +514,9 @@ export default function DailyPlanForm() {
               {saving ? "Salvando…" : "Salvar plano"}
             </Button>
           </div>
+        </div>
+
+
 
         <div className="grid md:grid-cols-3 gap-3 text-sm">
           <div>
