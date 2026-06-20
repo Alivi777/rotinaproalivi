@@ -126,11 +126,33 @@ export async function parseFile(file: File): Promise<ParsedContact[]> {
   }
   // xlsx / xls
   const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type: "array" });
-  const sheet = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-    raw: false,
-    defval: "",
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(buf);
+  const sheet = wb.worksheets[0];
+  if (!sheet) return [];
+  const headerRow = sheet.getRow(1);
+  const headers: string[] = [];
+  headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    headers[colNumber - 1] = String(cell.value ?? "").trim();
+  });
+  const rows: Record<string, unknown>[] = [];
+  sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: Record<string, unknown> = {};
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      const key = headers[colNumber - 1];
+      if (!key) return;
+      let v: unknown = cell.value;
+      if (v && typeof v === "object") {
+        const o = v as { text?: string; result?: unknown; richText?: { text: string }[] };
+        if (Array.isArray(o.richText)) v = o.richText.map((r) => r.text).join("");
+        else if (o.text !== undefined) v = o.text;
+        else if (o.result !== undefined) v = o.result;
+        else if (v instanceof Date) v = (v as Date).toISOString().slice(0, 10);
+      }
+      obj[key] = v ?? "";
+    });
+    rows.push(obj);
   });
   return rows.map(mapRow);
 }
