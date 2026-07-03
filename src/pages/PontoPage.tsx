@@ -101,6 +101,10 @@ function currentMonth() {
 export default function PontoPage() {
   const { user } = useAuth();
   const { isAdmin } = useIsAdmin();
+  const { profile } = useProfile();
+  const { sectors } = useSectors();
+  const userSectorSlug = sectors?.find((s) => s.id === profile?.sector_id)?.slug;
+  const canManagePonto = isAdmin || userSectorSlug === "financeiro";
   return (
     <AppShell>
       <div className="container py-6 space-y-6">
@@ -114,13 +118,13 @@ export default function PontoPage() {
             <TabsTrigger value="hoje">Hoje</TabsTrigger>
             <TabsTrigger value="mes">Meu mês</TabsTrigger>
             <TabsTrigger value="correcoes">Solicitar correção</TabsTrigger>
-            {isAdmin && <TabsTrigger value="admin">Admin</TabsTrigger>}
+            {canManagePonto && <TabsTrigger value="admin">Admin</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="hoje"><PunchCard userId={user?.id ?? ""} /></TabsContent>
           <TabsContent value="mes"><MyMonth userId={user?.id ?? ""} /></TabsContent>
           <TabsContent value="correcoes"><MyCorrections userId={user?.id ?? ""} /></TabsContent>
-          {isAdmin && <TabsContent value="admin"><AdminPanel /></TabsContent>}
+          {canManagePonto && <TabsContent value="admin"><AdminPanel /></TabsContent>}
         </Tabs>
       </div>
     </AppShell>
