@@ -1996,6 +1996,10 @@ export type Database = {
         Args: { _attendance_id: string; _note?: string; _to_user: string }
         Returns: undefined
       }
+      user_in_sector: {
+        Args: { _slug: string; _user_id: string }
+        Returns: boolean
+      }
       user_owns_daily_plan: {
         Args: { _plan_id: string; _user_id: string }
         Returns: boolean
