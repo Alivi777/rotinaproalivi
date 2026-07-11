@@ -590,7 +590,7 @@ export default function RoutinePage() {
               return (
                 <li
                   key={task.id}
-                  draggable={isAdmin}
+                  draggable={isAdmin && !isSavingOrder}
                   onDragStart={(e) => {
                     if (!isAdmin) return;
                     setDraggingId(task.id);
