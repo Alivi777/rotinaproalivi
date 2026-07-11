@@ -495,7 +495,15 @@ export default function RoutinePage() {
       <Card className="p-6 bg-card border-border/50">
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Checklist</h2>
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              Checklist
+              {isAdmin && (isOrderSavePending || isSavingOrder) && (
+                <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                  {isSavingOrder && <Loader2 className="h-3 w-3 animate-spin" />}
+                  {isSavingOrder ? "Salvando ordem..." : "Alterações pendentes..."}
+                </span>
+              )}
+            </h2>
             <p className="text-xs text-muted-foreground">
               Sua marcação só conta para você. Cada membro tem sua própria visão.
             </p>
