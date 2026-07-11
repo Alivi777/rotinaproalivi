@@ -499,16 +499,68 @@ export default function RoutinePage() {
               return (
                 <li
                   key={task.id}
+                  draggable={isAdmin}
+                  onDragStart={(e) => {
+                    if (!isAdmin) return;
+                    setDraggingId(task.id);
+                    e.dataTransfer.setData("text/plain", task.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragOver={(e) => {
+                    if (!isAdmin) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                  }}
+                  onDragEnter={() => {
+                    if (!isAdmin) return;
+                    setDragOverId(task.id);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!isAdmin) return;
+                    if (dragOverId === task.id) {
+                      const related = e.relatedTarget as Node | null;
+                      if (!related || !(e.currentTarget as Node).contains(related)) {
+                        setDragOverId((curr) => (curr === task.id ? null : curr));
+                      }
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (!isAdmin) return;
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData("text/plain") || draggingId;
+                    setDraggingId(null);
+                    setDragOverId(null);
+                    if (draggedId && draggedId !== task.id) {
+                      void reorderTasks(draggedId, task.id);
+                    }
+                  }}
+                  onDragEnd={() => {
+                    setDraggingId(null);
+                    setDragOverId(null);
+                  }}
                   className={cn(
                     "py-4 flex items-start gap-4 group transition-smooth",
-                    done && "opacity-60"
+                    done && "opacity-60",
+                    draggingId === task.id && "opacity-50",
+                    dragOverId === task.id && isAdmin && draggingId !== task.id && "ring-2 ring-primary/30 rounded-md"
                   )}
                 >
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      aria-label="Arrastar para reordenar"
+                      className="mt-1 -ml-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                  )}
                   <Checkbox
                     checked={done}
                     onCheckedChange={() => toggle(task.id)}
                     className="mt-1 h-5 w-5"
                   />
+
                   <div className="flex-1 min-w-0">
                     <div
                       className={cn(
