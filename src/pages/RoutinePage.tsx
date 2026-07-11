@@ -24,7 +24,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useSectors } from "@/lib/useProfile";
-import { Plus, Trash2, TrendingUp, Calendar, Users2, UserCheck, ExternalLink, GripVertical } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Calendar, Users2, UserCheck, ExternalLink, GripVertical, Loader2 } from "lucide-react";
 import { useIsAdmin } from "@/lib/useIsAdmin";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
