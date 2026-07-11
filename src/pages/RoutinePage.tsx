@@ -24,7 +24,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { useProfile, useSectors } from "@/lib/useProfile";
-import { Plus, Trash2, TrendingUp, Calendar, Users2, UserCheck, ExternalLink } from "lucide-react";
+import { Plus, Trash2, TrendingUp, Calendar, Users2, UserCheck, ExternalLink, GripVertical } from "lucide-react";
+import { useIsAdmin } from "@/lib/useIsAdmin";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import PriorityAlert from "@/components/PriorityAlert";
@@ -57,6 +58,7 @@ export default function RoutinePage() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { sectors } = useSectors();
+  const { isAdmin } = useIsAdmin();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -67,6 +69,39 @@ export default function RoutinePage() {
   const [newSectorId, setNewSectorId] = useState<string>("");
   const [activeSectorId, setActiveSectorId] = useState<string>("");
   const [clientTasks, setClientTasks] = useState<ClientTask[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  async function reorderTasks(draggedId: string, targetId: string) {
+    if (!isAdmin || draggedId === targetId) return;
+    const fromIdx = visibleTasks.findIndex((t) => t.id === draggedId);
+    const toIdx = visibleTasks.findIndex((t) => t.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const next = visibleTasks.slice();
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    const withOrder = next.map((t, i) => ({ ...t, sort_order: i + 1 }));
+    const prevOrderById = new Map(visibleTasks.map((t) => [t.id, t.sort_order]));
+    setTasks((curr) =>
+      curr.map((t) => {
+        const u = withOrder.find((x) => x.id === t.id);
+        return u ? { ...t, sort_order: u.sort_order } : t;
+      }),
+    );
+    const changed = withOrder.filter((t) => prevOrderById.get(t.id) !== t.sort_order);
+    try {
+      const results = await Promise.all(
+        changed.map((t) =>
+          supabase.from("routine_tasks").update({ sort_order: t.sort_order }).eq("id", t.id),
+        ),
+      );
+      const err = results.find((r) => r.error)?.error;
+      if (err) throw err;
+    } catch (e) {
+      toast.error("Erro ao reordenar tarefas. Recarregando...");
+      await load();
+    }
+  }
 
   const today = todayStr();
 
@@ -464,16 +499,68 @@ export default function RoutinePage() {
               return (
                 <li
                   key={task.id}
+                  draggable={isAdmin}
+                  onDragStart={(e) => {
+                    if (!isAdmin) return;
+                    setDraggingId(task.id);
+                    e.dataTransfer.setData("text/plain", task.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragOver={(e) => {
+                    if (!isAdmin) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                  }}
+                  onDragEnter={() => {
+                    if (!isAdmin) return;
+                    setDragOverId(task.id);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!isAdmin) return;
+                    if (dragOverId === task.id) {
+                      const related = e.relatedTarget as Node | null;
+                      if (!related || !(e.currentTarget as Node).contains(related)) {
+                        setDragOverId((curr) => (curr === task.id ? null : curr));
+                      }
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (!isAdmin) return;
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData("text/plain") || draggingId;
+                    setDraggingId(null);
+                    setDragOverId(null);
+                    if (draggedId && draggedId !== task.id) {
+                      void reorderTasks(draggedId, task.id);
+                    }
+                  }}
+                  onDragEnd={() => {
+                    setDraggingId(null);
+                    setDragOverId(null);
+                  }}
                   className={cn(
                     "py-4 flex items-start gap-4 group transition-smooth",
-                    done && "opacity-60"
+                    done && "opacity-60",
+                    draggingId === task.id && "opacity-50",
+                    dragOverId === task.id && isAdmin && draggingId !== task.id && "ring-2 ring-primary/30 rounded-md"
                   )}
                 >
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      aria-label="Arrastar para reordenar"
+                      className="mt-1 -ml-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                  )}
                   <Checkbox
                     checked={done}
                     onCheckedChange={() => toggle(task.id)}
                     className="mt-1 h-5 w-5"
                   />
+
                   <div className="flex-1 min-w-0">
                     <div
                       className={cn(
