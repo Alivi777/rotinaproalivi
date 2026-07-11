@@ -203,7 +203,14 @@ export default function RoutinePage() {
             .order("due_date", { ascending: true })
         : Promise.resolve({ data: [] as ClientTask[] }),
     ]);
-    if (t.data) setTasks(t.data as Task[]);
+    if (t.data) {
+      const loaded = t.data as Task[];
+      setTasks(loaded);
+      if (!isSavingOrder && !pendingOrderRef.current) {
+        lastStableTasksRef.current = loaded;
+        optimisticTasksRef.current = loaded;
+      }
+    }
     if (c.data) setCompletions(c.data as Completion[]);
     if (p.data) setProfiles(p.data as Profile[]);
     if (ct.data) setClientTasks(ct.data as unknown as ClientTask[]);
