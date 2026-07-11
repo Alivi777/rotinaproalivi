@@ -71,24 +71,37 @@ export default function RoutinePage() {
   const [clientTasks, setClientTasks] = useState<ClientTask[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
+  const [isOrderSavePending, setIsOrderSavePending] = useState(false);
 
-  async function reorderTasks(draggedId: string, targetId: string) {
-    if (!isAdmin || draggedId === targetId) return;
-    const fromIdx = visibleTasks.findIndex((t) => t.id === draggedId);
-    const toIdx = visibleTasks.findIndex((t) => t.id === targetId);
-    if (fromIdx < 0 || toIdx < 0) return;
-    const next = visibleTasks.slice();
-    const [moved] = next.splice(fromIdx, 1);
-    next.splice(toIdx, 0, moved);
-    const withOrder = next.map((t, i) => ({ ...t, sort_order: i + 1 }));
-    const prevOrderById = new Map(visibleTasks.map((t) => [t.id, t.sort_order]));
-    setTasks((curr) =>
-      curr.map((t) => {
-        const u = withOrder.find((x) => x.id === t.id);
-        return u ? { ...t, sort_order: u.sort_order } : t;
-      }),
-    );
-    const changed = withOrder.filter((t) => prevOrderById.get(t.id) !== t.sort_order);
+  const lastStableTasksRef = useRef<Task[]>([]);
+  const rollbackTasksRef = useRef<Task[] | null>(null);
+  const optimisticTasksRef = useRef<Task[]>([]);
+  const pendingOrderRef = useRef<Task[] | null>(null);
+  const saveOrderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function persistPendingOrder() {
+    const pendingOrder = pendingOrderRef.current;
+    if (!pendingOrder || pendingOrder.length === 0) {
+      setIsOrderSavePending(false);
+      return;
+    }
+
+    const stable = lastStableTasksRef.current;
+    const stableById = new Map(stable.map((t) => [t.id, t.sort_order]));
+    const changed = pendingOrder.filter((t) => stableById.get(t.id) !== t.sort_order);
+
+    setIsOrderSavePending(false);
+
+    if (changed.length === 0) {
+      pendingOrderRef.current = null;
+      rollbackTasksRef.current = null;
+      return;
+    }
+
+    setIsSavingOrder(true);
+    const optimisticSnapshot = optimisticTasksRef.current;
+
     try {
       const results = await Promise.all(
         changed.map((t) =>
@@ -97,11 +110,74 @@ export default function RoutinePage() {
       );
       const err = results.find((r) => r.error)?.error;
       if (err) throw err;
+
+      lastStableTasksRef.current = optimisticSnapshot;
+      rollbackTasksRef.current = null;
+      pendingOrderRef.current = null;
+      toast.success("Ordem salva", {
+        description: "A nova ordem das tarefas foi atualizada com sucesso.",
+      });
     } catch (e) {
-      toast.error("Erro ao reordenar tarefas. Recarregando...");
+      if (rollbackTasksRef.current) {
+        setTasks(rollbackTasksRef.current);
+        optimisticTasksRef.current = rollbackTasksRef.current;
+      }
+      rollbackTasksRef.current = null;
+      pendingOrderRef.current = null;
+      toast.error("Erro ao salvar ordem", {
+        description: "A nova ordem não foi salva. A lista foi restaurada para a ordem anterior.",
+      });
       await load();
+    } finally {
+      setIsSavingOrder(false);
     }
   }
+
+  async function reorderTasks(draggedId: string, targetId: string) {
+    if (!isAdmin || isSavingOrder || draggedId === targetId) return;
+    const fromIdx = visibleTasks.findIndex((t) => t.id === draggedId);
+    const toIdx = visibleTasks.findIndex((t) => t.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const next = visibleTasks.slice();
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    const withOrder = next.map((t, i) => ({ ...t, sort_order: i + 1 }));
+    const withOrderById = new Map(withOrder.map((t) => [t.id, t.sort_order]));
+
+    const nextTasks = tasks.map((t) => {
+      const so = withOrderById.get(t.id);
+      return so !== undefined ? { ...t, sort_order: so } : t;
+    });
+
+    if (!rollbackTasksRef.current) {
+      rollbackTasksRef.current = lastStableTasksRef.current.length
+        ? lastStableTasksRef.current
+        : tasks;
+    }
+
+    optimisticTasksRef.current = nextTasks;
+    setTasks(nextTasks);
+
+    pendingOrderRef.current = nextTasks;
+    setIsOrderSavePending(true);
+
+    if (saveOrderTimeoutRef.current) {
+      clearTimeout(saveOrderTimeoutRef.current);
+    }
+    saveOrderTimeoutRef.current = setTimeout(() => {
+      saveOrderTimeoutRef.current = null;
+      void persistPendingOrder();
+    }, 700);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (saveOrderTimeoutRef.current) {
+        clearTimeout(saveOrderTimeoutRef.current);
+      }
+    };
+  }, []);
+
 
   const today = todayStr();
 
