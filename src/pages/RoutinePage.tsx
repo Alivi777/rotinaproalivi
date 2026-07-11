@@ -640,7 +640,13 @@ export default function RoutinePage() {
                     <button
                       type="button"
                       aria-label="Arrastar para reordenar"
-                      className="mt-1 -ml-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none"
+                      disabled={isSavingOrder}
+                      className={cn(
+                        "mt-1 -ml-1 text-muted-foreground hover:text-foreground touch-none",
+                        isSavingOrder
+                          ? "cursor-not-allowed opacity-50"
+                          : "cursor-grab active:cursor-grabbing",
+                      )}
                       onClick={(e) => e.preventDefault()}
                     >
                       <GripVertical className="h-4 w-4" />
