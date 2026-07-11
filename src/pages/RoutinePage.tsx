@@ -58,6 +58,7 @@ export default function RoutinePage() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { sectors } = useSectors();
+  const { isAdmin } = useIsAdmin();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -68,6 +69,39 @@ export default function RoutinePage() {
   const [newSectorId, setNewSectorId] = useState<string>("");
   const [activeSectorId, setActiveSectorId] = useState<string>("");
   const [clientTasks, setClientTasks] = useState<ClientTask[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  async function reorderTasks(draggedId: string, targetId: string) {
+    if (!isAdmin || draggedId === targetId) return;
+    const fromIdx = visibleTasks.findIndex((t) => t.id === draggedId);
+    const toIdx = visibleTasks.findIndex((t) => t.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const next = visibleTasks.slice();
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    const withOrder = next.map((t, i) => ({ ...t, sort_order: i + 1 }));
+    const prevOrderById = new Map(visibleTasks.map((t) => [t.id, t.sort_order]));
+    setTasks((curr) =>
+      curr.map((t) => {
+        const u = withOrder.find((x) => x.id === t.id);
+        return u ? { ...t, sort_order: u.sort_order } : t;
+      }),
+    );
+    const changed = withOrder.filter((t) => prevOrderById.get(t.id) !== t.sort_order);
+    try {
+      const results = await Promise.all(
+        changed.map((t) =>
+          supabase.from("routine_tasks").update({ sort_order: t.sort_order }).eq("id", t.id),
+        ),
+      );
+      const err = results.find((r) => r.error)?.error;
+      if (err) throw err;
+    } catch (e) {
+      toast.error("Erro ao reordenar tarefas. Recarregando...");
+      await load();
+    }
+  }
 
   const today = todayStr();
 
