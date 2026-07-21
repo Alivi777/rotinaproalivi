@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   buildExportPayload,
+  buildExportCsv,
   compareKpis,
   collectCategories,
   collectDoctors,
   DEFAULT_FILTERS,
+  exportCsvFilename,
   exportFilename,
   filterDoctors,
   filterPriorities,
