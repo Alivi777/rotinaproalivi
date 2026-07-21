@@ -131,7 +131,7 @@ export function buildExportPayload(
       scope,
       status,
       mode,
-      privacy_note: "IDs mascarados; nenhum token, header, prompt ou credencial incluído.",
+      privacy_note: "IDs mascarados; sem dados sensíveis.",
     },
     data_quality,
     company_kpis,
