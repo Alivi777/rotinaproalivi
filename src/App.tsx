@@ -19,6 +19,7 @@ import GestorIAPage from "./pages/GestorIAPage";
 import GPTMakerDashboardPage from "./pages/GPTMakerDashboardPage";
 import ResumoDiarioPage from "./pages/ResumoDiarioPage";
 import Auth from "./pages/Auth";
+import OAuthConsent from "./pages/OAuthConsent";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import NotFound from "./pages/NotFound.tsx";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -36,6 +37,7 @@ const App = () => (
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
           <Route
             path="/"
             element={
