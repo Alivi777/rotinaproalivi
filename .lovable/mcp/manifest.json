@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://ttgyohcmhapqlnrllfxo.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "rotina-pro-alivi-mcp",
+      "version": "0.1.0",
+      "title": "Rotina Pro Alivi — MCP"
+    },
+    "tools": [
+      {
+        "name": "list_doctors",
+        "title": "Listar profissionais da clínica",
+        "description": "Retorna os profissionais/doutores cadastrados na clínica, com nome e status ativo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_clients",
+        "title": "Listar clientes/pacientes",
+        "description": "Retorna os clientes/pacientes cadastrados, filtrando opcionalmente por nome. Limite máximo 100.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro opcional por nome do cliente"
+            },
+            "limit": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Máximo de resultados (padrão 50)"
+            }
+          },
+          "required": [
+            "search",
+            "limit"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_routine_tasks",
+        "title": "Listar tarefas de rotina",
+        "description": "Retorna todas as tarefas de rotina configuradas, com título, setor e ordem.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_agenda_by_date",
+        "title": "Consultar agenda clínica de um dia",
+        "description": "Retorna a agenda clínica (consultas) para uma data específica no formato YYYY-MM-DD (timezone America/Sao_Paulo).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Data no formato YYYY-MM-DD"
+            }
+          },
+          "required": [
+            "date"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
