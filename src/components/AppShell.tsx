@@ -17,6 +17,7 @@ import {
   Sparkles,
   Clock,
   Bot,
+  Sunrise,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import FloatingAIButton from "./FloatingAIButton";
 const baseNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/rotina", label: "Rotina", icon: ListChecks },
+  { to: "/resumo-diario", label: "Resumo Diário", icon: Sunrise },
   { to: "/prioridades", label: "Prioridades", icon: Crosshair },
   { to: "/feedbacks", label: "Feedbacks", icon: MessageCircle },
   { to: "/agenda-clinica", label: "Agenda Clínica", icon: CalendarRange },
