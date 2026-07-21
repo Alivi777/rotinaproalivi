@@ -1,7 +1,19 @@
 import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Loader2, RefreshCw, AlertTriangle, CheckCircle2, ShieldAlert, Info } from "lucide-react";
+import {
+  CalendarIcon,
+  Loader2,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  ShieldAlert,
+  Info,
+  Download,
+  History,
+  Filter,
+  X,
+} from "lucide-react";
 import AppShell from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +22,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   useTacticalDailySummary,
@@ -17,8 +31,23 @@ import {
   yesterdayInSaoPaulo,
   type SummaryStatus,
   type Suggestion,
+  type DailySummary,
 } from "@/hooks/useTacticalDailySummary";
 import { toast } from "@/hooks/use-toast";
+import {
+  DEFAULT_FILTERS,
+  buildExportPayload,
+  collectCategories,
+  collectDoctors,
+  compareKpis,
+  downloadJson,
+  exportFilename,
+  filterDoctors,
+  filterPriorities,
+  filterSuggestions,
+  passesStatus,
+  type SummaryFilters,
+} from "@/lib/resumoDiario";
 
 const NAO_VALIDADO = "NÃO VALIDADO";
 
@@ -32,7 +61,7 @@ function DateBtn({ date, onChange, label }: { date: string; onChange: (v: string
       <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" className="w-[220px] justify-start text-left font-normal">
+          <Button variant="outline" className="w-[200px] justify-start text-left font-normal">
             <CalendarIcon className="mr-2 h-4 w-4" />
             {format(parsed, "PPP", { locale: ptBR })}
           </Button>
@@ -104,16 +133,72 @@ function SuggestionCard({ s }: { s: Suggestion }) {
   );
 }
 
+const brl = (n: any) =>
+  n === null || n === undefined ? null : Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function fmtKpi(key: string, v: number | null) {
+  if (v === null) return NAO_VALIDADO;
+  if (key === "revenue" || key === "profit") return brl(v);
+  return v.toLocaleString("pt-BR");
+}
+
+function DeltaCell({ delta, keyName }: { delta: number | null; keyName: string }) {
+  if (delta === null) return <span className="text-muted-foreground text-xs">{NAO_VALIDADO}</span>;
+  const cls = delta > 0 ? "text-emerald-600" : delta < 0 ? "text-destructive" : "text-muted-foreground";
+  const sign = delta > 0 ? "+" : "";
+  const display = keyName === "revenue" || keyName === "profit"
+    ? brl(delta)
+    : `${sign}${delta.toLocaleString("pt-BR")}`;
+  return <span className={cn("text-xs font-medium", cls)}>{sign}{keyName === "revenue" || keyName === "profit" ? display : display}</span>;
+}
+
 export default function ResumoDiarioPage() {
   const [referenceDate, setReferenceDate] = useState<string>(yesterdayInSaoPaulo());
   const [agendaDate, setAgendaDate] = useState<string>(todayInSaoPaulo());
 
-  const { data, isLoading, isFetching, isError, error, refetch } = useTacticalDailySummary({
-    referenceDate,
-    agendaDate,
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [refB, setRefB] = useState<string>(yesterdayInSaoPaulo());
+  const [agendaB, setAgendaB] = useState<string>(todayInSaoPaulo());
+
+  const [filters, setFilters] = useState<SummaryFilters>(DEFAULT_FILTERS);
+
+  const primary = useTacticalDailySummary({ referenceDate, agendaDate });
+  const comparison = useTacticalDailySummary({
+    referenceDate: refB,
+    agendaDate: agendaB,
+    enabled: historyOpen,
   });
 
+  const data = primary.data;
+  const { isLoading, isFetching, isError, error, refetch } = primary;
   const isAuthError = isError && (error?.status === 401 || error?.status === 403);
+
+  const doctors = useMemo(() => collectDoctors(data), [data]);
+  const categories = useMemo(() => collectCategories(data), [data]);
+
+  const filteredDoctors = data ? filterDoctors(data, filters) : [];
+  const filteredSuggestions = data ? filterSuggestions(data, filters) : [];
+  const filteredPriorities = data ? filterPriorities(data, filters) : [];
+  const statusPasses = data ? passesStatus(data, filters) : true;
+
+  const kpiDeltas = useMemo(
+    () => compareKpis(data ?? null, comparison.data ?? null),
+    [data, comparison.data],
+  );
+
+  const handleExport = () => {
+    if (!data) return;
+    const payload = buildExportPayload(data, {
+      generated_at: new Date().toISOString(),
+      source: "tactical-daily-summary",
+    });
+    downloadJson(exportFilename(referenceDate, agendaDate), payload);
+    toast({ title: "Exportado", description: "JSON minimizado salvo localmente." });
+  };
+
+  const resetFilters = () => setFilters(DEFAULT_FILTERS);
+  const hasFilters =
+    filters.query !== "" || filters.doctor !== "all" || filters.category !== "all" || filters.status !== "all";
 
   return (
     <AppShell>
@@ -128,12 +213,122 @@ export default function ResumoDiarioPage() {
           <div className="flex flex-wrap items-end gap-3">
             <DateBtn label="Referência (D-1)" date={referenceDate} onChange={setReferenceDate} />
             <DateBtn label="Agenda (Hoje)" date={agendaDate} onChange={setAgendaDate} />
+            <Button
+              variant={historyOpen ? "default" : "outline"}
+              onClick={() => setHistoryOpen((v) => !v)}
+              title="Comparar com outra data"
+            >
+              <History className="h-4 w-4 mr-2" />
+              Histórico
+            </Button>
             <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={cn("h-4 w-4 mr-2", isFetching && "animate-spin")} />
               Recarregar
             </Button>
+            <Button variant="outline" onClick={handleExport} disabled={!data}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar JSON
+            </Button>
           </div>
         </header>
+
+        {historyOpen && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <History className="h-4 w-4" /> Comparação com outra data (America/Sao_Paulo)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <DateBtn label="Referência B" date={refB} onChange={setRefB} />
+                <DateBtn label="Agenda B" date={agendaB} onChange={setAgendaB} />
+                {comparison.isFetching && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> carregando comparação…
+                  </div>
+                )}
+                {comparison.isError && (
+                  <div className="text-xs text-destructive">
+                    Falha ao comparar: {comparison.error?.message}
+                  </div>
+                )}
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs uppercase text-muted-foreground border-b">
+                      <th className="text-left py-2">KPI</th>
+                      <th className="text-right py-2">{referenceDate}</th>
+                      <th className="text-right py-2">{refB}</th>
+                      <th className="text-right py-2">Δ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kpiDeltas.map((d) => (
+                      <tr key={d.key} className="border-b border-dashed">
+                        <td className="py-2">{d.label}</td>
+                        <td className="text-right py-2">{fmtKpi(d.key, d.a)}</td>
+                        <td className="text-right py-2">{fmtKpi(d.key, d.b)}</td>
+                        <td className="text-right py-2"><DeltaCell delta={d.delta} keyName={d.key} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Prioridades abertas A: {data?.open_priorities.length ?? NAO_VALIDADO} • B:{" "}
+                {comparison.data?.open_priorities.length ?? NAO_VALIDADO}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Filtros locais */}
+        <Card>
+          <CardContent className="py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por texto…"
+                value={filters.query}
+                onChange={(e) => setFilters((f) => ({ ...f, query: e.target.value }))}
+                className="h-8 w-56"
+              />
+              <Select value={filters.doctor} onValueChange={(v) => setFilters((f) => ({ ...f, doctor: v }))}>
+                <SelectTrigger className="h-8 w-48"><SelectValue placeholder="Profissional" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos profissionais</SelectItem>
+                  {doctors.map((d) => (<SelectItem key={d} value={d}>{d}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={filters.category} onValueChange={(v) => setFilters((f) => ({ ...f, category: v }))}>
+                <SelectTrigger className="h-8 w-40"><SelectValue placeholder="Categoria" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas categorias</SelectItem>
+                  {categories.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={filters.status}
+                onValueChange={(v) => setFilters((f) => ({ ...f, status: v as SummaryFilters["status"] }))}
+              >
+                <SelectTrigger className="h-8 w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Qualquer status</SelectItem>
+                  <SelectItem value="PASS">PASS</SelectItem>
+                  <SelectItem value="PARTIAL">PARTIAL</SelectItem>
+                  <SelectItem value="BLOCKED">BLOCKED</SelectItem>
+                </SelectContent>
+              </Select>
+              {hasFilters && (
+                <Button size="sm" variant="ghost" onClick={resetFilters}>
+                  <X className="h-3.5 w-3.5 mr-1" /> Limpar
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         {isLoading && (
           <div className="flex items-center justify-center py-24">
@@ -156,12 +351,25 @@ export default function ResumoDiarioPage() {
           </Alert>
         )}
 
-        {data && !isLoading && (
+        {data && !isLoading && !statusPasses && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Filtro de status ativo</AlertTitle>
+            <AlertDescription>
+              O status atual é <strong>{data.status}</strong> mas o filtro está em <strong>{filters.status}</strong>. Ajuste o filtro para ver o conteúdo.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {data && !isLoading && statusPasses && (
           <>
             <div className="flex flex-wrap items-center gap-3">
               <StatusBadge status={data.status} />
               <Badge variant="outline" className="uppercase text-[10px]">escopo: {data.scope}</Badge>
-              <span className="text-xs text-muted-foreground">TZ {data.timezone} • fontes: {data.sources.join(", ") || NAO_VALIDADO}</span>
+              <span className="text-xs text-muted-foreground">
+                TZ {data.timezone} • período {data.reference_date} → {data.agenda_date} • consultado em{" "}
+                {format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })} • fontes: {data.sources.join(", ") || NAO_VALIDADO}
+              </span>
             </div>
 
             {data.data_quality.length > 0 && (
@@ -187,7 +395,6 @@ export default function ResumoDiarioPage() {
                       <div className="col-span-full text-sm text-muted-foreground">{note ?? NAO_VALIDADO}</div>
                     );
                   }
-                  const brl = (n: any) => (n === null || n === undefined) ? null : Number(n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
                   return (
                     <>
                       <Kpi label="Receita MTD" value={brl(mtd.revenue)} />
@@ -215,11 +422,11 @@ export default function ResumoDiarioPage() {
                       <Separator />
                       <div>
                         <div className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Por profissional</div>
-                        {(data.agenda_today.by_doctor?.length ?? 0) === 0 ? (
+                        {filteredDoctors.length === 0 ? (
                           <div className="text-sm text-muted-foreground">{NAO_VALIDADO}</div>
                         ) : (
                           <ul className="text-sm space-y-1">
-                            {data.agenda_today.by_doctor!.map((d) => (
+                            {filteredDoctors.map((d) => (
                               <li key={d.doctor} className="flex justify-between border-b border-dashed py-1">
                                 <span>{d.doctor}</span>
                                 <span className="font-medium">{d.total}</span>
@@ -250,11 +457,11 @@ export default function ResumoDiarioPage() {
               <Card>
                 <CardHeader><CardTitle className="text-base">Prioridades abertas</CardTitle></CardHeader>
                 <CardContent>
-                  {data.open_priorities.length === 0 ? (
+                  {filteredPriorities.length === 0 ? (
                     <div className="text-sm text-muted-foreground">{NAO_VALIDADO}</div>
                   ) : (
                     <ul className="text-sm space-y-2">
-                      {data.open_priorities.slice(0, 10).map((p) => (
+                      {filteredPriorities.slice(0, 10).map((p) => (
                         <li key={p.id} className="flex items-center justify-between gap-2 rounded border p-2">
                           <span className="font-mono text-xs">{p.user_ref ?? NAO_VALIDADO}</span>
                           <Badge variant="outline" className="text-[10px] uppercase">{p.status}</Badge>
@@ -301,12 +508,18 @@ export default function ResumoDiarioPage() {
             </Card>
 
             <section>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">Sugestões táticas</h2>
-              {data.suggestions.length === 0 ? (
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+                Sugestões táticas {filteredSuggestions.length !== data.suggestions.length && (
+                  <span className="text-xs normal-case text-muted-foreground">
+                    ({filteredSuggestions.length}/{data.suggestions.length} após filtro)
+                  </span>
+                )}
+              </h2>
+              {filteredSuggestions.length === 0 ? (
                 <div className="text-sm text-muted-foreground">{NAO_VALIDADO}</div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {data.suggestions.map((s) => (<SuggestionCard key={s.id} s={s} />))}
+                  {filteredSuggestions.map((s) => (<SuggestionCard key={s.id} s={s} />))}
                 </div>
               )}
               <p className="text-xs text-muted-foreground mt-3">
@@ -319,3 +532,6 @@ export default function ResumoDiarioPage() {
     </AppShell>
   );
 }
+
+// Type reference to avoid unused import warning on DailySummary in future edits.
+export type { DailySummary };
