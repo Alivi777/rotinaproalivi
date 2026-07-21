@@ -148,6 +148,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/resumo-diario"
+            element={
+              <ProtectedRoute>
+                <ResumoDiarioPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
