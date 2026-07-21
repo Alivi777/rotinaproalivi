@@ -104,5 +104,20 @@ describe("resumoDiario helpers", () => {
 
   it("export filename encodes both dates", () => {
     expect(exportFilename("2026-05-10", "2026-05-11")).toBe("resumo-diario_2026-05-10_2026-05-11.json");
+    expect(exportCsvFilename("2026-05-10", "2026-05-11")).toBe("resumo-diario_2026-05-10_2026-05-11.csv");
+  });
+
+  it("builds CSV export with masked IDs and metadata, no credentials", () => {
+    const csv = buildExportCsv(base, { generated_at: "2026-05-11T12:00:00Z", source: "tactical-daily-summary" });
+    expect(csv).toContain("reference_date;2026-05-10");
+    expect(csv).toContain("agenda_date;2026-05-11");
+    expect(csv).toContain("timezone;America/Sao_Paulo");
+    expect(csv).toContain("## kpis_month_to_date");
+    expect(csv).toContain("Dra. Wanessa;2");
+    expect(csv).toContain("u_abc");
+    const lower = csv.toLowerCase();
+    expect(lower.includes("authorization")).toBe(false);
+    expect(lower.includes("apikey")).toBe(false);
+    expect(lower.includes("prompt")).toBe(false);
   });
 });
