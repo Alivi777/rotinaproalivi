@@ -60,6 +60,10 @@ const META: Record<string, { title: string; description: string }> = {
     title: "Gestor de Dados e IA | Rotina Pro",
     description: "Direcionamentos táticos com apoio de IA sobre os dados do time.",
   },
+  "/resumo-diario": {
+    title: "Resumo Diário | Rotina Pro",
+    description: "Panorama tático do dia: KPIs, agenda, rotina, prioridades e sugestões operacionais.",
+  },
   "/auth": {
     title: "Login | Rotina Pro",
     description: "Acesse o Rotina Pro para gerenciar a rotina e operação do seu time.",
